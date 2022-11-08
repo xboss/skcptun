@@ -1,6 +1,20 @@
 .DS_Store
 .vscode
 *.log
+test
+*.conf
+*.sh
+out
+
+#cmake files
+build
+CMakeFiles
+CMakeCache.txt
+*.cmake
+DartConfiguration.tcl
+skcptun
+Makefile
+Testing
 
 # Prerequisites
 *.d

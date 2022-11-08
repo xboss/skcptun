@@ -25,7 +25,10 @@ static void tcp_accept_conn_cb(skt_tcp_serv_conn_t *tcp_conn) {
     return;
 }
 static void tcp_close_conn_cb(skt_tcp_serv_conn_t *tcp_conn) {
-    LOG_D("tcp serv close_conn_cb fd:%d", tcp_conn->fd);
+    if (NULL == g_cli->kcp_cli) {
+        return;
+    }
+
     skt_kcp_conn_t *kcp_conn = skt_kcp_client_get_conn(g_cli->kcp_cli, tcp_conn->sess_id);
     if (NULL == kcp_conn) {
         return;
@@ -90,6 +93,10 @@ static void kcp_timeout_cb(skt_kcp_conn_t *kcp_conn) {
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("kcp_close_cb sess_id:%u", kcp_conn->sess_id);
+
+    if (NULL == g_cli->tcp_serv) {
+        return;
+    }
 
     skt_tcp_serv_conn_t *tcp_conn = skt_tcp_server_get_conn(g_cli->tcp_serv, kcp_conn->tcp_fd);
     if (NULL == tcp_conn) {
@@ -183,6 +190,7 @@ void skt_client_free() {
         skt_kcp_client_free(g_cli->kcp_cli);
         g_cli->kcp_cli = NULL;
     }
+
     if (g_cli->tcp_serv) {
         skt_tcp_server_free(g_cli->tcp_serv);
         g_cli->tcp_serv = NULL;

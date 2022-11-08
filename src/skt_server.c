@@ -27,6 +27,10 @@ static int tcp_recv_cb(skt_tcp_cli_conn_t *tcp_conn, char *buf, int len) {
 
 static void tcp_close_cb(skt_tcp_cli_conn_t *tcp_conn) {
     LOG_D("tcp conn closed fd:%d", tcp_conn->fd);
+    if (NULL == g_serv->kcp_serv) {
+        return;
+    }
+
     skt_kcp_conn_t *kcp_conn = skt_kcp_server_get_conn(g_serv->kcp_serv, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     if (NULL == kcp_conn) {
         return;
