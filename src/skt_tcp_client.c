@@ -54,7 +54,7 @@ static int client_connect(int *fd, struct sockaddr_in servaddr, long recv_timeou
             return -1;
         } else {
             // 连接没有立即成功，需进行二次判断
-            LOG_W("skt_tcp_client_connect waiting fd:%d errno:%s ", *fd, strerror(errno));
+            LOG_D("skt_tcp_client_connect waiting fd:%d errno:%s ", *fd, strerror(errno));
             return 1;
         }
     }
@@ -322,4 +322,5 @@ void skt_tcp_client_free(skt_tcp_cli_t *cli) {
     }
 
     FREE_IF(cli);
+    LOG_D("skt_tcp_client_free ok");
 }

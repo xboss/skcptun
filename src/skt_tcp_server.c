@@ -29,12 +29,12 @@ static void close_conn(skt_tcp_serv_t *serv, int fd) {
         HASH_DEL(conn->serv->conn_ht, conn);
     }
 
-    LOG_D("close_conn fd:%d", conn->fd);
     conn->status = SKT_TCP_CONN_ST_OFF;
     if (conn->fd) {
         close(conn->fd);
         conn->fd = 0;
     }
+
     ev_io_stop(conn->serv->loop, conn->r_watcher);
     FREE_IF(conn->r_watcher)
     ev_timer_stop(conn->serv->loop, conn->timeout_watcher);
@@ -275,13 +275,14 @@ skt_tcp_serv_t *skt_tcp_server_init(skt_tcp_serv_conf_t *conf, struct ev_loop *l
 }
 
 void skt_tcp_server_free(skt_tcp_serv_t *serv) {
-    assert(serv);
-    ev_io_stop(serv->loop, serv->accept_watcher);
-    FREE_IF(serv->accept_watcher);
+    // assert(serv);
+    if (serv->accept_watcher && ev_is_active(serv->accept_watcher)) {
+        ev_io_stop(serv->loop, serv->accept_watcher);
+        FREE_IF(serv->accept_watcher);
+    }
 
     skt_tcp_serv_conn_t *conn, *tmp;
     HASH_ITER(hh, serv->conn_ht, conn, tmp) {
-        LOG_D("free tcp conn fd:%d when stop tcp server", conn->fd);
         conn->status = SKT_TCP_CONN_ST_OFF;
         close_conn(conn->serv, conn->fd);
         conn = NULL;
@@ -292,4 +293,5 @@ void skt_tcp_server_free(skt_tcp_serv_t *serv) {
     }
 
     FREE_IF(serv);
+    LOG_D("skt_tcp_server_free ok");
 }

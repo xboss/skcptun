@@ -435,14 +435,20 @@ skt_kcp_serv_t *skt_kcp_server_init(skt_kcp_serv_conf_t *conf, struct ev_loop *l
 }
 
 void skt_kcp_server_free(skt_kcp_serv_t *serv) {
-    ev_io_stop(serv->loop, serv->r_watcher);
-    FREE_IF(serv->r_watcher);
+    if (serv->r_watcher && ev_is_active(serv->r_watcher)) {
+        ev_io_stop(serv->loop, serv->r_watcher);
+        FREE_IF(serv->r_watcher);
+    }
 
-    ev_timer_stop(serv->loop, serv->timeout_watcher);
-    FREE_IF(serv->timeout_watcher);
+    if (serv->timeout_watcher && ev_is_active(serv->timeout_watcher)) {
+        ev_timer_stop(serv->loop, serv->timeout_watcher);
+        FREE_IF(serv->timeout_watcher);
+    }
 
-    ev_timer_stop(serv->loop, serv->kcp_update_watcher);
-    FREE_IF(serv->kcp_update_watcher);
+    if (serv->kcp_update_watcher && ev_is_active(serv->kcp_update_watcher)) {
+        ev_timer_stop(serv->loop, serv->kcp_update_watcher);
+        FREE_IF(serv->kcp_update_watcher);
+    }
 
     // serv->conf->free_cb(evkcp);
 
@@ -457,5 +463,6 @@ void skt_kcp_server_free(skt_kcp_serv_t *serv) {
     }
 
     FREE_IF(serv);
+    LOG_D("skt_kcp_server_free ok");
     return;
 }

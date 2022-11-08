@@ -17,6 +17,9 @@ static void append_wait_buf(skt_kcp_conn_t *conn, char *buffer, int len) {
 
 skt_kcp_conn_t *skt_kcp_client_get_conn(skt_kcp_cli_t *cli, uint32_t sess_id) {
     skt_kcp_conn_t *conn = NULL;
+    if (!cli->conn_ht) {
+        return conn;
+    }
     HASH_FIND_INT(cli->conn_ht, &sess_id, conn);
     return conn;
 }
@@ -438,14 +441,20 @@ skt_kcp_cli_t *skt_kcp_client_init(skt_kcp_cli_conf_t *conf, struct ev_loop *loo
 }
 
 void skt_kcp_client_free(skt_kcp_cli_t *cli) {
-    ev_io_stop(cli->loop, cli->r_watcher);
-    FREE_IF(cli->r_watcher);
+    if (cli->r_watcher && ev_is_active(cli->r_watcher)) {
+        ev_io_stop(cli->loop, cli->r_watcher);
+        FREE_IF(cli->r_watcher);
+    }
 
-    ev_timer_stop(cli->loop, cli->timeout_watcher);
-    FREE_IF(cli->timeout_watcher);
+    if (cli->timeout_watcher && ev_is_active(cli->timeout_watcher)) {
+        ev_timer_stop(cli->loop, cli->timeout_watcher);
+        FREE_IF(cli->timeout_watcher);
+    }
 
-    ev_timer_stop(cli->loop, cli->kcp_update_watcher);
-    FREE_IF(cli->kcp_update_watcher);
+    if (cli->kcp_update_watcher && ev_is_active(cli->kcp_update_watcher)) {
+        ev_timer_stop(cli->loop, cli->kcp_update_watcher);
+        FREE_IF(cli->kcp_update_watcher);
+    }
 
     skt_kcp_conn_t *conn, *tmp;
     HASH_ITER(hh, cli->conn_ht, conn, tmp) {
@@ -459,5 +468,6 @@ void skt_kcp_client_free(skt_kcp_cli_t *cli) {
     }
 
     FREE_IF(cli);
+    LOG_D("skt_kcp_client_free ok");
     return;
 }
