@@ -3,6 +3,8 @@
 *.log
 test
 *.conf
+*.sh
+out
 
 #cmake files
 build
