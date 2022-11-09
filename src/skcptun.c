@@ -1,4 +1,4 @@
-#define _DEBUG
+//#define _DEBUG
 
 #if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
 #include <mcheck.h>
