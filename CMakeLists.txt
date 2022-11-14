@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(skcptun VERSION 0.1.0)
 
-include(CTest)
-enable_testing()
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb ")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+
+# include(CTest)
+# enable_testing()
 
 FIND_LIBRARY(SSL_LIB ssl /usr/lib  /usr/local/lib NO_DEFAULT_PATH)
 FIND_LIBRARY(CRYPTO_LIB crypto /usr/lib  /usr/local/lib NO_DEFAULT_PATH)
