@@ -106,10 +106,13 @@ static int kcp_send_raw(skt_kcp_conn_t *conn, char *buf, int len, char cmd) {
         char *p = raw_buf + 1;
         memcpy(p, buf, len);
     } else {
-        char s[2] = {0};
-        s[0] = cmd;
+        // add jam
+        srand((unsigned)time(NULL));
+        int jam = rand() % (RAND_MAX - 10000000) + 10000000;
+        char s[34] = {0};
+        snprintf(s, 34, "%c%d", cmd, jam);
+        raw_len = strlen(s);
         raw_buf = s;
-        raw_len = 1;
     }
 
     int rt = ikcp_send(conn->kcp, raw_buf, raw_len);
