@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     if (argc < 3) {
-        LOG_E("param error!\n kcptn param \n s:server\n c:client configfile");
+        LOG_E("param error!\n s:server\n c:client configfile");
         return -1;
     }
 
