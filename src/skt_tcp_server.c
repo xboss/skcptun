@@ -219,7 +219,7 @@ ssize_t skt_tcp_server_send(skt_tcp_serv_t *serv, int fd, char *buf, int len) {
     }
     conn->last_w_tm = getmillisecond();
     // LOG_D("skt_tcp_server_send:%s", buf);
-    LOG_D("skt_tcp_server_send:%ld", write_len);
+    // LOG_D("skt_tcp_server_send:%ld", write_len);
     return write_len;
 }
 

@@ -1,12 +1,12 @@
 .DS_Store
 .vscode
 *.log
-test
 *.conf
 *.sh
 out
 !skcptun_client_sample.conf
 !skcptun_server_sample.conf
+!test/*.sh
 
 #cmake files
 build

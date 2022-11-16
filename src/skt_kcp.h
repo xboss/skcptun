@@ -4,54 +4,60 @@
 #include <arpa/inet.h>
 #include <ev.h>
 
-#include "3rd/kcp/ikcp.h"
-#include "3rd/uthash/uthash.h"
+#include "skcp.h"
 #include "skt_utils.h"
 
-#define SKT_KCP_CMD_CONN 0x01
-#define SKT_KCP_CMD_CONN_ACK 0x02
-#define SKT_KCP_CMD_CLOSE 0x03
-// #define SKT_KCP_CMD_CLOSE_ACK 0x04
-#define SKT_KCP_CMD_DATA 0x05
-#define SKT_KCP_CMD_PING 0x06
-// #define SKT_KCP_CMD_PONG 0x07
+#define SKT_HTKEY_LEN 50
 
-#define SKT_KCP_CONF_FIELD \
-    int mtu;               \
-    int interval;          \
-    int nodelay;           \
-    int resend;            \
-    int nc;                \
-    int sndwnd;            \
-    int rcvwnd;
-
-typedef enum {
-    SKT_KCP_CONN_ST_ON = 1,
-    SKT_KCP_CONN_ST_READY,
-    SKT_KCP_CONN_ST_OFF,
-    SKT_KCP_CONN_ST_CAN_OFF,
-} SKT_KCP_CONN_ST;
-
-typedef struct skt_kcp_cli_s skt_kcp_cli_t;
-typedef struct skt_kcp_serv_s skt_kcp_serv_t;
-
-struct skt_kcp_conn_s {
-    char *htkey;
-    uint32_t sess_id;
-    uint64_t estab_tm;
-    uint64_t last_r_tm;  // 最后一次读操作的时间戳
-    uint64_t last_w_tm;  // 最后一次写操作的时间戳
-    struct sockaddr_in cliaddr;
-    ikcpcb *kcp;
-    skt_kcp_cli_t *cli;
-    skt_kcp_serv_t *serv;
-    int tcp_fd;
-    SKT_KCP_CONN_ST status;
-    waiting_buf_t *waiting_buf_q;  // 待发送消息的队列头
-    UT_hash_handle hh;
-};
 typedef struct skt_kcp_conn_s skt_kcp_conn_t;
 
-int skt_kcp_recv(skt_kcp_conn_t *conn, char *buf, int len);
+struct skt_kcp_conf_s {
+    skcp_conf_t *skcp_conf;
+    char *addr;
+    uint16_t port;
+    char *key;
+    int r_buf_size;
+    int kcp_buf_size;
+    int timeout_interval;  // 单位：秒
+};
+typedef struct skt_kcp_conf_s skt_kcp_conf_t;
+
+struct skt_kcp_s {
+    int fd;
+    struct sockaddr_in servaddr;
+    skt_kcp_conf_t *conf;
+    skcp_t *skcp;
+    SKCP_MODE mode;
+
+    struct ev_loop *loop;
+    struct ev_io *r_watcher;
+    struct ev_timer *kcp_update_watcher;
+    struct ev_timer *timeout_watcher;
+
+    void *data;
+
+    // void (*conn_timeout_cb)(skcp_conn_t *kcp_conn);
+    void (*new_conn_cb)(skcp_conn_t *kcp_conn);
+    void (*conn_close_cb)(skt_kcp_conn_t *kcp_conn);
+    int (*kcp_recv_cb)(skcp_conn_t *kcp_conn, char *buf, int len);
+    char *(*encrypt_cb)(const char *in, int in_len, int *out_len);
+    char *(*decrypt_cb)(const char *in, int in_len, int *out_len);
+};
+typedef struct skt_kcp_s skt_kcp_t;
+
+struct skt_kcp_conn_s {
+    // struct sockaddr_in cliaddr;
+    struct sockaddr_in dest_addr;
+    skt_kcp_t *skt_kcp;
+    int tcp_fd;
+};
+
+skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, SKCP_MODE mode);
+void skt_kcp_free(skt_kcp_t *skt_kcp);
+void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr);
+skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct sockaddr_in *sock_addr);
+void skt_kcp_close_conn(skt_kcp_t *skt_kcp, char *htkey);
+int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, char *buf, int len);
+skcp_conn_t *skt_kcp_get_conn(skt_kcp_t *skt_kcp, char *htkey);
 
 #endif

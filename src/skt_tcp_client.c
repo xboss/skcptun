@@ -179,19 +179,19 @@ ssize_t skt_tcp_client_send(skt_tcp_cli_t *cli, int fd, char *buf, int len) {
     }
 
     if (conn == NULL || conn->fd <= 0) {
-        LOG_D("skt_tcp_client_send connection error");
+        LOG_E("skt_tcp_client_send connection error");
         return -1;
     }
 
     if (SKT_TCP_CONN_ST_READY == conn->status) {
-        LOG_D("skt_tcp_client_send write waiting buf:%s", buf);
+        // LOG_D("skt_tcp_client_send write waiting buf:%s", buf);
         append_wait_buf(conn, buf, len);
         conn->last_w_tm = getmillisecond();
         return len;
     }
 
     if (SKT_TCP_CONN_ST_ON == conn->status && conn->waiting_buf_q) {
-        LOG_D("skt_tcp_client_send send waiting buf fd: %d", conn->fd);
+        // LOG_D("skt_tcp_client_send send waiting buf fd: %d", conn->fd);
         waiting_buf_t *wbtmp, *item;
         DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
             ssize_t rt = write(conn->fd, item->buf, item->len);
@@ -212,7 +212,7 @@ ssize_t skt_tcp_client_send(skt_tcp_cli_t *cli, int fd, char *buf, int len) {
     }
 
     conn->last_w_tm = getmillisecond();
-    LOG_D("skt_tcp_client_send:%ld", rt);
+    // LOG_D("skt_tcp_client_send:%ld", rt);
     return rt;
 }
 
