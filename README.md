@@ -16,7 +16,9 @@ skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWR
 下载源码并解压后:
 ```
 cd skcptun
-cmake .
+mkdir build
+cd build
+cmake ..
 make
 ```
 ## 使用
