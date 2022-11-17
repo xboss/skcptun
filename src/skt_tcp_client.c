@@ -32,7 +32,7 @@ static int client_connect(int *fd, struct sockaddr_in servaddr, long recv_timeou
     if (*fd <= 0) {
         *fd = socket(AF_INET, SOCK_STREAM, 0);
         if (-1 == *fd) {
-            LOG_E("skt_tcp_client_connect socket error fd: %d", *fd);
+            LOG_E("tcp client_connect socket error fd: %d", *fd);
             return -1;
         }
     }
@@ -50,7 +50,7 @@ static int client_connect(int *fd, struct sockaddr_in servaddr, long recv_timeou
     if (0 != crt) {
         if (errno != EINPROGRESS) {
             // 连接失败
-            LOG_E("skt_tcp_client_connect error fd:%d errno:%s ", *fd, strerror(errno));
+            LOG_W("skt_tcp_client_connect error fd:%d errno:%s ", *fd, strerror(errno));
             return -1;
         } else {
             // 连接没有立即成功，需进行二次判断
@@ -122,7 +122,7 @@ void conn_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         return;
     }
     if (conn->status != SKT_TCP_CONN_ST_ON) {
-        LOG_E("conn_read_cb tcpconn is off fd: %d", watcher->fd);
+        LOG_W("conn_read_cb tcpconn is off fd: %d", watcher->fd);
         skt_tcp_client_close_conn(cli, watcher->fd);
         conn = NULL;
         return;
@@ -136,7 +136,7 @@ void conn_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // tcp Error
         if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno) {
             res = 1;
-            LOG_E("conn_read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
+            LOG_W("conn_read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
         } else {
             LOG_W("conn_read_cb tcp warn fd:%d, errno:%s", watcher->fd, strerror(errno));
         }
@@ -144,7 +144,7 @@ void conn_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         if (errno != EINPROGRESS) {
             // tcp Close
             res = 2;
-            LOG_E("conn_read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
+            LOG_W("conn_read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
         }
     }
 
@@ -159,7 +159,7 @@ void conn_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
     if (bytes > 0) {
         if (-1 == cli->conf->recv_cb(conn, buffer, bytes)) {
-            LOG_E("tcp_conn_recv_cb recv_cb error fd: %d", conn->fd);
+            LOG_W("tcp_conn_recv_cb recv_cb error fd: %d", conn->fd);
             FREE_IF(buffer);
             conn->status = SKT_TCP_CONN_ST_OFF;
             skt_tcp_client_close_conn(cli, conn->fd);
@@ -179,19 +179,17 @@ ssize_t skt_tcp_client_send(skt_tcp_cli_t *cli, int fd, char *buf, int len) {
     }
 
     if (conn == NULL || conn->fd <= 0) {
-        LOG_D("skt_tcp_client_send connection error");
+        LOG_E("skt_tcp_client_send connection error");
         return -1;
     }
 
     if (SKT_TCP_CONN_ST_READY == conn->status) {
-        LOG_D("skt_tcp_client_send write waiting buf:%s", buf);
         append_wait_buf(conn, buf, len);
         conn->last_w_tm = getmillisecond();
         return len;
     }
 
     if (SKT_TCP_CONN_ST_ON == conn->status && conn->waiting_buf_q) {
-        LOG_D("skt_tcp_client_send send waiting buf fd: %d", conn->fd);
         waiting_buf_t *wbtmp, *item;
         DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
             ssize_t rt = write(conn->fd, item->buf, item->len);
@@ -212,7 +210,6 @@ ssize_t skt_tcp_client_send(skt_tcp_cli_t *cli, int fd, char *buf, int len) {
     }
 
     conn->last_w_tm = getmillisecond();
-    LOG_D("skt_tcp_client_send:%ld", rt);
     return rt;
 }
 

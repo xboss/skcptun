@@ -1,4 +1,4 @@
-//#define _DEBUG
+// #define _DEBUG
 
 #if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
 #include <mcheck.h>
@@ -42,6 +42,7 @@ static skt_serv_t *start_server(struct ev_loop *loop, const char *conf_file) {
     LOG_D("loop end");
 
     skt_server_free();
+    skt_free_server_conf(conf);
     return serv;
 }
 
@@ -68,6 +69,7 @@ static skt_cli_t *start_client(struct ev_loop *loop, const char *conf_file) {
     LOG_D("loop end");
 
     skt_client_free();
+    skt_free_client_conf(conf);
     return cli;
 }
 
@@ -80,7 +82,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     if (argc < 3) {
-        LOG_E("param error!\n s:server\n c:client configfile");
+        printf("param error!\n kcptn param \n s:server\n c:client configfile\n");
         return -1;
     }
 
@@ -101,18 +103,18 @@ int main(int argc, char *argv[]) {
     ev_signal_start(loop, &sig_stop_watcher);
 
     if (strcmp(argv[1], "s") == 0) {
-        skt_serv_t *serv = start_server(loop, conf_file);  // TODO:
+        skt_serv_t *serv = start_server(loop, conf_file);
         if (NULL == serv) {
             return -1;
         }
 
     } else if (strcmp(argv[1], "c") == 0) {
-        skt_cli_t *cli = start_client(loop, conf_file);  // TODO:
+        skt_cli_t *cli = start_client(loop, conf_file);
         if (NULL == cli) {
             return -1;
         }
     } else {
-        LOG_E("param error!\n kcptn param \n s:server\n c:client");
+        printf("param error!\n kcptn param \n s:server\n c:client\n");
         return -1;
     }
 

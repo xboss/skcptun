@@ -94,7 +94,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // tcp Error
         if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno) {
             res = 1;
-            LOG_E("read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
+            LOG_W("read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
         } else {
             LOG_W("read_cb tcp warn fd:%d, errno:%s", watcher->fd, strerror(errno));
         }
@@ -102,7 +102,6 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         if (errno != EINPROGRESS) {
             // tcp Close
             res = 2;
-            // LOG_E("conn_read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
         }
     }
 
@@ -116,7 +115,6 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
     if (0 != res) {
         //关闭事件循环并释放watcher
-        // LOG_I("tcp close");
         FREE_IF(buffer)
         conn->status = SKT_TCP_CONN_ST_OFF;
         close_conn(conn->serv, conn->fd);
@@ -218,8 +216,6 @@ ssize_t skt_tcp_server_send(skt_tcp_serv_t *serv, int fd, char *buf, int len) {
         return -1;
     }
     conn->last_w_tm = getmillisecond();
-    // LOG_D("skt_tcp_server_send:%s", buf);
-    LOG_D("skt_tcp_server_send:%ld", write_len);
     return write_len;
 }
 
@@ -275,7 +271,6 @@ skt_tcp_serv_t *skt_tcp_server_init(skt_tcp_serv_conf_t *conf, struct ev_loop *l
 }
 
 void skt_tcp_server_free(skt_tcp_serv_t *serv) {
-    // assert(serv);
     if (serv->accept_watcher && ev_is_active(serv->accept_watcher)) {
         ev_io_stop(serv->loop, serv->accept_watcher);
         FREE_IF(serv->accept_watcher);
