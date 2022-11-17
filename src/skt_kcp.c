@@ -162,7 +162,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     int rt = sendto(kcp_conn->skt_kcp->fd, out_buf, out_len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
                     sizeof(kcp_conn->dest_addr));
     if (-1 == rt) {
-        LOG_E("output sendto error fd:%d", kcp_conn->skt_kcp->fd);
+        LOG_E("output sendto error fd:%d errno: %d %s", kcp_conn->skt_kcp->fd, errno, strerror(errno));
         if (kcp_conn->skt_kcp->encrypt_cb) {
             FREE_IF(out_buf);
         }
@@ -195,7 +195,7 @@ int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, char *buf, int len) {
         return -1;
     }
     int rt = skcp_send(conn, buf, len);
-    skcp_update(conn, clock());
+    // skcp_update(conn, clock());
     return rt;
 }
 
@@ -277,7 +277,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     }
 
     skcp_input(conn, out_buf, out_len);
-    skcp_update(conn, clock());
+    // skcp_update(conn, clock());
     FREE_IF(out_buf);
 
     // skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
@@ -290,7 +290,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // 成功
         conn->last_r_tm = getmillisecond();
         skt_kcp->kcp_recv_cb(conn, kcp_recv_buf, rt);
-        skcp_update(conn, clock());
+        // skcp_update(conn, clock());
     } else {
         switch (rt) {
             case -1:
@@ -308,7 +308,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 // 收到connect ack 命令
                 LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
                 conn->last_r_tm = getmillisecond();
-                skcp_update(conn, clock());
+                // skcp_update(conn, clock());
                 break;
             case -4:
                 // 收到close 命令
@@ -319,7 +319,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 // 收到ping 命令
                 break;
             default:
-                skcp_update(conn, clock());
+                // skcp_update(conn, clock());
                 // LOG_D("recv empty");
                 break;
         }

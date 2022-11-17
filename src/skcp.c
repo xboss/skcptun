@@ -122,7 +122,6 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
         // 发送失败
         return -1;
     }
-    assert(conn->kcp);
     ikcp_update(conn->kcp, clock());  // TODO: 跨平台
 
     return rt;
@@ -227,18 +226,22 @@ void skcp_update_all(skcp_t *skcp, IUINT32 current) {
     HASH_ITER(hh, skcp->conn_ht, conn, tmp) { ikcp_update(conn->kcp, current); }
 }
 
-int skcp_input(skcp_conn_t *conn, const char *data, long size) { return ikcp_input(conn->kcp, data, size); }
+int skcp_input(skcp_conn_t *conn, const char *data, long size) {
+    int rt = ikcp_input(conn->kcp, data, size);
+    ikcp_update(conn->kcp, clock());  // TODO: 跨平台
+    return rt;
+}
 IUINT32 skcp_get_sess_id(const void *data) { return ikcp_getconv(data); }
 
 int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
     char *recv_buf = malloc(len);
     int recv_len = ikcp_recv(conn->kcp, recv_buf, len);
+    ikcp_update(conn->kcp, clock());  // TODO: 跨平台
     recv_len = recv_len == -1 ? 0 : recv_len;
     if (recv_len > 0) {
         recv_len = parse_recv_data(conn, recv_buf, buffer, recv_len);
         // ikcp_update(conn->kcp, clock());
     }
-
     SKCP_FREE(recv_buf);
     return recv_len;
 }
