@@ -9,7 +9,7 @@ out
 !test/*.sh
 
 #cmake files
-build
+build/*
 CMakeFiles
 CMakeCache.txt
 *.cmake

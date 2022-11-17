@@ -196,7 +196,6 @@ skt_serv_conf_t *init_def_serv_conf() {
     skt_serv_conf_t *serv_conf = malloc(sizeof(skt_serv_conf_t));
     serv_conf->target_addr = NULL;
     serv_conf->target_port = 3333;
-    // skt_kcp_serv_conf_t *kcp_serv_conf = malloc(sizeof(skt_kcp_serv_conf_t));
     skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
     skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
     skcp_conf->interval = 10;
@@ -220,24 +219,6 @@ skt_serv_conf_t *init_def_serv_conf() {
 
     kcp_conf->timeout_interval = 1;
     serv_conf->kcp_conf = kcp_conf;
-
-    // kcp_serv_conf->addr = NULL;
-    // kcp_serv_conf->port = 2222;
-    // kcp_serv_conf->key = NULL;
-    // kcp_serv_conf->interval = 10;
-    // kcp_serv_conf->mtu = 1024;
-    // kcp_serv_conf->rcvwnd = 128;
-    // kcp_serv_conf->sndwnd = 128;
-    // kcp_serv_conf->nodelay = 1;
-    // kcp_serv_conf->resend = 2;
-    // kcp_serv_conf->nc = 1;
-    // kcp_serv_conf->r_buf_size = kcp_serv_conf->mtu;
-    // kcp_serv_conf->kcp_buf_size = 2048;
-    // kcp_serv_conf->r_keepalive = 600;
-    // kcp_serv_conf->w_keepalive = 600;
-    // kcp_serv_conf->timeout_interval = 1;
-    // kcp_serv_conf->estab_timeout = 100;
-    // serv_conf->kcp_serv_conf = kcp_serv_conf;
 
     skt_tcp_cli_conf_t *tcp_cli_conf = malloc(sizeof(skt_tcp_cli_conf_t));
     tcp_cli_conf->r_keepalive = 600;
@@ -346,7 +327,6 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
     if (NULL != password) {
         int pw_len = strlen(password);
         char padding[16] = {0};
-        // memset(padding, 1, 16);
         if (pw_len > 16) {
             pw_len = 16;
             memcpy(padding, password, pw_len);
@@ -366,70 +346,3 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
 
     return conf;
 }
-
-/**********  test **********/
-
-// #define _DEBUG
-// #if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
-// #include <mcheck.h>
-// #endif
-
-// int main(int argc, char *argv[]) {
-//     char *conf_file;
-
-//     if (argc == 2) {
-//         conf_file = argv[1];
-//     } else {
-//         printf("param error!!!\n");
-//         return -1;
-//     }
-
-// #if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
-//     setenv("MALLOC_TRACE", "/tmp/mtrace_config.log", 1);
-//     mtrace();
-// #endif
-
-//     skt_cli_conf_t *cconf = skt_init_client_conf(conf_file);
-//     if (NULL == cconf) {
-//         return -1;
-//     }
-
-//     LOG_D("remote_addr:%s", cconf->kcp_cli_conf->addr);
-//     LOG_D("remote_port:%d", cconf->kcp_cli_conf->port);
-//     LOG_D("local_addr:%s", cconf->tcp_serv_conf->serv_addr);
-//     LOG_D("local_port:%d", cconf->tcp_serv_conf->serv_port);
-//     LOG_D("key:%s", cconf->kcp_cli_conf->key);
-//     LOG_D("cconf->kcp_cli_conf->r_keepalive:%d", cconf->kcp_cli_conf->r_keepalive);
-//     LOG_D("cconf->kcp_cli_conf->w_keepalive:%d", cconf->kcp_cli_conf->w_keepalive);
-//     LOG_D("cconf->tcp_serv_conf->r_keepalive:%d", cconf->tcp_serv_conf->r_keepalive);
-//     LOG_D("cconf->tcp_serv_conf->w_keepalive:%d", cconf->tcp_serv_conf->w_keepalive);
-//     LOG_D("nodelay:%d", cconf->kcp_cli_conf->nodelay);
-//     LOG_D("resend:%d", cconf->kcp_cli_conf->resend);
-//     LOG_D("nc:%d", cconf->kcp_cli_conf->nc);
-//     skt_free_client_conf(cconf);
-
-//     LOG_D("---------");
-//     skt_serv_conf_t *sconf = skt_init_server_conf(conf_file);
-//     if (NULL == cconf) {
-//         return -1;
-//     }
-//     LOG_D("target_addr:%s", sconf->target_addr);
-//     LOG_D("target_port:%d", sconf->target_port);
-//     LOG_D("local_addr:%s", sconf->kcp_serv_conf->addr);
-//     LOG_D("local_port:%d", sconf->kcp_serv_conf->port);
-//     LOG_D("key:%s", sconf->kcp_serv_conf->key);
-//     LOG_D("sconf->kcp_serv_conf->r_keepalive:%d", sconf->kcp_serv_conf->r_keepalive);
-//     LOG_D("sconf->kcp_serv_conf->w_keepalive:%d", sconf->kcp_serv_conf->w_keepalive);
-//     LOG_D("sconf->tcp_cli_conf->r_keepalive:%d", sconf->tcp_cli_conf->r_keepalive);
-//     LOG_D("sconf->tcp_cli_conf->w_keepalive:%d", sconf->tcp_cli_conf->w_keepalive);
-//     LOG_D("nodelay:%d", sconf->kcp_serv_conf->nodelay);
-//     LOG_D("resend:%d", sconf->kcp_serv_conf->resend);
-//     LOG_D("nc:%d", sconf->kcp_serv_conf->nc);
-//     skt_free_server_conf(sconf);
-
-// #if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
-//     muntrace();
-// #endif
-
-//     return 0;
-// }

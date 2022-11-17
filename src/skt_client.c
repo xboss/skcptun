@@ -43,9 +43,6 @@ static void tcp_close_conn_cb(skt_tcp_serv_conn_t *tcp_conn) {
 }
 
 static int tcp_recv_cb(skt_tcp_serv_conn_t *tcp_conn, char *buf, int len) {
-    // LOG_D("tcp serv recv:%s", buf);
-    // LOG_D("tcp serv recv:%d", len);
-
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, NULL);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_cli->skt_kcp, htkey);
@@ -67,9 +64,6 @@ static int tcp_recv_cb(skt_tcp_serv_conn_t *tcp_conn, char *buf, int len) {
 //////////////////////
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    // LOG_D("kcp cli recv:%s", buf);
-    // LOG_D("kcp cli recv:%d", len);
-
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, kcp_conn->sess_id, NULL);
 
@@ -89,17 +83,6 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 
     return SKT_OK;
 }
-
-// static void kcp_timeout_cb(skt_kcp_conn_t *kcp_conn) {
-//     skt_kcp_close_conn(g_cli->kcp_cli, kcp_conn->sess_id);
-//     skt_tcp_serv_conn_t *tcp_conn = skt_tcp_server_get_conn(g_cli->tcp_serv, kcp_conn->tcp_fd);
-//     if (NULL == tcp_conn) {
-//         return;
-//     }
-//     skt_tcp_server_close_conn(g_cli->tcp_serv, tcp_conn->fd);
-
-//     return;
-// }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("kcp_close_cb");

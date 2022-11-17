@@ -46,7 +46,6 @@ struct skt_kcp_s {
 typedef struct skt_kcp_s skt_kcp_t;
 
 struct skt_kcp_conn_s {
-    // struct sockaddr_in cliaddr;
     struct sockaddr_in dest_addr;
     skt_kcp_t *skt_kcp;
     int tcp_fd;

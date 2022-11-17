@@ -18,28 +18,6 @@ void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockad
     return;
 }
 
-// char *skt_kcp_gen_htkey(uint32_t sess_id, struct sockaddr_in *sock_addr) {
-//     in_port_t port = 0;
-//     in_addr_t ip = 0;
-//     if (sock_addr != NULL) {
-//         port = sock_addr->sin_port;
-//         ip = sock_addr->sin_addr.s_addr;
-//     }
-
-//     int key_len = 50;
-//     char *key = malloc(key_len);
-//     memset(key, 0, key_len);
-//     snprintf(key, key_len, "%u:%u:%u", ip, port, sess_id);
-//     // LOG_D("gen conn key:%s", key);
-
-//     return key;
-// }
-
-// skcp_conn_t *skt_kcp_get_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct sockaddr_in *sock_addr) {
-//     char *htkey = gen_htkey(sess_id, sock_addr);
-//     return skcp_get_conn(skt_kcp->skcp, htkey);
-// }
-
 skcp_conn_t *skt_kcp_get_conn(skt_kcp_t *skt_kcp, char *htkey) { return skcp_get_conn(skt_kcp->skcp, htkey); }
 
 static void call_conn_close_cb(skt_kcp_t *skt_kcp, skt_kcp_conn_t *kcp_conn) {
@@ -55,13 +33,13 @@ static int init_cli_network(skt_kcp_t *skt_kcp) {
     //设置立即释放端口并可以再次使用
     int reuse = 1;
     if (-1 == setsockopt(skt_kcp->fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) {
-        LOG_E("setsockopt error in uac_init");
+        LOG_E("setsockopt error");
         close(skt_kcp->fd);
         return SKT_ERROR;
     }
     //设置为非阻塞
     if (-1 == fcntl(skt_kcp->fd, F_SETFL, fcntl(skt_kcp->fd, F_GETFL) | O_NONBLOCK)) {
-        LOG_E("error fcntl in uac_init");
+        LOG_E("error fcntl");
         close(skt_kcp->fd);
         return SKT_ERROR;
     }
@@ -131,7 +109,6 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
             // estab timeout or conn can off
             LOG_D("conn_timeout_cb rt:%d", rt);
             call_conn_close_cb(skt_kcp, kcp_conn);
-            // skcp_close_conn(conn);
         } else if (rt == -3) {
             // conn timeout
             call_conn_close_cb(skt_kcp, kcp_conn);
@@ -140,7 +117,6 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
     }
 }
 
-// static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
 static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     if (NULL == conn) {
         LOG_E("kcp_output conn is NULL");
@@ -162,7 +138,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     int rt = sendto(kcp_conn->skt_kcp->fd, out_buf, out_len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
                     sizeof(kcp_conn->dest_addr));
     if (-1 == rt) {
-        LOG_E("output sendto error fd:%d errno: %d %s", kcp_conn->skt_kcp->fd, errno, strerror(errno));
+        LOG_W("output sendto error fd:%d errno: %d %s", kcp_conn->skt_kcp->fd, errno, strerror(errno));
         if (kcp_conn->skt_kcp->encrypt_cb) {
             FREE_IF(out_buf);
         }
@@ -195,7 +171,6 @@ int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, char *buf, int len) {
         return -1;
     }
     int rt = skcp_send(conn, buf, len);
-    // skcp_update(conn, clock());
     return rt;
 }
 
@@ -224,12 +199,10 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
 
     char *raw_buf = malloc(skt_kcp->conf->r_buf_size);
-    // memset(raw_buf, 0, skt_kcp->conf->r_buf_size);
     struct sockaddr_in cliaddr;
     socklen_t cliaddr_len = sizeof(cliaddr);
     int32_t bytes =
         recvfrom(skt_kcp->fd, raw_buf, skt_kcp->conf->r_buf_size, 0, (struct sockaddr *)&cliaddr, &cliaddr_len);
-    // LOG_D("read_cb %d", bytes);
     if (-1 == bytes) {
         LOG_E("read_cb recvfrom errno: %d %s", errno, strerror(errno));
         FREE_IF(raw_buf);
@@ -277,10 +250,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     }
 
     skcp_input(conn, out_buf, out_len);
-    // skcp_update(conn, clock());
     FREE_IF(out_buf);
-
-    // skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
 
     char *kcp_recv_buf = malloc(skt_kcp->conf->kcp_buf_size);
     memset(kcp_recv_buf, 0, skt_kcp->conf->kcp_buf_size);
@@ -290,12 +260,11 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // 成功
         conn->last_r_tm = getmillisecond();
         skt_kcp->kcp_recv_cb(conn, kcp_recv_buf, rt);
-        // skcp_update(conn, clock());
     } else {
         switch (rt) {
             case -1:
                 // 错误
-                LOG_E("skcp_recv error");
+                LOG_D("skcp_recv error");
                 skcp_close_conn(conn);
                 call_conn_close_cb(skt_kcp, kcp_conn);
                 break;
@@ -308,7 +277,6 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 // 收到connect ack 命令
                 LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
                 conn->last_r_tm = getmillisecond();
-                // skcp_update(conn, clock());
                 break;
             case -4:
                 // 收到close 命令
@@ -319,8 +287,6 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 // 收到ping 命令
                 break;
             default:
-                // skcp_update(conn, clock());
-                // LOG_D("recv empty");
                 break;
         }
     }
@@ -395,7 +361,6 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
         skcp_close_conn(conn);
         FREE_IF(kcp_conn);
-        // conn->user_data = NULL;
     }
 
     skcp_free(skt_kcp->skcp);
