@@ -14,7 +14,7 @@
 // #define SKCP_CMD_CLOSE_ACK 0x04
 #define SKCP_CMD_DATA 0x05
 #define SKCP_CMD_PING 0x06
-// #define SKCP_CMD_PONG 0x07
+#define SKCP_CMD_PONG 0x07
 
 #define SKCP_FREE(p)  \
     do {              \
@@ -78,7 +78,8 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
 static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
     char *raw_buf = NULL;
     int raw_len = 0;
-    if (SKCP_CMD_DATA == cmd) {
+    int has_payload = SKCP_CMD_DATA == cmd || SKCP_CMD_PING == cmd || SKCP_CMD_PONG == cmd;
+    if (has_payload) {
         raw_len = len + 1;
         raw_buf = malloc(raw_len);
         snprintf(raw_buf, raw_len, "%c", cmd);
@@ -91,14 +92,14 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
         // raw_len = 1;
         srand((unsigned)time(NULL));
         int jam = rand() % (RAND_MAX - 10000000) + 10000000;
-        char s[34] = {0};
-        snprintf(s, 34, "%c%d", cmd, jam);
+        char s[10] = {0};
+        snprintf(s, 10, "%c%d", cmd, jam);
         raw_len = strlen(s);
         raw_buf = s;
     }
 
     int rt = ikcp_send(conn->kcp, raw_buf, raw_len);
-    if (SKCP_CMD_DATA == cmd) {
+    if (has_payload) {
         SKCP_FREE(raw_buf);
     }
     if (rt < 0) {
@@ -181,8 +182,11 @@ static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int l
         close_conn(conn, 1);
         return -4;
     } else if (SKCP_CMD_PING == cmd) {
-        // TODO:
+        memcpy(out_buf, in_buf + 1, len - 1);
         return -5;
+    } else if (SKCP_CMD_PONG == cmd) {
+        memcpy(out_buf, in_buf + 1, len - 1);
+        return -6;
     } else if (SKCP_CMD_DATA == cmd) {
         memcpy(out_buf, in_buf + 1, len - 1);
         return len - 1;
@@ -242,6 +246,18 @@ int skcp_send(skcp_conn_t *conn, const char *buffer, int len) {
     }
 
     return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA);
+}
+
+int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
+    char buf[22] = {0};
+    snprintf(buf, 22, "%llu", now);
+    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
+}
+
+int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
+    char buf[44] = {0};
+    snprintf(buf, 44, "%llu %llu", tm, now);
+    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
 }
 
 IUINT32 skcp_gen_sess_id(skcp_t *skcp) {

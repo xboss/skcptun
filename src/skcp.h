@@ -66,6 +66,8 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
 void skcp_close_conn(skcp_conn_t *conn);
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey);
 int skcp_send(skcp_conn_t *conn, const char *buffer, int len);
+int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
+int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now);
 void skcp_update_all(skcp_t *skcp, IUINT32 current);
 void skcp_update(skcp_conn_t *conn, IUINT32 current);
 int skcp_input(skcp_conn_t *conn, const char *data, long size);
@@ -94,7 +96,8 @@ int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now);
  * -2 表示创建连接
  * -3 表示收到connect ack 命令
  * -4 表示收到close 命令
- * -5 表示收到PING命令，目前保留
+ * -6 表示收到PONG命令
+ * -5 表示收到PING命令
  */
 int skcp_recv(skcp_conn_t *conn, char *buffer, int len);
 

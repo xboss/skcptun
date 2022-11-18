@@ -6,6 +6,10 @@
 #include <sys/time.h>
 #include <time.h>
 
+// #define _DEBUG_LOG
+#define _INFO_LOG
+#define _WARN_LOG
+
 #define SKT_OK 0
 #define SKT_ERROR -1
 
@@ -17,13 +21,6 @@
         }             \
     } while (0);
 
-#define LOG_I(fmt, args...)  \
-    do {                     \
-        printf("INFO ");     \
-        print_now();         \
-        printf(fmt, ##args); \
-        printf("\n");        \
-    } while (0);
 #define LOG_E(fmt, args...)  \
     do {                     \
         printf("ERROR ");    \
@@ -31,6 +28,8 @@
         printf(fmt, ##args); \
         printf("\n");        \
     } while (0);
+
+#ifdef _WARN_LOG
 #define LOG_W(fmt, args...)  \
     do {                     \
         printf("WARN ");     \
@@ -38,23 +37,42 @@
         printf(fmt, ##args); \
         printf("\n");        \
     } while (0);
-// #define LOG_D(fmt, args...)  \
-//     do {                     \
-//         printf("DEBUG ");    \
-//         print_now();         \
-//         printf(fmt, ##args); \
-//         printf("\n");        \
-//     } while (0);
+#else
+#define LOG_W(fmt, args...) \
+    do {                    \
+        ;                   \
+    } while (0);
+#endif
 
+#ifdef _INFO_LOG
+#define LOG_I(fmt, args...)  \
+    do {                     \
+        printf("INFO ");     \
+        print_now();         \
+        printf(fmt, ##args); \
+        printf("\n");        \
+    } while (0);
+#else
+#define LOG_I(fmt, args...) \
+    do {                    \
+        ;                   \
+    } while (0);
+#endif
+
+#ifdef _DEBUG_LOG
+#define LOG_D(fmt, args...)  \
+    do {                     \
+        printf("DEBUG ");    \
+        print_now();         \
+        printf(fmt, ##args); \
+        printf("\n");        \
+    } while (0);
+#else
 #define LOG_D(fmt, args...) \
     do {                    \
         ;                   \
     } while (0);
-
-// #define LOG_W(fmt, args...) \
-//     do {                    \
-//         ;                   \
-//     } while (0);
+#endif
 
 typedef struct waiting_buf_s waiting_buf_t;
 struct waiting_buf_s {
