@@ -49,6 +49,7 @@ struct skt_kcp_conn_s {
     struct sockaddr_in dest_addr;
     skt_kcp_t *skt_kcp;
     int tcp_fd;
+    int ping_idle_cnt;
 };
 
 skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, SKCP_MODE mode);

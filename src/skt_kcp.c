@@ -2,7 +2,42 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <unistd.h>
+
+static uint32_t rtt_cnt = 0;
+static int max_rtt = 0;
+static int min_rtt = INT_MAX;
+static int avg_rtt = 0;
+static int sum_rtt = 0;
+static int last_avg_rtt = 0;
+
+static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
+    rtt_cnt = rtt_cnt >= INT_MAX ? 0 : rtt_cnt + 1;
+    if (rtt_cnt >= 1000000) {
+        rtt_cnt = 0;
+        max_rtt = 0;
+        min_rtt = INT_MAX;
+        avg_rtt = 0;
+        sum_rtt = 0;
+    }
+    rtt_cnt++;
+
+    char *pEnd = NULL;
+    uint64_t pitm = strtoull(kcp_recv_buf, &pEnd, 10);
+    uint64_t potm = strtoull(pEnd, NULL, 10);
+    uint64_t now = getmillisecond();
+    uint64_t rtt = now - pitm;
+    sum_rtt += rtt;
+    avg_rtt = sum_rtt / rtt_cnt;
+    max_rtt = rtt > max_rtt ? rtt : max_rtt;
+    min_rtt = rtt < min_rtt ? rtt : min_rtt;
+
+    if (abs(last_avg_rtt - avg_rtt) > 10) {
+        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d", conn->sess_id, min_rtt, max_rtt, avg_rtt);
+    }
+    last_avg_rtt = avg_rtt;
+}
 
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr) {
     in_port_t port = 0;
@@ -113,6 +148,14 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
             // conn timeout
             call_conn_close_cb(skt_kcp, kcp_conn);
             skcp_close_conn(conn);
+        } else {
+            // send ping
+            if (skt_kcp->mode == SKCP_MODE_CLI && conn->status == SKCP_CONN_ST_ON &&
+                ((now - conn->last_r_tm) / 1000) > (skt_kcp->conf->skcp_conf->r_keepalive / 2)) {
+                // TODO: 需要优化，目前仅用来统计rtt
+                // LOG_I("send ping sess_id:%u time:%llu", conn->sess_id, now);
+                skcp_send_ping(conn, now);
+            }
         }
     }
 }
@@ -285,6 +328,15 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 break;
             case -5:
                 // 收到ping 命令
+                {
+                    uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
+                    uint64_t now = getmillisecond();
+                    skcp_send_pong(conn, pitm, now);
+                }
+                break;
+            case -6:
+                // 收到pong 命令
+                stat_rtt(conn, kcp_recv_buf);
                 break;
             default:
                 break;
