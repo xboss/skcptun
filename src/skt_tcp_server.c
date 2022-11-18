@@ -94,9 +94,9 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // tcp Error
         if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno) {
             res = 1;
-            LOG_W("read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
+            LOG_W("read_cb tcp error fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
         } else {
-            LOG_W("read_cb tcp warn fd:%d, errno:%s", watcher->fd, strerror(errno));
+            LOG_W("read_cb tcp warn fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
         }
     } else if (0 == bytes) {
         if (errno != EINPROGRESS) {

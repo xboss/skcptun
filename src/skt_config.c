@@ -66,8 +66,8 @@ static skt_cli_conf_t *init_def_cli_conf() {  // TODO:
     tcp_serv_conf->tcp_r_buf_size = 900;
     tcp_serv_conf->r_keepalive = 600;
     tcp_serv_conf->w_keepalive = 600;
-    tcp_serv_conf->recv_timeout = 1000l;
-    tcp_serv_conf->send_timeout = 1000l;
+    tcp_serv_conf->recv_timeout = 10l;  // 1000l;
+    tcp_serv_conf->send_timeout = 10l;  // 1000l;
     cli_conf->tcp_serv_conf = tcp_serv_conf;
 
     return cli_conf;
@@ -223,8 +223,8 @@ skt_serv_conf_t *init_def_serv_conf() {
     skt_tcp_cli_conf_t *tcp_cli_conf = malloc(sizeof(skt_tcp_cli_conf_t));
     tcp_cli_conf->r_keepalive = 600;
     tcp_cli_conf->w_keepalive = 600;
-    tcp_cli_conf->recv_timeout = 1000l;
-    tcp_cli_conf->send_timeout = 1000l;
+    tcp_cli_conf->recv_timeout = 10l;  // 1000l;
+    tcp_cli_conf->send_timeout = 10l;  // 1000l;
     tcp_cli_conf->r_buf_size = 900;
     serv_conf->tcp_cli_conf = tcp_cli_conf;
 
