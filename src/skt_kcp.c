@@ -66,12 +66,12 @@ static int init_cli_network(skt_kcp_t *skt_kcp) {
     //创建socket对象
     skt_kcp->fd = socket(AF_INET, SOCK_DGRAM, 0);
     //设置立即释放端口并可以再次使用
-    int reuse = 1;
-    if (-1 == setsockopt(skt_kcp->fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) {
-        LOG_E("setsockopt error");
-        close(skt_kcp->fd);
-        return SKT_ERROR;
-    }
+    // int reuse = 1;
+    // if (-1 == setsockopt(skt_kcp->fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) {
+    //     LOG_E("setsockopt error");
+    //     close(skt_kcp->fd);
+    //     return SKT_ERROR;
+    // }
     //设置为非阻塞
     if (-1 == fcntl(skt_kcp->fd, F_SETFL, fcntl(skt_kcp->fd, F_GETFL) | O_NONBLOCK)) {
         LOG_E("error fcntl");
@@ -94,7 +94,7 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         return SKT_ERROR;
     }
     //设置立即释放端口并可以再次使用
-    setreuseaddr(skt_kcp->fd);
+    // setreuseaddr(skt_kcp->fd);
     //设置为非阻塞
     setnonblock(skt_kcp->fd);
 
@@ -146,8 +146,8 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
             call_conn_close_cb(skt_kcp, kcp_conn);
         } else if (rt == -3) {
             // conn timeout
-            call_conn_close_cb(skt_kcp, kcp_conn);
             skcp_close_conn(conn);
+            call_conn_close_cb(skt_kcp, kcp_conn);
         } else {
             // send ping
             if (skt_kcp->mode == SKCP_MODE_CLI && conn->status == SKCP_CONN_ST_ON &&
