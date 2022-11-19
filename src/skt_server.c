@@ -6,7 +6,7 @@
 static skt_serv_t *g_serv = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
-static int tcp_recv_cb(skt_tcp_cli_conn_t *tcp_conn, char *buf, int len) {
+static int tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_serv->skt_kcp, htkey);
@@ -24,7 +24,7 @@ static int tcp_recv_cb(skt_tcp_cli_conn_t *tcp_conn, char *buf, int len) {
     return 0;
 }
 
-static void tcp_close_cb(skt_tcp_cli_conn_t *tcp_conn) {
+static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
     LOG_D("tcp conn closed fd:%d", tcp_conn->fd);
     if (NULL == g_serv->skt_kcp) {
         return;
@@ -46,8 +46,7 @@ static void tcp_close_cb(skt_tcp_cli_conn_t *tcp_conn) {
 
 static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
     LOG_D("kcp_new_conn_cb sess_id:%u", kcp_conn->sess_id);
-    skt_tcp_cli_conn_t *tcp_conn =
-        skt_tcp_client_create_conn(g_serv->tcp_cli, g_serv->conf->target_addr, g_serv->conf->target_port);
+    skt_tcp_conn_t *tcp_conn = skt_tcp_connect(g_serv->skt_tcp, g_serv->conf->target_addr, g_serv->conf->target_port);
     ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd = tcp_conn->fd;
     tcp_conn->sess_id = kcp_conn->sess_id;
     tcp_conn->kcp_cli_addr = ((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr;
@@ -57,17 +56,16 @@ static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, kcp_conn->sess_id, &((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr);
-    skt_tcp_cli_conn_t *tcp_conn =
-        skt_tcp_client_get_conn(g_serv->tcp_cli, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
+    skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
     if (NULL == tcp_conn) {
         skt_kcp_close_conn(g_serv->skt_kcp, htkey);
         return SKT_ERROR;
     }
 
-    ssize_t rt = skt_tcp_client_send(tcp_conn->tcp_cli, tcp_conn->fd, buf, len);
+    ssize_t rt = skt_tcp_send(tcp_conn, buf, len);
     if (rt < 0) {
         skt_kcp_close_conn(g_serv->skt_kcp, htkey);
-        skt_tcp_client_close_conn(tcp_conn->tcp_cli, tcp_conn->fd);
+        skt_tcp_close_conn(tcp_conn);
         return SKT_ERROR;
     }
 
@@ -75,12 +73,12 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
-    skt_tcp_cli_conn_t *tcp_conn = skt_tcp_client_get_conn(g_serv->tcp_cli, kcp_conn->tcp_fd);
+    skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, kcp_conn->tcp_fd);
     if (NULL == tcp_conn) {
         return;
     }
 
-    skt_tcp_client_close_conn(tcp_conn->tcp_cli, tcp_conn->fd);
+    skt_tcp_close_conn(tcp_conn);
     return;
 }
 
@@ -121,21 +119,24 @@ static char *kcp_decrypt_cb(const char *in, int in_len, int *out_len) {
 //////////////////////
 
 skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
-    conf->tcp_cli_conf->close_cb = tcp_close_cb;
-    conf->tcp_cli_conf->recv_cb = tcp_recv_cb;
+    conf->tcp_conf->close_cb = tcp_close_cb;
+    conf->tcp_conf->recv_cb = tcp_recv_cb;
+    conf->tcp_conf->accept_cb = NULL;
+    conf->tcp_conf->timeout_cb = NULL;
+    conf->tcp_conf->mode = SKT_TCP_MODE_CLI;
 
     g_serv = malloc(sizeof(skt_serv_t));
     g_serv->conf = conf;
     g_serv->loop = loop;
 
-    skt_tcp_cli_t *tcp_cli = skt_tcp_client_init(conf->tcp_cli_conf, loop);
-    if (NULL == tcp_cli) {
+    skt_tcp_t *skt_tcp = skt_tcp_init(conf->tcp_conf, loop);
+    if (NULL == skt_tcp) {
         LOG_E("tcp client init error");
         FREE_IF(g_serv);
         return NULL;
     }
 
-    g_serv->tcp_cli = tcp_cli;
+    g_serv->skt_tcp = skt_tcp;
 
     skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_serv, SKCP_MODE_SERV);
     if (NULL == skt_kcp) {
@@ -167,9 +168,9 @@ void skt_server_free() {
         skt_kcp_free(g_serv->skt_kcp);
         g_serv->skt_kcp = NULL;
     }
-    if (g_serv->tcp_cli) {
-        skt_tcp_client_free(g_serv->tcp_cli);
-        g_serv->tcp_cli = NULL;
+    if (g_serv->skt_tcp) {
+        skt_tcp_free(g_serv->skt_tcp);
+        g_serv->skt_tcp = NULL;
     }
     FREE_IF(g_serv);
 }

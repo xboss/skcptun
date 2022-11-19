@@ -56,7 +56,7 @@ void skt_kcp_free(skt_kcp_t *skt_kcp);
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr);
 skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct sockaddr_in *sock_addr);
 void skt_kcp_close_conn(skt_kcp_t *skt_kcp, char *htkey);
-int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, char *buf, int len);
+int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len);
 skcp_conn_t *skt_kcp_get_conn(skt_kcp_t *skt_kcp, char *htkey);
 
 #endif

@@ -208,7 +208,7 @@ static void kcp_update_cb(struct ev_loop *loop, ev_timer *watcher, int revents) 
     skcp_update_all(skt_kcp->skcp, clock());
 }
 
-int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, char *buf, int len) {
+int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
     skcp_conn_t *conn = skt_kcp_get_conn(skt_kcp, htkey);
     if (NULL == conn) {
         return -1;
