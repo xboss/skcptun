@@ -5,9 +5,15 @@
 
 #define TIMEOUT_INTERVAL 1  // 超时检查的间隔，单位：秒
 
+struct waiting_buf_s {
+    char buf[TCP_WAITIMG_BUF_SZ];
+    int len;
+    waiting_buf_t *next, *prev;
+};
+
 // static int append_wait_buf(waiting_buf_t *waiting_buf_q, char *buffer, int len) {
 static int append_wait_buf(skt_tcp_conn_t *conn, char *buffer, int len) {
-    if (len > WAITIMG_BUF_SZ) {
+    if (len > TCP_WAITIMG_BUF_SZ) {
         LOG_E("append wait buf len error %d", len);
         return -1;
     }
@@ -192,7 +198,7 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         }
         conn->waiting_buf_q = NULL;
     }
-    ev_io_stop(tcp->loop, conn->w_watcher);  // TODO:
+    ev_io_stop(tcp->loop, conn->w_watcher);
 }
 
 static void timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {

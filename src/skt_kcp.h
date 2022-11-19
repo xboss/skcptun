@@ -31,6 +31,7 @@ struct skt_kcp_s {
 
     struct ev_loop *loop;
     struct ev_io *r_watcher;
+    struct ev_io *w_watcher;
     struct ev_timer *kcp_update_watcher;
     struct ev_timer *timeout_watcher;
 

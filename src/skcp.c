@@ -24,21 +24,19 @@
         }             \
     } while (0);
 
-struct waiting_buf_s {
-    char buf[2048];
-    int len;
-    waiting_buf_t *next, *prev;
-};
-
 /************************************************/
 
-static void append_wait_buf(skcp_conn_t *conn, const char *buffer, int len) {
+int skcp_append_wait_buf(skcp_conn_t *conn, const char *buffer, int len) {
+    if (len > KCP_WAITIMG_BUF_SZ) {
+        return -1;
+    }
     size_t wb_sz = sizeof(waiting_buf_t);
     waiting_buf_t *msg = (waiting_buf_t *)malloc(wb_sz);
     memset(msg, 0, wb_sz);
     memcpy(msg->buf, buffer, len);
     msg->len = len;
     DL_APPEND(conn->waiting_buf_q, msg);
+    return len;
 }
 
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey) {
@@ -224,7 +222,7 @@ int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
 
 int skcp_send(skcp_conn_t *conn, const char *buffer, int len) {
     if (SKCP_CONN_ST_READY == conn->status) {
-        append_wait_buf(conn, buffer, len);
+        skcp_append_wait_buf(conn, buffer, len);
         return len;
     }
 

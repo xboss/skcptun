@@ -8,11 +8,12 @@
 #include "3rd/uthash/utlist.h"
 #include "skt_utils.h"
 
-#define WAITIMG_BUF_SZ 2048
+#define TCP_WAITIMG_BUF_SZ 2048
 
 typedef struct skt_tcp_conn_s skt_tcp_conn_t;
 typedef struct skt_tcp_s skt_tcp_t;
 typedef struct skt_tcp_conf_s skt_tcp_conf_t;
+typedef struct waiting_buf_s waiting_buf_t;
 
 typedef enum {
     SKT_TCP_MODE_SERV = 1,
@@ -25,13 +26,6 @@ typedef enum {
     SKT_TCP_CONN_ST_OFF,
     SKT_TCP_CONN_ST_CAN_OFF,
 } SKT_TCP_CONN_ST;
-
-typedef struct waiting_buf_s waiting_buf_t;
-struct waiting_buf_s {
-    char buf[WAITIMG_BUF_SZ];
-    int len;
-    waiting_buf_t *next, *prev;
-};
 
 struct skt_tcp_conf_s {
     char *serv_addr;
