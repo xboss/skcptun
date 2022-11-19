@@ -122,7 +122,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         if (errno != EINPROGRESS) {
             // tcp Close
             res = 2;
-            LOG_W("read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
+            LOG_W("read_cb tcp close fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
         }
     }
 
