@@ -177,10 +177,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
         FREE_IF(out_buf);
     }
 
-    LOG_D("kcp_output start w_watcher 111 kcp_conn:%p kcp_conn->skt_kcp:%p, %p, %p", kcp_conn, kcp_conn->skt_kcp,
-          kcp_conn->skt_kcp->loop, kcp_conn->skt_kcp->w_watcher);
     ev_io_start(kcp_conn->skt_kcp->loop, kcp_conn->skt_kcp->w_watcher);
-    LOG_D("kcp_output start w_watcher 222");
 
     return 0;
 }
@@ -250,9 +247,7 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         }
     }
 
-    LOG_D("kcp write_cb stop w_watcher 111");
     ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
-    LOG_D("kcp write_cb stop w_watcher 111");
 }
 
 // 读回调
@@ -436,14 +431,10 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         FREE_IF(skt_kcp->kcp_update_watcher);
     }
 
-    LOG_D("skt_kcp_free 555");
     skcp_conn_t *conn, *tmp;
     HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
-        LOG_D("skt_kcp_free 555.111");
         skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
-        LOG_D("skt_kcp_free 555.222");
         skcp_close_conn(conn);
-        LOG_D("skt_kcp_free 555.333");
         FREE_IF(kcp_conn);
     }
 
@@ -451,15 +442,12 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
         FREE_IF(skt_kcp->w_watcher);
     }
-    LOG_D("skt_kcp_free 666");
     skcp_free(skt_kcp->skcp);
 
-    LOG_D("skt_kcp_free 777");
     if (skt_kcp->fd) {
         close(skt_kcp->fd);
     }
 
-    LOG_D("skt_kcp_free 777");
     FREE_IF(skt_kcp);
     LOG_D("skt_kcp_free ok");
     return;

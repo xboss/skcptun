@@ -110,16 +110,13 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
 }
 
 static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
-    // printf("DEBUG close_conn 000\n");
     if (conn->skcp->conn_ht) {
         del_conn(conn);
     }
 
-    // printf("DEBUG close_conn 111\n");
     if (!close_cmd_flg) {
         int rt = kcp_send_raw(conn, NULL, 0, SKCP_CMD_CLOSE);
     }
-    // printf("DEBUG close_conn 222\n");
 
     conn->status = SKCP_CONN_ST_OFF;
 
