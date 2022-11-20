@@ -33,7 +33,7 @@ static inline void get_int(cJSON *m_json, char *name, int *value) {
 
 /**********  client config **********/
 
-static skt_cli_conf_t *init_def_cli_conf() {  // TODO:
+static skt_cli_conf_t *init_def_cli_conf() {
     skt_cli_conf_t *cli_conf = malloc(sizeof(skt_cli_conf_t));
     skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
     skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));

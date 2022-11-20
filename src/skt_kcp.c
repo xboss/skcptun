@@ -181,6 +181,9 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     }
 
     skcp_append_wait_buf(conn, out_buf, out_len);
+    // LOG_I("kcp_output %d", out_len);
+    // _PR(out_buf, out_len);
+    // LOG_I("kcp_output ddd 1111111 %p", conn->waiting_buf_q);
     // int rt = sendto(kcp_conn->skt_kcp->fd, out_buf, out_len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
     //                 sizeof(kcp_conn->dest_addr));
     // if (-1 == rt) {
@@ -197,6 +200,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     }
 
     ev_io_start(kcp_conn->skt_kcp->loop, kcp_conn->skt_kcp->w_watcher);
+    // LOG_I("start w_watcher");
 
     return 0;
 }
@@ -248,11 +252,16 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     skcp_conn_t *conn, *tmp;
     HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
         skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+        // LOG_I("write_cb ddd 1111111 %p", conn->waiting_buf_q);
         if (conn->waiting_buf_q) {
+            // LOG_I("write_cb ddd 222222");
             waiting_buf_t *wbtmp, *item;
             DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
                 int rt = sendto(kcp_conn->skt_kcp->fd, item->buf, item->len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
                                 sizeof(kcp_conn->dest_addr));
+                // LOG_I("write_cb %d %d", item->len, rt);
+                // _PR(item->buf, item->len);
+
                 if (-1 == rt) {
                     LOG_W("write_cb sendto error fd:%d  sess_id:%u errno: %d %s", kcp_conn->skt_kcp->fd, conn->sess_id,
                           errno, strerror(errno));
@@ -267,6 +276,7 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     }
 
     ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
+    // LOG_I("stop w_watcher");
 }
 
 // 读回调

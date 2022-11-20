@@ -162,28 +162,28 @@ static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int l
 
         conn->status = SKCP_CONN_ST_ON;
 
-        if (conn->waiting_buf_q) {
-            waiting_buf_t *wbtmp, *item;
-            DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
-                ssize_t rt = kcp_send_raw(conn, item->buf, item->len, SKCP_CMD_DATA);
-                if (rt < 0) {
-                    return -1;
-                }
-                DL_DELETE(conn->waiting_buf_q, item);
-                SKCP_FREE(item);
-            }
-            conn->waiting_buf_q = NULL;
-        }
+        // if (conn->waiting_buf_q) {
+        //     waiting_buf_t *wbtmp, *item;
+        //     DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
+        //         ssize_t rt = kcp_send_raw(conn, item->buf, item->len, SKCP_CMD_DATA);
+        //         if (rt < 0) {
+        //             return -1;
+        //         }
+        //         DL_DELETE(conn->waiting_buf_q, item);
+        //         SKCP_FREE(item);
+        //     }
+        //     conn->waiting_buf_q = NULL;
+        // }
 
         return -3;
     } else if (SKCP_CMD_CLOSE == cmd) {
         close_conn(conn, 1);
         return -4;
     } else if (SKCP_CMD_PING == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);
+        memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
         return -5;
     } else if (SKCP_CMD_PONG == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);
+        memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
         return -6;
     } else if (SKCP_CMD_DATA == cmd) {
         memcpy(out_buf, in_buf + 1, len - 1);
@@ -221,27 +221,27 @@ int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
 }
 
 int skcp_send(skcp_conn_t *conn, const char *buffer, int len) {
-    if (SKCP_CONN_ST_READY == conn->status) {
-        skcp_append_wait_buf(conn, buffer, len);
-        return len;
-    }
+    // if (SKCP_CONN_ST_READY == conn->status) {
+    //     skcp_append_wait_buf(conn, buffer, len);
+    //     return len;
+    // }
 
-    if (SKCP_CONN_ST_ON != conn->status) {
-        return -1;
-    }
+    // if (SKCP_CONN_ST_ON != conn->status) {
+    //     return -1;
+    // }
 
-    if (conn->waiting_buf_q) {
-        waiting_buf_t *wbtmp, *item;
-        DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
-            ssize_t rt = kcp_send_raw(conn, item->buf, item->len, SKCP_CMD_DATA);
-            if (rt < 0) {
-                return rt;
-            }
-            DL_DELETE(conn->waiting_buf_q, item);
-            SKCP_FREE(item);
-        }
-        conn->waiting_buf_q = NULL;
-    }
+    // if (conn->waiting_buf_q) {
+    //     waiting_buf_t *wbtmp, *item;
+    //     DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
+    //         ssize_t rt = kcp_send_raw(conn, item->buf, item->len, SKCP_CMD_DATA);
+    //         if (rt < 0) {
+    //             return rt;
+    //         }
+    //         DL_DELETE(conn->waiting_buf_q, item);
+    //         SKCP_FREE(item);
+    //     }
+    //     conn->waiting_buf_q = NULL;
+    // }
 
     return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA);
 }

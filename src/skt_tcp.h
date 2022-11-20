@@ -38,7 +38,7 @@ struct skt_tcp_conf_s {
     uint32_t r_buf_size;
     SKT_TCP_MODE mode;
 
-    int (*recv_cb)(skt_tcp_conn_t *conn, const char *buf, int len);
+    void (*recv_cb)(skt_tcp_conn_t *conn, const char *buf, int len);
     void (*timeout_cb)(skt_tcp_conn_t *conn);
     void (*accept_cb)(skt_tcp_conn_t *conn);
     void (*close_cb)(skt_tcp_conn_t *conn);

@@ -6,26 +6,27 @@
 static skt_serv_t *g_serv = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
-static int tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
+static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_serv->skt_kcp, htkey);
     if (NULL == kcp_conn) {
         LOG_E("tcp_recv_cb kcp_conn error");
-        return -1;
+        return;
     }
 
     int rt = skt_kcp_send(g_serv->skt_kcp, htkey, buf, len);
     if (SKT_ERROR == rt) {
         skt_kcp_close_conn(g_serv->skt_kcp, htkey);
-        return -1;
+        skt_tcp_close_conn(tcp_conn);
+        return;
     }
 
-    return 0;
+    return;
 }
 
 static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
-    LOG_D("tcp conn closed fd:%d", tcp_conn->fd);
+    // LOG_D("tcp conn closed fd:%d", tcp_conn->fd);
     if (NULL == g_serv->skt_kcp) {
         return;
     }
@@ -45,7 +46,7 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
 //////////////////////
 
 static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
-    LOG_D("kcp_new_conn_cb sess_id:%u", kcp_conn->sess_id);
+    // LOG_D("kcp_new_conn_cb sess_id:%u", kcp_conn->sess_id);
     skt_tcp_conn_t *tcp_conn = skt_tcp_connect(g_serv->skt_tcp, g_serv->conf->target_addr, g_serv->conf->target_port);
     ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd = tcp_conn->fd;
     tcp_conn->sess_id = kcp_conn->sess_id;
@@ -54,6 +55,8 @@ static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
 }
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+    // LOG_I("kcp_recv_cb buf:%slen:%d", buf, len);
+
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, kcp_conn->sess_id, &((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr);
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);

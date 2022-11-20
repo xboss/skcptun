@@ -143,14 +143,15 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
     if (bytes > 0) {
         if (tcp->conf->recv_cb) {
-            if (-1 == tcp->conf->recv_cb(conn, buffer, bytes)) {
-                LOG_W("read_cb recv_cb error fd: %d", conn->fd);
-                FREE_IF(buffer);
-                conn->status = SKT_TCP_CONN_ST_OFF;
-                skt_tcp_close_conn(conn);
-                conn = NULL;
-                return;
-            }
+            tcp->conf->recv_cb(conn, buffer, bytes);
+            // if (-1 == tcp->conf->recv_cb(conn, buffer, bytes)) {
+            //     LOG_W("read_cb recv_cb error fd: %d", conn->fd);
+            //     FREE_IF(buffer);
+            //     conn->status = SKT_TCP_CONN_ST_OFF;
+            //     skt_tcp_close_conn(conn);
+            //     conn = NULL;
+            //     return;
+            // }
         }
     }
 
@@ -199,6 +200,7 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         conn->waiting_buf_q = NULL;
     }
     ev_io_stop(tcp->loop, conn->w_watcher);
+    // LOG_I("tcp stop wwwwwwwww");
 }
 
 static void timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
@@ -300,7 +302,8 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) 
 
 int skt_tcp_send(skt_tcp_conn_t *conn, char *buf, int len) {
     int rt = append_wait_buf(conn, buf, len);
-    ev_io_start(conn->skt_tcp->loop, conn->w_watcher);  // TODO:
+    ev_io_start(conn->skt_tcp->loop, conn->w_watcher);
+    // LOG_I("tcp start wwwwwwwww");
     return rt;
 }
 
@@ -314,6 +317,8 @@ void skt_tcp_close_conn(skt_tcp_conn_t *conn) {
     if (NULL == conn) {
         return;
     }
+
+    // LOG_D("skt_tcp_close_conn %d", conn->fd);
 
     if (conn->skt_tcp->conf->close_cb) {
         conn->skt_tcp->conf->close_cb(conn);
