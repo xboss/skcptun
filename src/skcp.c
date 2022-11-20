@@ -110,12 +110,16 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
 }
 
 static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
+    // printf("DEBUG close_conn 000\n");
     if (conn->skcp->conn_ht) {
         del_conn(conn);
     }
+
+    // printf("DEBUG close_conn 111\n");
     if (!close_cmd_flg) {
         int rt = kcp_send_raw(conn, NULL, 0, SKCP_CMD_CLOSE);
     }
+    // printf("DEBUG close_conn 222\n");
 
     conn->status = SKCP_CONN_ST_OFF;
 
@@ -161,20 +165,6 @@ static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int l
         }
 
         conn->status = SKCP_CONN_ST_ON;
-
-        // if (conn->waiting_buf_q) {
-        //     waiting_buf_t *wbtmp, *item;
-        //     DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
-        //         ssize_t rt = kcp_send_raw(conn, item->buf, item->len, SKCP_CMD_DATA);
-        //         if (rt < 0) {
-        //             return -1;
-        //         }
-        //         DL_DELETE(conn->waiting_buf_q, item);
-        //         SKCP_FREE(item);
-        //     }
-        //     conn->waiting_buf_q = NULL;
-        // }
-
         return -3;
     } else if (SKCP_CMD_CLOSE == cmd) {
         close_conn(conn, 1);
@@ -220,31 +210,7 @@ int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
     return recv_len;
 }
 
-int skcp_send(skcp_conn_t *conn, const char *buffer, int len) {
-    // if (SKCP_CONN_ST_READY == conn->status) {
-    //     skcp_append_wait_buf(conn, buffer, len);
-    //     return len;
-    // }
-
-    // if (SKCP_CONN_ST_ON != conn->status) {
-    //     return -1;
-    // }
-
-    // if (conn->waiting_buf_q) {
-    //     waiting_buf_t *wbtmp, *item;
-    //     DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
-    //         ssize_t rt = kcp_send_raw(conn, item->buf, item->len, SKCP_CMD_DATA);
-    //         if (rt < 0) {
-    //             return rt;
-    //         }
-    //         DL_DELETE(conn->waiting_buf_q, item);
-    //         SKCP_FREE(item);
-    //     }
-    //     conn->waiting_buf_q = NULL;
-    // }
-
-    return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA);
-}
+int skcp_send(skcp_conn_t *conn, const char *buffer, int len) { return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA); }
 
 int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
     char buf[22] = {0};

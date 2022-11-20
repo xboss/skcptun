@@ -47,9 +47,6 @@ struct skt_tcp_conf_s {
 struct skt_tcp_conn_s {
     int fd;  // key
 
-    // char *addr;
-    // uint16_t port;
-
     uint64_t last_r_tm;  // 最后一次读操作的时间戳
     uint64_t last_w_tm;  // 最后一次写操作的时间戳
 
@@ -69,8 +66,6 @@ struct skt_tcp_conn_s {
     struct ev_io *r_watcher;
     struct ev_io *w_watcher;
     ev_timer *timeout_watcher;
-
-    // SKT_TCP_MODE mode;
 
     UT_hash_handle hh;
 };

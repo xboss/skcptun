@@ -11,7 +11,6 @@ struct waiting_buf_s {
     waiting_buf_t *next, *prev;
 };
 
-// static int append_wait_buf(waiting_buf_t *waiting_buf_q, char *buffer, int len) {
 static int append_wait_buf(skt_tcp_conn_t *conn, char *buffer, int len) {
     if (len > TCP_WAITIMG_BUF_SZ) {
         LOG_E("append wait buf len error %d", len);
@@ -61,8 +60,6 @@ static int init_serv_network(skt_tcp_t *skt_tcp) {
 
     return SKT_OK;
 }
-
-// static void init_cli_network() {}
 
 static int client_connect(int *fd, struct sockaddr_in servaddr, long recv_timeout, long send_timeout) {
     if (*fd <= 0) {
@@ -144,14 +141,6 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     if (bytes > 0) {
         if (tcp->conf->recv_cb) {
             tcp->conf->recv_cb(conn, buffer, bytes);
-            // if (-1 == tcp->conf->recv_cb(conn, buffer, bytes)) {
-            //     LOG_W("read_cb recv_cb error fd: %d", conn->fd);
-            //     FREE_IF(buffer);
-            //     conn->status = SKT_TCP_CONN_ST_OFF;
-            //     skt_tcp_close_conn(conn);
-            //     conn = NULL;
-            //     return;
-            // }
         }
     }
 
@@ -200,7 +189,6 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         conn->waiting_buf_q = NULL;
     }
     ev_io_stop(tcp->loop, conn->w_watcher);
-    // LOG_I("tcp stop wwwwwwwww");
 }
 
 static void timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
@@ -234,8 +222,6 @@ static skt_tcp_conn_t *create_conn(skt_tcp_t *tcp, int fd) {
     uint64_t now = getmillisecond();
     skt_tcp_conn_t *conn = malloc(sizeof(skt_tcp_conn_t));
     conn->fd = fd;
-    // conn->addr = addr;
-    // conn->port = port;
     conn->skt_tcp = tcp;
     conn->last_r_tm = now;
     conn->last_w_tm = now;
@@ -303,7 +289,6 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) 
 int skt_tcp_send(skt_tcp_conn_t *conn, char *buf, int len) {
     int rt = append_wait_buf(conn, buf, len);
     ev_io_start(conn->skt_tcp->loop, conn->w_watcher);
-    // LOG_I("tcp start wwwwwwwww");
     return rt;
 }
 
@@ -317,8 +302,6 @@ void skt_tcp_close_conn(skt_tcp_conn_t *conn) {
     if (NULL == conn) {
         return;
     }
-
-    // LOG_D("skt_tcp_close_conn %d", conn->fd);
 
     if (conn->skt_tcp->conf->close_cb) {
         conn->skt_tcp->conf->close_cb(conn);

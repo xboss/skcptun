@@ -37,7 +37,6 @@ struct skt_kcp_s {
 
     void *data;
 
-    // void (*conn_timeout_cb)(skcp_conn_t *kcp_conn);
     void (*new_conn_cb)(skcp_conn_t *kcp_conn);
     void (*conn_close_cb)(skt_kcp_conn_t *kcp_conn);
     int (*kcp_recv_cb)(skcp_conn_t *kcp_conn, char *buf, int len);

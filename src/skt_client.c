@@ -6,12 +6,6 @@
 static skt_cli_t *g_cli = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
-// static void tcp_timeout_cb(skt_tcp_conn_t *tcp_conn) {
-//     LOG_D("tcp serv timeout_cb fd:%d", tcp_conn->fd);
-//     // 忽略，已经在tcp_close_conn_cb处理了关闭逻辑
-//     return;
-// }
-
 static void tcp_accept_cb(skt_tcp_conn_t *tcp_conn) {
     LOG_D("tcp serv accept_conn_cb fd:%d", tcp_conn->fd);
     skcp_conn_t *kcp_conn = skt_kcp_new_conn(g_cli->skt_kcp, tcp_conn->sess_id, NULL);
@@ -43,7 +37,6 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
 }
 
 static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
-    // LOG_I("tcp serv tcp_recv_cb fd:%d len:%d", tcp_conn->fd, len);
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, NULL);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_cli->skt_kcp, htkey);
@@ -55,7 +48,7 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     int rt = skt_kcp_send(((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp, htkey, buf, len);
     if (rt < 0) {
         skt_kcp_close_conn(g_cli->skt_kcp, htkey);
-        skt_tcp_close_conn(tcp_conn);  // TODO:
+        skt_tcp_close_conn(tcp_conn);
         return;
     }
 
@@ -67,8 +60,6 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     char htkey[SKT_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, kcp_conn->sess_id, NULL);
-
-    // LOG_I("kcp_recv_cb buf:%slen:%d", buf, len);
 
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_cli->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
     if (NULL == tcp_conn) {
