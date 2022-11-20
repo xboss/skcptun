@@ -54,7 +54,9 @@ static int add_conn(skcp_conn_t *conn) {
 
     if (NULL == skcp_get_conn(conn->skcp, conn->htkey)) {
         // TODO: strlen(conn->htkey)有隐患
-        HASH_ADD_KEYPTR(hh, conn->skcp->conn_ht, conn->htkey, strlen(conn->htkey), conn);
+        int len = strlen(conn->htkey);
+        len = len > SKCP_HTKEY_LEN ? SKCP_HTKEY_LEN : len;
+        HASH_ADD_KEYPTR(hh, conn->skcp->conn_ht, conn->htkey, len, conn);
     }
 
     return 0;

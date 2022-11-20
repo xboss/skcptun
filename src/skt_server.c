@@ -7,8 +7,8 @@ static skt_serv_t *g_serv = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
 static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
-    char htkey[SKT_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
+    char htkey[SKCP_HTKEY_LEN] = {0};
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_serv->skt_kcp, htkey);
     if (NULL == kcp_conn) {
         LOG_E("tcp_recv_cb kcp_conn error");
@@ -30,8 +30,8 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
         return;
     }
 
-    char htkey[SKT_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
+    char htkey[SKCP_HTKEY_LEN] = {0};
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_serv->skt_kcp, htkey);
     if (NULL == kcp_conn) {
         return;
@@ -53,8 +53,8 @@ static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
 }
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    char htkey[SKT_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, kcp_conn->sess_id, &((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr);
+    char htkey[SKCP_HTKEY_LEN] = {0};
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, &((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr);
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
     if (NULL == tcp_conn) {
         skt_kcp_close_conn(g_serv->skt_kcp, htkey);

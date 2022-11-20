@@ -6,6 +6,8 @@
 
 #define KCP_WAITIMG_BUF_SZ 2048
 
+#define SKCP_HTKEY_LEN 50
+
 typedef enum {
     SKCP_CONN_ST_ON = 1,
     SKCP_CONN_ST_READY,

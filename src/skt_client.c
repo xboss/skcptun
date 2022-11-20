@@ -23,8 +23,8 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
         return;
     }
 
-    char htkey[SKT_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, NULL);
+    char htkey[SKCP_HTKEY_LEN] = {0};
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, NULL);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_cli->skt_kcp, htkey);
 
     if (NULL == kcp_conn) {
@@ -37,8 +37,8 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
 }
 
 static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
-    char htkey[SKT_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, tcp_conn->sess_id, NULL);
+    char htkey[SKCP_HTKEY_LEN] = {0};
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, NULL);
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_cli->skt_kcp, htkey);
     if (NULL == kcp_conn) {
         LOG_D("tcp_recv_cb kcp_conn is NULL sess_id:%u", tcp_conn->sess_id);
@@ -58,8 +58,8 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
 //////////////////////
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    char htkey[SKT_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, kcp_conn->sess_id, NULL);
+    char htkey[SKCP_HTKEY_LEN] = {0};
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, NULL);
 
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_cli->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
     if (NULL == tcp_conn) {

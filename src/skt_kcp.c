@@ -211,9 +211,9 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
-    char *htkey = malloc(SKT_HTKEY_LEN);
-    memset(htkey, 0, SKT_HTKEY_LEN);
-    skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, sess_id, sock_addr);
+    char *htkey = malloc(SKCP_HTKEY_LEN);
+    memset(htkey, 0, SKCP_HTKEY_LEN);
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, sock_addr);
     uint64_t now = getmillisecond();
     skcp_conn_t *conn = skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn);
     return conn;
@@ -288,10 +288,10 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     uint32_t sess_id = skcp_get_sess_id(out_buf);
     skcp_conn_t *conn = NULL;
     skt_kcp_conn_t *kcp_conn = NULL;
-    char htkey[SKT_HTKEY_LEN] = {0};
+    char htkey[SKCP_HTKEY_LEN] = {0};
 
     if (skt_kcp->mode == SKCP_MODE_CLI) {
-        skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, sess_id, NULL);
+        skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, NULL);
         conn = skt_kcp_get_conn(skt_kcp, htkey);
         if (NULL == conn) {
             FREE_IF(out_buf);
@@ -299,7 +299,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         }
         kcp_conn = (skt_kcp_conn_t *)conn->user_data;
     } else {
-        skt_kcp_gen_htkey(htkey, SKT_HTKEY_LEN, sess_id, &cliaddr);
+        skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, &cliaddr);
         conn = skt_kcp_get_conn(skt_kcp, htkey);
         if (NULL == conn) {
             conn = skt_kcp_new_conn(skt_kcp, sess_id, &cliaddr);

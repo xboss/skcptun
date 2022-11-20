@@ -7,8 +7,6 @@
 #include "skcp.h"
 #include "skt_utils.h"
 
-#define SKT_HTKEY_LEN 50
-
 typedef struct skt_kcp_conn_s skt_kcp_conn_t;
 
 struct skt_kcp_conf_s {
