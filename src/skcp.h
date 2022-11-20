@@ -4,6 +4,8 @@
 #include "3rd/kcp/ikcp.h"
 #include "3rd/uthash/uthash.h"
 
+#define KCP_WAITIMG_BUF_SZ 2048
+
 typedef enum {
     SKCP_CONN_ST_ON = 1,
     SKCP_CONN_ST_READY,
@@ -18,7 +20,13 @@ typedef enum {
 
 typedef struct skcp_s skcp_t;
 typedef struct skcp_conn_s skcp_conn_t;
+
 typedef struct waiting_buf_s waiting_buf_t;
+struct waiting_buf_s {
+    char buf[KCP_WAITIMG_BUF_SZ];
+    int len;
+    waiting_buf_t *next, *prev;
+};
 
 struct skcp_conf_s {
     int mtu;
@@ -100,5 +108,6 @@ int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now);
  * -5 表示收到PING命令
  */
 int skcp_recv(skcp_conn_t *conn, char *buffer, int len);
+int skcp_append_wait_buf(skcp_conn_t *conn, const char *buffer, int len);
 
 #endif

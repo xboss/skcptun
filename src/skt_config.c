@@ -33,7 +33,7 @@ static inline void get_int(cJSON *m_json, char *name, int *value) {
 
 /**********  client config **********/
 
-static skt_cli_conf_t *init_def_cli_conf() {  // TODO:
+static skt_cli_conf_t *init_def_cli_conf() {
     skt_cli_conf_t *cli_conf = malloc(sizeof(skt_cli_conf_t));
     skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
     skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
@@ -59,16 +59,16 @@ static skt_cli_conf_t *init_def_cli_conf() {  // TODO:
     kcp_conf->timeout_interval = 1;
     cli_conf->kcp_conf = kcp_conf;
 
-    skt_tcp_serv_conf_t *tcp_serv_conf = malloc(sizeof(skt_tcp_serv_conf_t));
-    tcp_serv_conf->serv_addr = NULL;
-    tcp_serv_conf->serv_port = 1111;
-    tcp_serv_conf->backlog = 1024;
-    tcp_serv_conf->tcp_r_buf_size = 900;
-    tcp_serv_conf->r_keepalive = 600;
-    tcp_serv_conf->w_keepalive = 600;
-    tcp_serv_conf->recv_timeout = 10l;  // 1000l;
-    tcp_serv_conf->send_timeout = 10l;  // 1000l;
-    cli_conf->tcp_serv_conf = tcp_serv_conf;
+    skt_tcp_conf_t *tcp_conf = malloc(sizeof(skt_tcp_conf_t));
+    tcp_conf->serv_addr = NULL;
+    tcp_conf->serv_port = 1111;
+    tcp_conf->backlog = 1024;
+    tcp_conf->r_buf_size = 900;
+    tcp_conf->r_keepalive = 600;
+    tcp_conf->w_keepalive = 600;
+    tcp_conf->recv_timeout = 10l;  // 1000l;
+    tcp_conf->send_timeout = 10l;  // 1000l;
+    cli_conf->tcp_conf = tcp_conf;
 
     return cli_conf;
 }
@@ -81,9 +81,9 @@ void skt_free_client_conf(skt_cli_conf_t *cli_conf) {
             FREE_IF(cli_conf->kcp_conf->addr);
             FREE_IF(cli_conf->kcp_conf);
         }
-        if (cli_conf->tcp_serv_conf) {
-            FREE_IF(cli_conf->tcp_serv_conf->serv_addr);
-            FREE_IF(cli_conf->tcp_serv_conf);
+        if (cli_conf->tcp_conf) {
+            FREE_IF(cli_conf->tcp_conf->serv_addr);
+            FREE_IF(cli_conf->tcp_conf);
         }
 
         FREE_IF(cli_conf);
@@ -127,16 +127,16 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
 
     skt_cli_conf_t *conf = init_def_cli_conf();
 
-    get_str(m_json, "local_addr", &conf->tcp_serv_conf->serv_addr);
-    if (NULL == conf->tcp_serv_conf->serv_addr) {
+    get_str(m_json, "local_addr", &conf->tcp_conf->serv_addr);
+    if (NULL == conf->tcp_conf->serv_addr) {
         char *s = "0.0.0.0";
         int l = strlen(s);
-        conf->tcp_serv_conf->serv_addr = malloc(l + 1);
-        memset(conf->tcp_serv_conf->serv_addr, 0, l + 1);
-        memcpy(conf->tcp_serv_conf->serv_addr, s, l);
+        conf->tcp_conf->serv_addr = malloc(l + 1);
+        memset(conf->tcp_conf->serv_addr, 0, l + 1);
+        memcpy(conf->tcp_conf->serv_addr, s, l);
     }
 
-    get_int(m_json, "local_port", (int *)&conf->tcp_serv_conf->serv_port);
+    get_int(m_json, "local_port", (int *)&conf->tcp_conf->serv_port);
 
     get_str(m_json, "remote_addr", &conf->kcp_conf->addr);
     if (NULL == conf->kcp_conf->addr) {
@@ -161,8 +161,8 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
     if (keepalive > 0) {
         conf->kcp_conf->skcp_conf->r_keepalive = keepalive;
         conf->kcp_conf->skcp_conf->w_keepalive = keepalive;
-        conf->tcp_serv_conf->r_keepalive = keepalive;
-        conf->tcp_serv_conf->w_keepalive = keepalive;
+        conf->tcp_conf->r_keepalive = keepalive;
+        conf->tcp_conf->w_keepalive = keepalive;
     }
 
     char *password = NULL;
@@ -220,13 +220,16 @@ skt_serv_conf_t *init_def_serv_conf() {
     kcp_conf->timeout_interval = 1;
     serv_conf->kcp_conf = kcp_conf;
 
-    skt_tcp_cli_conf_t *tcp_cli_conf = malloc(sizeof(skt_tcp_cli_conf_t));
-    tcp_cli_conf->r_keepalive = 600;
-    tcp_cli_conf->w_keepalive = 600;
-    tcp_cli_conf->recv_timeout = 10l;  // 1000l;
-    tcp_cli_conf->send_timeout = 10l;  // 1000l;
-    tcp_cli_conf->r_buf_size = 900;
-    serv_conf->tcp_cli_conf = tcp_cli_conf;
+    skt_tcp_conf_t *tcp_conf = malloc(sizeof(skt_tcp_conf_t));
+    tcp_conf->serv_addr = NULL;
+    tcp_conf->serv_port = 0;
+    tcp_conf->backlog = 1024;
+    tcp_conf->r_buf_size = 900;
+    tcp_conf->r_keepalive = 600;
+    tcp_conf->w_keepalive = 600;
+    tcp_conf->recv_timeout = 10l;  // 1000l;
+    tcp_conf->send_timeout = 10l;  // 1000l;
+    serv_conf->tcp_conf = tcp_conf;
 
     return serv_conf;
 }
@@ -240,8 +243,8 @@ void skt_free_server_conf(skt_serv_conf_t *serv_conf) {
             FREE_IF(serv_conf->kcp_conf->addr);
             FREE_IF(serv_conf->kcp_conf);
         }
-        if (serv_conf->tcp_cli_conf) {
-            FREE_IF(serv_conf->tcp_cli_conf);
+        if (serv_conf->tcp_conf) {
+            FREE_IF(serv_conf->tcp_conf);
         }
 
         FREE_IF(serv_conf);
@@ -318,8 +321,8 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
     if (keepalive > 0) {
         conf->kcp_conf->skcp_conf->r_keepalive = keepalive;
         conf->kcp_conf->skcp_conf->w_keepalive = keepalive;
-        conf->tcp_cli_conf->r_keepalive = keepalive;
-        conf->tcp_cli_conf->w_keepalive = keepalive;
+        conf->tcp_conf->r_keepalive = keepalive;
+        conf->tcp_conf->w_keepalive = keepalive;
     }
 
     char *password = NULL;

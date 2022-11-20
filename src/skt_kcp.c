@@ -5,6 +5,8 @@
 #include <limits.h>
 #include <unistd.h>
 
+#include "3rd/uthash/utlist.h"
+
 static uint32_t rtt_cnt = 0;
 static int max_rtt = 0;
 static int min_rtt = INT_MAX;
@@ -65,13 +67,6 @@ static int init_cli_network(skt_kcp_t *skt_kcp) {
     // 设置客户端
     //创建socket对象
     skt_kcp->fd = socket(AF_INET, SOCK_DGRAM, 0);
-    //设置立即释放端口并可以再次使用
-    // int reuse = 1;
-    // if (-1 == setsockopt(skt_kcp->fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse))) {
-    //     LOG_E("setsockopt error");
-    //     close(skt_kcp->fd);
-    //     return SKT_ERROR;
-    // }
     //设置为非阻塞
     if (-1 == fcntl(skt_kcp->fd, F_SETFL, fcntl(skt_kcp->fd, F_GETFL) | O_NONBLOCK)) {
         LOG_E("error fcntl");
@@ -93,8 +88,6 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         LOG_E("start kcp server socket error");
         return SKT_ERROR;
     }
-    //设置立即释放端口并可以再次使用
-    // setreuseaddr(skt_kcp->fd);
     //设置为非阻塞
     setnonblock(skt_kcp->fd);
 
@@ -178,20 +171,13 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
         LOG_E("kcp skt_kcp output encrypt len > mtu:%d", conn->skcp->conf->mtu);
     }
 
-    int rt = sendto(kcp_conn->skt_kcp->fd, out_buf, out_len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
-                    sizeof(kcp_conn->dest_addr));
-    if (-1 == rt) {
-        LOG_W("output sendto error fd:%d errno: %d %s", kcp_conn->skt_kcp->fd, errno, strerror(errno));
-        if (kcp_conn->skt_kcp->encrypt_cb) {
-            FREE_IF(out_buf);
-        }
-        return -1;
-    }
-    conn->last_w_tm = getmillisecond();
+    skcp_append_wait_buf(conn, out_buf, out_len);
 
     if (kcp_conn->skt_kcp->encrypt_cb) {
         FREE_IF(out_buf);
     }
+
+    ev_io_start(kcp_conn->skt_kcp->loop, kcp_conn->skt_kcp->w_watcher);
 
     return 0;
 }
@@ -208,7 +194,7 @@ static void kcp_update_cb(struct ev_loop *loop, ev_timer *watcher, int revents) 
     skcp_update_all(skt_kcp->skcp, clock());
 }
 
-int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, char *buf, int len) {
+int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
     skcp_conn_t *conn = skt_kcp_get_conn(skt_kcp, htkey);
     if (NULL == conn) {
         return -1;
@@ -231,6 +217,37 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     uint64_t now = getmillisecond();
     skcp_conn_t *conn = skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn);
     return conn;
+}
+
+static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
+    if (EV_ERROR & revents) {
+        LOG_E("read_cb got invalid event");
+        return;
+    }
+    skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
+
+    skcp_conn_t *conn, *tmp;
+    HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
+        skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+        if (conn->waiting_buf_q) {
+            waiting_buf_t *wbtmp, *item;
+            DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
+                int rt = sendto(kcp_conn->skt_kcp->fd, item->buf, item->len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
+                                sizeof(kcp_conn->dest_addr));
+                if (-1 == rt) {
+                    LOG_W("write_cb sendto error fd:%d  sess_id:%u errno: %d %s", kcp_conn->skt_kcp->fd, conn->sess_id,
+                          errno, strerror(errno));
+                    return;
+                }
+                conn->last_w_tm = getmillisecond();
+                DL_DELETE(conn->waiting_buf_q, item);
+                FREE_IF(item);
+            }
+            conn->waiting_buf_q = NULL;
+        }
+    }
+
+    ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
 }
 
 // 读回调
@@ -374,6 +391,12 @@ skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, 
     ev_io_init(skt_kcp->r_watcher, read_cb, skt_kcp->fd, EV_READ);
     ev_io_start(skt_kcp->loop, skt_kcp->r_watcher);
 
+    // 设置写事件循环
+    skt_kcp->w_watcher = malloc(sizeof(struct ev_io));
+    skt_kcp->w_watcher->data = skt_kcp;
+    ev_io_init(skt_kcp->w_watcher, write_cb, skt_kcp->fd, EV_WRITE);
+    ev_io_start(skt_kcp->loop, skt_kcp->w_watcher);
+
     // 设置kcp定时循环
     skt_kcp->kcp_update_watcher = malloc(sizeof(ev_timer));
     double kcp_interval = conf->skcp_conf->interval / 1000.0;
@@ -393,17 +416,17 @@ skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, 
 }
 
 void skt_kcp_free(skt_kcp_t *skt_kcp) {
-    if (skt_kcp->r_watcher && ev_is_active(skt_kcp->r_watcher)) {
+    if (skt_kcp->r_watcher) {
         ev_io_stop(skt_kcp->loop, skt_kcp->r_watcher);
         FREE_IF(skt_kcp->r_watcher);
     }
 
-    if (skt_kcp->timeout_watcher && ev_is_active(skt_kcp->timeout_watcher)) {
+    if (skt_kcp->timeout_watcher) {
         ev_timer_stop(skt_kcp->loop, skt_kcp->timeout_watcher);
         FREE_IF(skt_kcp->timeout_watcher);
     }
 
-    if (skt_kcp->kcp_update_watcher && ev_is_active(skt_kcp->kcp_update_watcher)) {
+    if (skt_kcp->kcp_update_watcher) {
         ev_timer_stop(skt_kcp->loop, skt_kcp->kcp_update_watcher);
         FREE_IF(skt_kcp->kcp_update_watcher);
     }
@@ -415,6 +438,10 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         FREE_IF(kcp_conn);
     }
 
+    if (skt_kcp->w_watcher) {
+        ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
+        FREE_IF(skt_kcp->w_watcher);
+    }
     skcp_free(skt_kcp->skcp);
 
     if (skt_kcp->fd) {

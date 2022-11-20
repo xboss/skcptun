@@ -74,13 +74,6 @@
     } while (0);
 #endif
 
-typedef struct waiting_buf_s waiting_buf_t;
-struct waiting_buf_s {
-    char buf[2048];
-    int len;
-    waiting_buf_t *next, *prev;
-};
-
 void char_to_hex(char* src, int len, char* des);
 void* skt_mem_clone(void* src, size_t len);
 void _PR(const void* buf, int len);

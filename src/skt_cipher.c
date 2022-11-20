@@ -24,7 +24,7 @@ char *skt_cipher_padding(const char *buf, int size, int *final_size) {
     int pidding_size = AES_BLOCK_SIZE - (size % AES_BLOCK_SIZE);
     int i;
     *final_size = size + pidding_size;
-    ret = (char *)malloc(size + pidding_size);  // TODO: free it
+    ret = (char *)malloc(size + pidding_size);
     memcpy(ret, buf, size);
     if (pidding_size != 0) {
         for (i = size; i < (size + pidding_size); i++) {

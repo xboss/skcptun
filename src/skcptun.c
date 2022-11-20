@@ -16,6 +16,7 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     }
 
     ev_break(loop, EVBREAK_ALL);
+    LOG_D("sig_cb loop break all event ok");
 }
 
 /**********  server config **********/
@@ -122,5 +123,6 @@ int main(int argc, char *argv[]) {
     muntrace();
 #endif
 
+    LOG_I("bye");
     return 0;
 }
