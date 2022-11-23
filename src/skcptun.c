@@ -90,7 +90,13 @@ int main(int argc, char *argv[]) {
     const char *conf_file = argv[2];
     LOG_D("mode:%s config file:%s", argv[1], conf_file);
 
-    struct ev_loop *loop = ev_default_loop(0);  // ev_loop_new(EVBACKEND_KQUEUE);  // ev_loop_new(EVBACKEND_EPOLL);//
+#if (defined(__linux__) || defined(__linux))
+    struct ev_loop *loop = ev_loop_new(EVBACKEND_EPOLL);
+#elif defined(__APPLE__)
+    struct ev_loop *loop = ev_loop_new(EVBACKEND_KQUEUE);
+#else
+    struct ev_loop *loop = ev_default_loop(0);
+#endif
     ev_signal sig_pipe_watcher;
     ev_signal_init(&sig_pipe_watcher, sig_cb, SIGPIPE);
     ev_signal_start(loop, &sig_pipe_watcher);

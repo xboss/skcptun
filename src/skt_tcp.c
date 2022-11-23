@@ -113,23 +113,23 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     memset(buffer, 0, conn->r_buf_size);
     int res = 0;
     int32_t bytes = read(watcher->fd, buffer, conn->r_buf_size);
-    if (-1 == bytes) {
-        // tcp Error
+    if (bytes < 0) {
+        // may error
         if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno) {
             res = 1;
             LOG_W("read_cb tcp error fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
-        } else {
-            LOG_W("read_cb tcp warn fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
         }
-    } else if (0 == bytes) {
+    } else if (bytes == 0) {
+        // close
         if (errno != EINPROGRESS) {
-            // tcp Close
             res = 2;
-            LOG_W("read_cb tcp close fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
+            if (errno != ECONNRESET) {
+                LOG_W("read_cb tcp close fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
+            }
         }
     }
 
-    if (0 != res) {
+    if (res) {
         //关闭事件循环并释放watcher
         FREE_IF(buffer);
         conn->status = SKT_TCP_CONN_ST_OFF;
@@ -179,8 +179,8 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         waiting_buf_t *wbtmp, *item;
         DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
             ssize_t rt = write(conn->fd, item->buf, item->len);
-            if (rt < 0) {
-                LOG_E("write_cb write error fd:%d rt:%zd", conn->fd, rt);
+            if (rt <= 0) {
+                LOG_E("write_cb write error fd:%d rt:%zd errno:%d %s", conn->fd, rt, errno, strerror(errno));
                 return;
             }
             DL_DELETE(conn->waiting_buf_q, item);
@@ -254,6 +254,7 @@ static skt_tcp_conn_t *create_conn(skt_tcp_t *tcp, int fd) {
     ev_timer_set(conn->timeout_watcher, TIMEOUT_INTERVAL, TIMEOUT_INTERVAL);
     conn->timeout_watcher->data = conn;
     ev_timer_start(tcp->loop, conn->timeout_watcher);
+
     return conn;
 }
 
