@@ -81,30 +81,34 @@ round-trip min/avg/max/stddev = 159.492/164.087/171.097/3.232 ms
 ```
 ### 过程数据
 * 连接数：1；数据包：1000；发送间隔：100ms
-TCP
 ```
+TCP:
+------------
 Min = 161.0
 Max = 1239.0
 Average = 293.956
 NR = 1000
 ```
-skcptun
 ```
+Skcptun:
+------------
 Min = 160.0
 Max = 487.0
 Average = 181.618
 NR = 1000
 ```
 * 连接数：10；数据包：1000；发送间隔：100ms
-TCP
 ```
+TCP:
+------------
 Min = 159.0
 Max = 1076.0
 Average = 262.500
 NR = 10000
 ```
-skcptun
 ```
+Skcptun:
+------------
 Min = 159.0
 Max = 534.0
 Average = 174.251
