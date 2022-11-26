@@ -341,11 +341,13 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
             case -4:
                 // 收到close 命令
                 LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
+                conn->last_r_tm = getmillisecond();
                 call_conn_close_cb(skt_kcp, kcp_conn);
                 break;
             case -5:
                 // 收到ping 命令
                 {
+                    conn->last_r_tm = getmillisecond();
                     uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
                     uint64_t now = getmillisecond();
                     skcp_send_pong(conn, pitm, now);
@@ -353,6 +355,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 break;
             case -6:
                 // 收到pong 命令
+                conn->last_r_tm = getmillisecond();
                 stat_rtt(conn, kcp_recv_buf);
                 break;
             default:

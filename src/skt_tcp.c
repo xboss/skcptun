@@ -205,8 +205,9 @@ static void timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int reven
 
     // 判断是否超时
     uint64_t now = getmillisecond();
-    if ((now - conn->last_r_tm) >= conn->skt_tcp->conf->r_keepalive * 1000 ||
-        (now - conn->last_w_tm) >= conn->skt_tcp->conf->w_keepalive * 1000) {
+    if ((now - conn->last_r_tm) >= conn->skt_tcp->conf->r_keepalive * 1000
+        // || (now - conn->last_w_tm) >= conn->skt_tcp->conf->w_keepalive * 1000
+    ) {
         // 超时
         if (conn->skt_tcp->conf->timeout_cb) {
             conn->skt_tcp->conf->timeout_cb(conn);

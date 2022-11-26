@@ -23,6 +23,11 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
 }
 
 int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        fprintf(stderr, "Invalid parameter.\nUsage:\n    %s host port\n", argv[0]);
+        return -1;
+    }
+
 #if (defined(__linux__) || defined(__linux))
     struct ev_loop *loop = ev_loop_new(EVBACKEND_EPOLL);
 #elif defined(__APPLE__)
@@ -32,8 +37,8 @@ int main(int argc, char *argv[]) {
 #endif
 
     skt_tcp_conf_t *tcp_conf = malloc(sizeof(skt_tcp_conf_t));
-    tcp_conf->serv_addr = "0.0.0.0";
-    tcp_conf->serv_port = 6666;
+    tcp_conf->serv_addr = argv[1];
+    tcp_conf->serv_port = atoi(argv[2]);
     tcp_conf->backlog = 1024;
     tcp_conf->r_buf_size = 900;
     tcp_conf->r_keepalive = 600;
@@ -53,11 +58,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    while (1) {
-        LOG_D("client loop run");
-        ev_run(loop, EVRUN_NOWAIT);
-    }
-
+    LOG_D("client loop run");
+    ev_run(loop, 0);
     LOG_D("loop end");
 
     skt_tcp_free(tcp_serv);
