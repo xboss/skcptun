@@ -15,10 +15,16 @@ aux_source_directory(./src/3rd/kcp DIR_SRCS_KCP)
 aux_source_directory(./src/3rd/uthash DIR_SRCS_UTHASH)
 
 add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
-
 target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun ev)
+
+aux_source_directory(./test DIR_SRCS_TEST)
+SET(TEST_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/skt_tcp.c ${CMAKE_CURRENT_SOURCE_DIR}/src/skt_utils.c)
+add_executable(test_tcp_serv ${DIR_SRCS_TEST} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH} ${TEST_SRC_FILES})
+target_link_libraries(test_tcp_serv ssl)
+target_link_libraries(test_tcp_serv crypto)
+target_link_libraries(test_tcp_serv ev)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
