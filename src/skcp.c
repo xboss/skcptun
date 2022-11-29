@@ -199,9 +199,31 @@ IUINT32 skcp_get_sess_id(const void *data) { return ikcp_getconv(data); }
 
 int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
     char *recv_buf = malloc(len);
-    int recv_len = ikcp_recv(conn->kcp, recv_buf, len);
+    int recv_len = 0;
+irecv:
+    recv_len = ikcp_recv(conn->kcp, recv_buf, len);
+    if (recv_len == -1) {
+        // empty
+        // fprintf(stdout, "warn: ikcp_recv empty\n");
+        recv_len = 0;
+    } else if (recv_len == -2) {
+        // no peeksize
+        fprintf(stdout, "warn: ikcp_recv invalid peeksize\n");
+        recv_len = 0;
+    } else if (recv_len == -3) {
+        // resize
+        fprintf(stdout, "warn: ikcp_recv need resize\n");
+        SKCP_FREE(recv_buf);
+        int peeksize = ikcp_peeksize(conn->kcp);
+        if (peeksize <= 0) {
+            fprintf(stderr, "error: ikcp_peeksize <= 0\n");
+            return -1;
+        }
+        recv_buf = malloc(peeksize);
+        goto irecv;
+    }
+
     ikcp_update(conn->kcp, clock());  // TODO: 跨平台
-    recv_len = recv_len == -1 ? 0 : recv_len;
     if (recv_len > 0) {
         recv_len = parse_recv_data(conn, recv_buf, buffer, recv_len);
     }
