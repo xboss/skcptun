@@ -63,7 +63,8 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
         return;
     }
 
-    LOG_D("tcp_recv_cb fd: %d htkey: %s", tcp_conn->fd, kcp_conn->htkey);
+    LOG_D("tcp_recv_cb tcpfd: %d htkey: %s kcpfd: %d", tcp_conn->fd, kcp_conn->htkey,
+          ((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp->fd);
     int rt = skt_kcp_send(((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp, kcp_conn->htkey, buf, len);
     if (rt < 0) {
         skt_kcp_close_conn(kcp_conn);
@@ -88,7 +89,8 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
         return SKT_ERROR;
     }
 
-    LOG_D("kcp_recv_cb fd: %d htkey: %s", tcp_conn->fd, kcp_conn->htkey);
+    // LOG_D("kcp_recv_cb tcpfd: %d htkey: %s kcpfd: %d", tcp_conn->fd, kcp_conn->htkey,
+    //       ((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp->fd);
 
     ssize_t rt = skt_tcp_send(tcp_conn, buf, len);
     if (rt < 0) {
@@ -218,6 +220,7 @@ skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
         }
 
         g_cli->skt_kcp[i] = skt_kcp;
+        LOG_D("skt_client_init kcpfd: %d %s %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
     }
 
     // g_cli->cur_skt_kcp = g_cli->skt_kcp[0];
