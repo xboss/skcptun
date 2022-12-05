@@ -39,8 +39,10 @@ static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
     stat->min_rtt = rtt < stat->min_rtt ? rtt : stat->min_rtt;
     stat->last_rtt = rtt;
 
+    LOG_D("stat_rtt htkey: %s min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d ", conn->htkey, stat->min_rtt,
+          stat->max_rtt, stat->avg_rtt, stat->last_rtt);
     if (stat->last_rtt > stat->avg_rtt) {
-        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d crrent_rtt%d", conn->sess_id, stat->min_rtt,
+        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d", conn->sess_id, stat->min_rtt,
               stat->max_rtt, stat->avg_rtt, stat->last_rtt);
     }
     // last_avg_rtt = avg_rtt;
@@ -152,15 +154,15 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
             LOG_D("conn_timeout_cb rt:%d", rt);
             // call_conn_close_cb(skt_kcp, kcp_conn);
             skt_kcp->conn_close_cb(conn);
-            FREE_IF(kcp_conn);
             skcp_close_conn(conn, 0);
+            FREE_IF(kcp_conn);
         } else if (rt == -3) {
             // conn timeout
             // skcp_close_conn(conn);
             // call_conn_close_cb(skt_kcp, kcp_conn);
             skt_kcp->conn_close_cb(conn);
-            FREE_IF(kcp_conn);
             skcp_close_conn(conn, 0);
+            FREE_IF(kcp_conn);
         } else {
             // send ping
             if (skt_kcp->mode == SKCP_MODE_CLI && conn->status == SKCP_CONN_ST_ON &&
@@ -310,8 +312,8 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     skt_kcp_conn_t *kcp_conn = NULL;
     char htkey[SKCP_HTKEY_LEN] = {0};
 
+    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, &cliaddr);
     if (skt_kcp->mode == SKCP_MODE_CLI) {
-        skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, &cliaddr);
         conn = skt_kcp_get_conn(skt_kcp, htkey);
         if (NULL == conn) {
             FREE_IF(out_buf);
@@ -319,7 +321,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         }
         kcp_conn = (skt_kcp_conn_t *)conn->user_data;
     } else {
-        skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, &cliaddr);
+        // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, &cliaddr);
         conn = skt_kcp_get_conn(skt_kcp, htkey);
         if (NULL == conn) {
             conn = skt_kcp_new_conn(skt_kcp, sess_id, &cliaddr);
@@ -349,8 +351,8 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 // skcp_close_conn(conn);
                 // call_conn_close_cb(skt_kcp, kcp_conn);
                 skt_kcp->conn_close_cb(conn);
-                FREE_IF(kcp_conn);
                 skcp_close_conn(conn, 0);
+                FREE_IF(kcp_conn);
                 break;
             case -2:
                 // 创建连接
@@ -368,8 +370,8 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 conn->last_r_tm = getmillisecond();
                 // call_conn_close_cb(skt_kcp, kcp_conn);
                 skt_kcp->conn_close_cb(conn);
-                FREE_IF(kcp_conn);
                 skcp_close_conn(conn, 1);
+                FREE_IF(kcp_conn);
                 break;
             case -5:
                 // 收到ping 命令

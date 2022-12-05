@@ -17,7 +17,7 @@ static void tcp_accept_cb(skt_tcp_conn_t *tcp_conn) {
         return;
     }
 
-    skcp_conn_t *kcp_conn = skt_kcp_new_conn(entity->skt_kcp, 0, NULL);
+    skcp_conn_t *kcp_conn = skt_kcp_new_conn(entity->skt_kcp, 0, &entity->skt_kcp->servaddr);
     if (NULL == kcp_conn) {
         return;
     }
@@ -63,6 +63,7 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
         return;
     }
 
+    LOG_D("tcp_recv_cb fd: %d htkey: %s", tcp_conn->fd, kcp_conn->htkey);
     int rt = skt_kcp_send(((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp, kcp_conn->htkey, buf, len);
     if (rt < 0) {
         skt_kcp_close_conn(kcp_conn);
@@ -86,6 +87,8 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
         skt_kcp_close_conn(kcp_conn);
         return SKT_ERROR;
     }
+
+    LOG_D("kcp_recv_cb fd: %d htkey: %s", tcp_conn->fd, kcp_conn->htkey);
 
     ssize_t rt = skt_tcp_send(tcp_conn, buf, len);
     if (rt < 0) {
