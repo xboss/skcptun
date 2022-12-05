@@ -7,38 +7,43 @@
 
 #include "3rd/uthash/utlist.h"
 
-static uint32_t rtt_cnt = 0;
-static int max_rtt = 0;
-static int min_rtt = INT_MAX;
-static int avg_rtt = 0;
-static int sum_rtt = 0;
-static int last_avg_rtt = 0;
+// static uint32_t rtt_cnt = 0;
+// static int max_rtt = 0;
+// static int min_rtt = INT_MAX;
+// static int avg_rtt = 0;
+// static int sum_rtt = 0;
+// static int last_avg_rtt = 0;
 
 static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
-    rtt_cnt = rtt_cnt >= INT_MAX ? 0 : rtt_cnt + 1;
-    if (rtt_cnt >= 1000000) {
-        rtt_cnt = 0;
-        max_rtt = 0;
-        min_rtt = INT_MAX;
-        avg_rtt = 0;
-        sum_rtt = 0;
+    skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+    skt_kcp_stat_t *stat = kcp_conn->skt_kcp->stat;
+
+    stat->rtt_cnt = stat->rtt_cnt >= INT_MAX ? 0 : stat->rtt_cnt + 1;
+    if (stat->rtt_cnt >= 1000000) {
+        stat->rtt_cnt = 0;
+        stat->max_rtt = 0;
+        stat->min_rtt = INT_MAX;
+        stat->avg_rtt = 0;
+        stat->sum_rtt = 0;
     }
-    rtt_cnt++;
+    stat->rtt_cnt++;
 
     char *pEnd = NULL;
     uint64_t pitm = strtoull(kcp_recv_buf, &pEnd, 10);
     uint64_t potm = strtoull(pEnd, NULL, 10);
     uint64_t now = getmillisecond();
     uint64_t rtt = now - pitm;
-    sum_rtt += rtt;
-    avg_rtt = sum_rtt / rtt_cnt;
-    max_rtt = rtt > max_rtt ? rtt : max_rtt;
-    min_rtt = rtt < min_rtt ? rtt : min_rtt;
+    stat->sum_rtt += rtt;
+    stat->avg_rtt = stat->sum_rtt / stat->rtt_cnt;
+    stat->max_rtt = rtt > stat->max_rtt ? rtt : stat->max_rtt;
+    stat->min_rtt = rtt < stat->min_rtt ? rtt : stat->min_rtt;
+    stat->last_rtt = rtt;
 
-    if (abs(last_avg_rtt - avg_rtt) > 10) {
-        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d", conn->sess_id, min_rtt, max_rtt, avg_rtt);
+    if (stat->last_rtt > stat->avg_rtt) {
+        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d crrent_rtt%d", conn->sess_id, stat->min_rtt,
+              stat->max_rtt, stat->avg_rtt, stat->last_rtt);
     }
-    last_avg_rtt = avg_rtt;
+    // last_avg_rtt = avg_rtt;
 }
 
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr) {
@@ -57,11 +62,11 @@ void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockad
 
 skcp_conn_t *skt_kcp_get_conn(skt_kcp_t *skt_kcp, char *htkey) { return skcp_get_conn(skt_kcp->skcp, htkey); }
 
-static void call_conn_close_cb(skt_kcp_t *skt_kcp, skt_kcp_conn_t *kcp_conn) {
-    skt_kcp->conn_close_cb(kcp_conn);
-    // free kcp_conn
-    FREE_IF(kcp_conn);
-}
+// static void call_conn_close_cb(skt_kcp_t *skt_kcp, skt_kcp_conn_t *kcp_conn) {
+// skt_kcp->conn_close_cb(kcp_conn);
+// // free kcp_conn
+// FREE_IF(kcp_conn);
+// }
 
 static int init_cli_network(skt_kcp_t *skt_kcp) {
     // 设置客户端
@@ -112,7 +117,16 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
     return SKT_OK;
 }
 
-void skt_kcp_close_conn(skt_kcp_t *skt_kcp, char *htkey) {
+void skt_kcp_close_conn(skcp_conn_t *conn) {
+    if (NULL == conn) {
+        return;
+    }
+    if (SKCP_CONN_ST_ON == conn->status || SKCP_CONN_ST_READY == conn->status) {
+        conn->status = SKCP_CONN_ST_CAN_OFF;
+    }
+}
+
+void skt_kcp_close_conn_by_key(skt_kcp_t *skt_kcp, char *htkey) {
     skcp_conn_t *conn = skt_kcp_get_conn(skt_kcp, htkey);
     if (NULL == conn) {
         return;
@@ -136,11 +150,17 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
         if (rt == -1 || rt == -2) {
             // estab timeout or conn can off
             LOG_D("conn_timeout_cb rt:%d", rt);
-            call_conn_close_cb(skt_kcp, kcp_conn);
+            // call_conn_close_cb(skt_kcp, kcp_conn);
+            skt_kcp->conn_close_cb(conn);
+            FREE_IF(kcp_conn);
+            skcp_close_conn(conn, 0);
         } else if (rt == -3) {
             // conn timeout
-            skcp_close_conn(conn);
-            call_conn_close_cb(skt_kcp, kcp_conn);
+            // skcp_close_conn(conn);
+            // call_conn_close_cb(skt_kcp, kcp_conn);
+            skt_kcp->conn_close_cb(conn);
+            FREE_IF(kcp_conn);
+            skcp_close_conn(conn, 0);
         } else {
             // send ping
             if (skt_kcp->mode == SKCP_MODE_CLI && conn->status == SKCP_CONN_ST_ON &&
@@ -165,7 +185,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     char *out_buf = (char *)buf;
     int out_len = len;
     if (kcp_conn->skt_kcp->encrypt_cb) {
-        out_buf = kcp_conn->skt_kcp->encrypt_cb(buf, len, &out_len);
+        out_buf = kcp_conn->skt_kcp->encrypt_cb(kcp_conn->skt_kcp, buf, len, &out_len);
     }
     if (out_len > conn->skcp->conf->mtu) {
         LOG_E("kcp skt_kcp output encrypt len > mtu:%d", conn->skcp->conf->mtu);
@@ -210,7 +230,7 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
         kcp_conn->dest_addr = skt_kcp->servaddr;
     }
     kcp_conn->skt_kcp = skt_kcp;
-    kcp_conn->tcp_fd = 0;
+    // kcp_conn->tcp_fd = 0;
     char *htkey = malloc(SKCP_HTKEY_LEN);
     memset(htkey, 0, SKCP_HTKEY_LEN);
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, sock_addr);
@@ -273,7 +293,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     char *out_buf = raw_buf;
     int out_len = bytes;
     if (skt_kcp->decrypt_cb) {
-        out_buf = skt_kcp->decrypt_cb(raw_buf, bytes, &out_len);
+        out_buf = skt_kcp->decrypt_cb(skt_kcp, raw_buf, bytes, &out_len);
         FREE_IF(raw_buf);
     }
 
@@ -291,7 +311,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     char htkey[SKCP_HTKEY_LEN] = {0};
 
     if (skt_kcp->mode == SKCP_MODE_CLI) {
-        skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, NULL);
+        skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, &cliaddr);
         conn = skt_kcp_get_conn(skt_kcp, htkey);
         if (NULL == conn) {
             FREE_IF(out_buf);
@@ -305,8 +325,9 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
             conn = skt_kcp_new_conn(skt_kcp, sess_id, &cliaddr);
             kcp_conn = (skt_kcp_conn_t *)conn->user_data;
             kcp_conn->dest_addr = cliaddr;
+        } else {
+            kcp_conn = (skt_kcp_conn_t *)conn->user_data;
         }
-        kcp_conn = (skt_kcp_conn_t *)conn->user_data;
     }
 
     skcp_input(conn, out_buf, out_len);
@@ -325,8 +346,11 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
             case -1:
                 // 错误
                 LOG_D("skcp_recv error");
-                skcp_close_conn(conn);
-                call_conn_close_cb(skt_kcp, kcp_conn);
+                // skcp_close_conn(conn);
+                // call_conn_close_cb(skt_kcp, kcp_conn);
+                skt_kcp->conn_close_cb(conn);
+                FREE_IF(kcp_conn);
+                skcp_close_conn(conn, 0);
                 break;
             case -2:
                 // 创建连接
@@ -340,9 +364,12 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 break;
             case -4:
                 // 收到close 命令
-                LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
+                LOG_D("cmd close sess_id:%u", conn->sess_id);
                 conn->last_r_tm = getmillisecond();
-                call_conn_close_cb(skt_kcp, kcp_conn);
+                // call_conn_close_cb(skt_kcp, kcp_conn);
+                skt_kcp->conn_close_cb(conn);
+                FREE_IF(kcp_conn);
+                skcp_close_conn(conn, 1);
                 break;
             case -5:
                 // 收到ping 命令
@@ -415,6 +442,11 @@ skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, 
     ev_timer_set(skt_kcp->timeout_watcher, skt_kcp->conf->timeout_interval, skt_kcp->conf->timeout_interval);
     ev_timer_start(skt_kcp->loop, skt_kcp->timeout_watcher);
 
+    // 初始化统计参数
+    skt_kcp->stat = malloc(sizeof(skt_kcp_stat_t));
+    memset(skt_kcp->stat, 0, sizeof(skt_kcp_stat_t));
+    skt_kcp->stat->min_rtt = INT_MAX;
+
     return skt_kcp;
 }
 
@@ -437,7 +469,7 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
     skcp_conn_t *conn, *tmp;
     HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
         skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
-        skcp_close_conn(conn);
+        skcp_close_conn(conn, 0);
         FREE_IF(kcp_conn);
     }
 
@@ -449,6 +481,10 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
 
     if (skt_kcp->fd) {
         close(skt_kcp->fd);
+    }
+
+    if (skt_kcp->stat) {
+        FREE_IF(skt_kcp->stat);
     }
 
     FREE_IF(skt_kcp);

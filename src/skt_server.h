@@ -5,6 +5,7 @@
 
 #include "3rd/uthash/uthash.h"
 #include "skt_kcp.h"
+#include "skt_route.h"
 #include "skt_tcp.h"
 
 typedef struct skt_serv_s skt_serv_t;
@@ -22,6 +23,7 @@ struct skt_serv_s {
     struct ev_loop *loop;
     skt_kcp_t *skt_kcp;
     skt_tcp_t *skt_tcp;
+    skt_route_t *route;
 };
 
 skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop);

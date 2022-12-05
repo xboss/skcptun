@@ -111,39 +111,6 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
     return rt;
 }
 
-static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
-    if (conn->skcp->conn_ht) {
-        del_conn(conn);
-    }
-
-    if (!close_cmd_flg) {
-        int rt = kcp_send_raw(conn, NULL, 0, SKCP_CMD_CLOSE);
-    }
-
-    conn->status = SKCP_CONN_ST_OFF;
-
-    if (conn->htkey) {
-        SKCP_FREE(conn->htkey);
-    }
-
-    if (conn->waiting_buf_q) {
-        waiting_buf_t *wbtmp, *item;
-        DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
-            DL_DELETE(conn->waiting_buf_q, item);
-            SKCP_FREE(item);
-        }
-        conn->waiting_buf_q = NULL;
-    }
-
-    if (conn->kcp) {
-        ikcp_release(conn->kcp);
-        conn->kcp = NULL;
-    }
-
-    conn->sess_id = 0;  // TODO: for test
-    SKCP_FREE(conn);
-}
-
 static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int len) {
     if (len < 1) {
         return -1;
@@ -166,7 +133,7 @@ static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int l
         conn->status = SKCP_CONN_ST_ON;
         return -3;
     } else if (SKCP_CMD_CLOSE == cmd) {
-        close_conn(conn, 1);
+        // close_conn(conn, 1);
         return -4;
     } else if (SKCP_CMD_PING == cmd) {
         memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
@@ -277,7 +244,39 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     return conn;
 }
 
-void skcp_close_conn(skcp_conn_t *conn) { close_conn(conn, 0); }
+// void skcp_close_conn(skcp_conn_t *conn) { close_conn(conn, 0); }
+void skcp_close_conn(skcp_conn_t *conn, int is_close_cmd) {
+    if (conn->skcp->conn_ht) {
+        del_conn(conn);
+    }
+
+    if (!is_close_cmd) {
+        int rt = kcp_send_raw(conn, NULL, 0, SKCP_CMD_CLOSE);
+    }
+
+    conn->status = SKCP_CONN_ST_OFF;
+
+    if (conn->htkey) {
+        SKCP_FREE(conn->htkey);
+    }
+
+    if (conn->waiting_buf_q) {
+        waiting_buf_t *wbtmp, *item;
+        DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
+            DL_DELETE(conn->waiting_buf_q, item);
+            SKCP_FREE(item);
+        }
+        conn->waiting_buf_q = NULL;
+    }
+
+    if (conn->kcp) {
+        ikcp_release(conn->kcp);
+        conn->kcp = NULL;
+    }
+
+    conn->sess_id = 0;  // TODO: for test
+    SKCP_FREE(conn);
+}
 
 int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
     skcp_t *skcp = conn->skcp;
@@ -285,12 +284,12 @@ int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
         // 连接管理
         if ((now - conn->estab_tm) >= skcp->conf->estab_timeout * 1000l) {
             // 超时
-            close_conn(conn, 0);
+            // close_conn(conn, 0);
             return -1;
         }
     } else {
         if (SKCP_CONN_ST_CAN_OFF == conn->status) {
-            close_conn(conn, 0);
+            // close_conn(conn, 0);
             return -2;
         } else {
             if ((now - conn->last_r_tm) >= skcp->conf->r_keepalive * 1000l) {

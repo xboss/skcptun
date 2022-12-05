@@ -58,8 +58,8 @@ struct skt_tcp_conn_s {
     SKT_TCP_CONN_ST status;
     skt_tcp_t *skt_tcp;
 
-    uint32_t sess_id;
-    struct sockaddr_in kcp_cli_addr;
+    // uint32_t sess_id;
+    // struct sockaddr_in kcp_cli_addr;
 
     waiting_buf_t *waiting_buf_q;  // 待发送消息的队列头
 

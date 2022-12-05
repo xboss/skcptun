@@ -33,9 +33,7 @@ static inline void get_int(cJSON *m_json, char *name, int *value) {
 
 /**********  client config **********/
 
-static skt_cli_conf_t *init_def_cli_conf() {
-    skt_cli_conf_t *cli_conf = malloc(sizeof(skt_cli_conf_t));
-    skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
+static skcp_conf_t *init_skcp_conf() {
     skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
     skcp_conf->interval = 10;
     skcp_conf->mtu = 1024;
@@ -47,7 +45,11 @@ static skt_cli_conf_t *init_def_cli_conf() {
     skcp_conf->r_keepalive = 600;
     skcp_conf->w_keepalive = 600;
     skcp_conf->estab_timeout = 100;
+    return skcp_conf;
+}
 
+static skt_kcp_conf_t *init_skt_kcp_conf(skcp_conf_t *skcp_conf) {
+    skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
     kcp_conf->skcp_conf = skcp_conf;
     kcp_conf->addr = NULL;  //"127.0.0.1";
     kcp_conf->port = 2222;
@@ -57,7 +59,36 @@ static skt_cli_conf_t *init_def_cli_conf() {
     kcp_conf->kcp_buf_size = 2048;
 
     kcp_conf->timeout_interval = 1;
-    cli_conf->kcp_conf = kcp_conf;
+    return kcp_conf;
+}
+
+static skt_cli_conf_t *init_def_cli_conf() {
+    skt_cli_conf_t *cli_conf = malloc(sizeof(skt_cli_conf_t));
+    memset(cli_conf->kcp_conf, 0, SKT_REMOTE_SERV_MAX_CNT);
+    // skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
+    // skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
+    // skcp_conf->interval = 10;
+    // skcp_conf->mtu = 1024;
+    // skcp_conf->rcvwnd = 128;
+    // skcp_conf->sndwnd = 128;
+    // skcp_conf->nodelay = 1;
+    // skcp_conf->resend = 2;
+    // skcp_conf->nc = 1;
+    // skcp_conf->r_keepalive = 600;
+    // skcp_conf->w_keepalive = 600;
+    // skcp_conf->estab_timeout = 100;
+
+    // kcp_conf->skcp_conf = skcp_conf;
+    // kcp_conf->addr = NULL;  //"127.0.0.1";
+    // kcp_conf->port = 2222;
+    // kcp_conf->key = NULL;
+
+    // kcp_conf->r_buf_size = skcp_conf->mtu;
+    // kcp_conf->kcp_buf_size = 2048;
+
+    // kcp_conf->timeout_interval = 1;
+
+    // cli_conf->kcp_conf = kcp_conf;
 
     skt_tcp_conf_t *tcp_conf = malloc(sizeof(skt_tcp_conf_t));
     tcp_conf->serv_addr = NULL;
@@ -75,12 +106,15 @@ static skt_cli_conf_t *init_def_cli_conf() {
 
 void skt_free_client_conf(skt_cli_conf_t *cli_conf) {
     if (cli_conf) {
-        if (cli_conf->kcp_conf) {
-            FREE_IF(cli_conf->kcp_conf->skcp_conf);
-            FREE_IF(cli_conf->kcp_conf->key);
-            FREE_IF(cli_conf->kcp_conf->addr);
-            FREE_IF(cli_conf->kcp_conf);
+        for (int i = 0; i < cli_conf->kcp_conf_cnt; i++) {
+            if (cli_conf->kcp_conf[i]) {
+                FREE_IF(cli_conf->kcp_conf[i]->skcp_conf);
+                FREE_IF(cli_conf->kcp_conf[i]->key);
+                FREE_IF(cli_conf->kcp_conf[i]->addr);
+                FREE_IF(cli_conf->kcp_conf[i]);
+            }
         }
+
         if (cli_conf->tcp_conf) {
             FREE_IF(cli_conf->tcp_conf->serv_addr);
             FREE_IF(cli_conf->tcp_conf);
@@ -138,51 +172,77 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
 
     get_int(m_json, "local_port", (int *)&conf->tcp_conf->serv_port);
 
-    get_str(m_json, "remote_addr", &conf->kcp_conf->addr);
-    if (NULL == conf->kcp_conf->addr) {
-        char *s = "127.0.0.1";
-        int l = strlen(s);
-        conf->kcp_conf->addr = malloc(l + 1);
-        memset(conf->kcp_conf->addr, 0, l + 1);
-        memcpy(conf->kcp_conf->addr, s, l);
-    }
-    get_int(m_json, "remote_port", (int *)&conf->kcp_conf->port);
-
-    int speed_mode = 0;
-    get_int(m_json, "speed_mode", &speed_mode);
-    if (1 != speed_mode) {
-        conf->kcp_conf->skcp_conf->nodelay = 0;
-        conf->kcp_conf->skcp_conf->resend = 0;
-        conf->kcp_conf->skcp_conf->nc = 0;
-    }
-
     int keepalive = 0;
     get_int(m_json, "keepalive", &keepalive);
     if (keepalive > 0) {
-        conf->kcp_conf->skcp_conf->r_keepalive = keepalive;
-        conf->kcp_conf->skcp_conf->w_keepalive = keepalive;
+        // conf->kcp_conf->skcp_conf->r_keepalive = keepalive;
+        // conf->kcp_conf->skcp_conf->w_keepalive = keepalive;
         conf->tcp_conf->r_keepalive = keepalive;
         conf->tcp_conf->w_keepalive = keepalive;
     }
 
-    char *password = NULL;
-    get_str(m_json, "password", &password);
-    if (NULL != password) {
-        int pw_len = strlen(password);
-        char padding[16] = {0};
-        if (pw_len > 16) {
-            pw_len = 16;
-            memcpy(padding, password, pw_len);
-        } else {
-            memcpy(padding, password, pw_len);
-            pw_len = 16;
-        }
-        FREE_IF(password);
+    cJSON *remote_servers = cJSON_GetObjectItemCaseSensitive(m_json, "remote_servers");
+    if (NULL == remote_servers || !cJSON_IsArray(remote_servers)) {
+        LOG_E("config remote error not a array");
+        return NULL;
+    }
+    int kcp_cnt = cJSON_GetArraySize(remote_servers);
+    if (kcp_cnt > SKT_REMOTE_SERV_MAX_CNT) {
+        LOG_E("config remote error, count is more than the maximum value %d", SKT_REMOTE_SERV_MAX_CNT);
+        return NULL;
+    }
 
-        int k_len = 33;
-        conf->kcp_conf->key = malloc(k_len);
-        memset(conf->kcp_conf->key, 0, k_len);
-        char_to_hex(padding, pw_len, conf->kcp_conf->key);
+    conf->kcp_conf_cnt = kcp_cnt;
+    int i = 0;
+    cJSON *server = NULL;
+    cJSON_ArrayForEach(server, remote_servers) {
+        skcp_conf_t *skcp_conf = init_skcp_conf();
+        skt_kcp_conf_t *skt_kcp_conf = init_skt_kcp_conf(skcp_conf);
+        get_str(server, "addr", &skt_kcp_conf->addr);
+        if (NULL == skt_kcp_conf->addr) {
+            char *s = "127.0.0.1";
+            int l = strlen(s);
+            skt_kcp_conf->addr = malloc(l + 1);
+            memset(skt_kcp_conf->addr, 0, l + 1);
+            memcpy(skt_kcp_conf->addr, s, l);
+        }
+        get_int(server, "port", (int *)&skt_kcp_conf->port);
+
+        int speed_mode = 0;
+        get_int(server, "speed_mode", &speed_mode);
+        if (1 != speed_mode) {
+            skt_kcp_conf->skcp_conf->nodelay = 0;
+            skt_kcp_conf->skcp_conf->resend = 0;
+            skt_kcp_conf->skcp_conf->nc = 0;
+        }
+
+        if (keepalive > 0) {
+            skt_kcp_conf->skcp_conf->r_keepalive = keepalive;
+            skt_kcp_conf->skcp_conf->w_keepalive = keepalive;
+        }
+
+        char *password = NULL;
+        get_str(server, "password", &password);
+        if (NULL != password) {
+            int pw_len = strlen(password);
+            char padding[16] = {0};
+            if (pw_len > 16) {
+                pw_len = 16;
+                memcpy(padding, password, pw_len);
+            } else {
+                memcpy(padding, password, pw_len);
+                pw_len = 16;
+            }
+            FREE_IF(password);
+
+            int k_len = 33;
+            skt_kcp_conf->key = malloc(k_len);
+            memset(skt_kcp_conf->key, 0, k_len);
+            char_to_hex(padding, pw_len, skt_kcp_conf->key);
+        }
+
+        conf->kcp_conf[i] = skt_kcp_conf;
+        i++;
     }
 
     cJSON_Delete(m_json);
@@ -196,28 +256,31 @@ skt_serv_conf_t *init_def_serv_conf() {
     skt_serv_conf_t *serv_conf = malloc(sizeof(skt_serv_conf_t));
     serv_conf->target_addr = NULL;
     serv_conf->target_port = 3333;
-    skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
-    skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
-    skcp_conf->interval = 10;
-    skcp_conf->mtu = 1024;
-    skcp_conf->rcvwnd = 128;
-    skcp_conf->sndwnd = 128;
-    skcp_conf->nodelay = 1;
-    skcp_conf->resend = 2;
-    skcp_conf->nc = 1;
-    skcp_conf->r_keepalive = 600;
-    skcp_conf->w_keepalive = 600;
-    skcp_conf->estab_timeout = 100;
+    // skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
+    // skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
+    // skcp_conf->interval = 10;
+    // skcp_conf->mtu = 1024;
+    // skcp_conf->rcvwnd = 128;
+    // skcp_conf->sndwnd = 128;
+    // skcp_conf->nodelay = 1;
+    // skcp_conf->resend = 2;
+    // skcp_conf->nc = 1;
+    // skcp_conf->r_keepalive = 600;
+    // skcp_conf->w_keepalive = 600;
+    // skcp_conf->estab_timeout = 100;
 
-    kcp_conf->skcp_conf = skcp_conf;
-    kcp_conf->addr = NULL;  //"127.0.0.1";
-    kcp_conf->port = 2222;
-    kcp_conf->key = NULL;
+    // kcp_conf->skcp_conf = skcp_conf;
+    // kcp_conf->addr = NULL;  //"127.0.0.1";
+    // kcp_conf->port = 2222;
+    // kcp_conf->key = NULL;
 
-    kcp_conf->r_buf_size = skcp_conf->mtu;
-    kcp_conf->kcp_buf_size = 2048;
+    // kcp_conf->r_buf_size = skcp_conf->mtu;
+    // kcp_conf->kcp_buf_size = 2048;
 
-    kcp_conf->timeout_interval = 1;
+    // kcp_conf->timeout_interval = 1;
+
+    skcp_conf_t *skcp_conf = init_skcp_conf();
+    skt_kcp_conf_t *kcp_conf = init_skt_kcp_conf(skcp_conf);
     serv_conf->kcp_conf = kcp_conf;
 
     skt_tcp_conf_t *tcp_conf = malloc(sizeof(skt_tcp_conf_t));

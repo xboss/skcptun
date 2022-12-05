@@ -235,7 +235,7 @@ static skt_tcp_conn_t *create_conn(skt_tcp_t *tcp, int fd) {
         conn->status = SKT_TCP_CONN_ST_READY;
     }
 
-    conn->sess_id = 0;
+    // conn->sess_id = 0;
     conn->waiting_buf_q = NULL;
     HASH_ADD_INT(tcp->conn_ht, fd, conn);
 

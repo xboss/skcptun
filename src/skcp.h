@@ -73,7 +73,7 @@ skcp_t *skcp_init(skcp_conf_t *conf, SKCP_MODE mode);
 void skcp_free(skcp_t *skcp);
 IUINT32 skcp_gen_sess_id(skcp_t *skcp);
 skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data);
-void skcp_close_conn(skcp_conn_t *conn);
+void skcp_close_conn(skcp_conn_t *conn, int is_close_cmd);
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey);
 int skcp_send(skcp_conn_t *conn, const char *buffer, int len);
 int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
