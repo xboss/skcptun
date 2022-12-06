@@ -80,8 +80,8 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
 void skcp_close_conn(skcp_conn_t *conn, int is_close_cmd);
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey);
 int skcp_send(skcp_conn_t *conn, const char *buffer, int len);
-int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
-int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now);
+// int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
+// int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now);
 void skcp_update_all(skcp_t *skcp, IUINT32 current);
 void skcp_update(skcp_conn_t *conn, IUINT32 current);
 int skcp_input(skcp_conn_t *conn, const char *data, long size);

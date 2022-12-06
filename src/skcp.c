@@ -200,17 +200,17 @@ irecv:
 
 int skcp_send(skcp_conn_t *conn, const char *buffer, int len) { return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA); }
 
-int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
-    char buf[22] = {0};
-    snprintf(buf, 22, "%llu", now);
-    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
-}
+// int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
+//     char buf[22] = {0};
+//     snprintf(buf, 22, "%llu", now);
+//     return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
+// }
 
-int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
-    char buf[44] = {0};
-    snprintf(buf, 44, "%llu %llu", tm, now);
-    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
-}
+// int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
+//     char buf[44] = {0};
+//     snprintf(buf, 44, "%llu %llu", tm, now);
+//     return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
+// }
 
 IUINT32 skcp_gen_sess_id(skcp_t *skcp) {
     skcp->cur_sess_id++;

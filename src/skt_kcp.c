@@ -14,39 +14,39 @@
 // static int sum_rtt = 0;
 // static int last_avg_rtt = 0;
 
-static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
-    skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
-    skt_kcp_stat_t *stat = kcp_conn->skt_kcp->stat;
+// static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
+//     skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+//     skt_kcp_stat_t *stat = kcp_conn->skt_kcp->stat;
 
-    stat->rtt_cnt = stat->rtt_cnt >= INT_MAX ? 0 : stat->rtt_cnt + 1;
-    if (stat->rtt_cnt >= 1000000) {
-        stat->rtt_cnt = 0;
-        stat->max_rtt = 0;
-        stat->min_rtt = INT_MAX;
-        stat->avg_rtt = 0;
-        stat->sum_rtt = 0;
-    }
-    stat->rtt_cnt++;
+//     stat->rtt_cnt = stat->rtt_cnt >= INT_MAX ? 0 : stat->rtt_cnt + 1;
+//     if (stat->rtt_cnt >= 1000000) {
+//         stat->rtt_cnt = 0;
+//         stat->max_rtt = 0;
+//         stat->min_rtt = INT_MAX;
+//         stat->avg_rtt = 0;
+//         stat->sum_rtt = 0;
+//     }
+//     stat->rtt_cnt++;
 
-    char *pEnd = NULL;
-    uint64_t pitm = strtoull(kcp_recv_buf, &pEnd, 10);
-    uint64_t potm = strtoull(pEnd, NULL, 10);
-    uint64_t now = getmillisecond();
-    uint64_t rtt = now - pitm;
-    stat->sum_rtt += rtt;
-    stat->avg_rtt = stat->sum_rtt / stat->rtt_cnt;
-    stat->max_rtt = rtt > stat->max_rtt ? rtt : stat->max_rtt;
-    stat->min_rtt = rtt < stat->min_rtt ? rtt : stat->min_rtt;
-    stat->last_rtt = rtt;
+//     char *pEnd = NULL;
+//     uint64_t pitm = strtoull(kcp_recv_buf, &pEnd, 10);
+//     uint64_t potm = strtoull(pEnd, NULL, 10);
+//     uint64_t now = getmillisecond();
+//     uint64_t rtt = now - pitm;
+//     stat->sum_rtt += rtt;
+//     stat->avg_rtt = stat->sum_rtt / stat->rtt_cnt;
+//     stat->max_rtt = rtt > stat->max_rtt ? rtt : stat->max_rtt;
+//     stat->min_rtt = rtt < stat->min_rtt ? rtt : stat->min_rtt;
+//     stat->last_rtt = rtt;
 
-    LOG_D("stat_rtt htkey: %s min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d ", conn->htkey, stat->min_rtt,
-          stat->max_rtt, stat->avg_rtt, stat->last_rtt);
-    if (stat->last_rtt > stat->avg_rtt) {
-        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d", conn->sess_id, stat->min_rtt,
-              stat->max_rtt, stat->avg_rtt, stat->last_rtt);
-    }
-    // last_avg_rtt = avg_rtt;
-}
+//     LOG_D("stat_rtt htkey: %s min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d ", conn->htkey, stat->min_rtt,
+//           stat->max_rtt, stat->avg_rtt, stat->last_rtt);
+//     if (stat->last_rtt > stat->avg_rtt) {
+//         LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d", conn->sess_id, stat->min_rtt,
+//               stat->max_rtt, stat->avg_rtt, stat->last_rtt);
+//     }
+//     // last_avg_rtt = avg_rtt;
+// }
 
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr) {
     in_port_t port = 0;
@@ -375,17 +375,17 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 break;
             case -5:
                 // 收到ping 命令
-                {
-                    conn->last_r_tm = getmillisecond();
-                    uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
-                    uint64_t now = getmillisecond();
-                    skcp_send_pong(conn, pitm, now);
-                }
+                // {
+                //     conn->last_r_tm = getmillisecond();
+                //     uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
+                //     uint64_t now = getmillisecond();
+                //     skcp_send_pong(conn, pitm, now);
+                // }
                 break;
             case -6:
                 // 收到pong 命令
-                conn->last_r_tm = getmillisecond();
-                stat_rtt(conn, kcp_recv_buf);
+                // conn->last_r_tm = getmillisecond();
+                // stat_rtt(conn, kcp_recv_buf);
                 break;
             default:
                 break;
