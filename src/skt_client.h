@@ -27,6 +27,7 @@ struct skt_cli_s {
     // skt_kcp_t *cur_skt_kcp;
     int skt_kcp_cnt;
     skt_route_t *route;
+    struct ev_timer *stat_watcher;
 };
 
 skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop);

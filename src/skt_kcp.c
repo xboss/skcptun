@@ -169,7 +169,7 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
                 ((now - conn->last_r_tm) / 1000) > (skt_kcp->conf->skcp_conf->r_keepalive / 2)) {
                 // TODO: 需要优化，目前仅用来统计rtt
                 // LOG_I("send ping sess_id:%u time:%llu", conn->sess_id, now);
-                skcp_send_ping(conn, now);
+                // skcp_send_ping(conn, now);
             }
         }
     }

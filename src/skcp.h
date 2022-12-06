@@ -8,6 +8,9 @@
 
 #define SKCP_HTKEY_LEN 50
 
+#define SKCP_CONN_TAG_NORM 0
+#define SKCP_CONN_TAG_STAT 1
+
 typedef enum {
     SKCP_CONN_ST_ON = 1,
     SKCP_CONN_ST_READY,
@@ -57,6 +60,7 @@ struct skcp_conn_s {
     ikcpcb *kcp;
     SKCP_CONN_ST status;
     waiting_buf_t *waiting_buf_q;  // 待发送消息的队列头
+    int tag;
     UT_hash_handle hh;
 };
 

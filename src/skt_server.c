@@ -11,6 +11,10 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     // skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_serv->skt_kcp, htkey);
     skt_route_entity_t *entity = skt_route_t2k(g_serv->route, tcp_conn->fd);
+    if (NULL == entity) {
+        LOG_E("tcp_recv_cb entity error");
+        return;
+    }
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(entity->skt_kcp, entity->htkey);
     if (NULL == kcp_conn) {
         LOG_E("tcp_recv_cb kcp_conn error");
@@ -36,8 +40,16 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
     // skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_serv->skt_kcp, htkey);
     skt_route_entity_t *entity = skt_route_t2k(g_serv->route, tcp_conn->fd);
+    if (NULL == entity) {
+        LOG_E("tcp_close_cb entity error");
+        return;
+    }
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(entity->skt_kcp, entity->htkey);
     if (NULL == kcp_conn) {
+        return;
+    }
+
+    if (kcp_conn->tag == SKCP_CONN_TAG_STAT) {
         return;
     }
 
@@ -48,7 +60,24 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
 
 //////////////////////
 
+static int is_stat_msg(const char *buf, int len) {
+    int rt = 0;
+    if (len > 5) {
+        char cmd[5] = {0};
+        memcpy(cmd, buf, 4);
+        if (strcmp(cmd, "stat") == 0) {
+            rt = 1;
+        }
+    }
+    return rt;
+}
+
 static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
+    // if (is_stat_msg(buf, len)) {
+    //     kcp_conn->tag = SKCP_CONN_TAG_STAT;
+    //     return
+    // }
+
     skt_tcp_conn_t *tcp_conn = skt_tcp_connect(g_serv->skt_tcp, g_serv->conf->target_addr, g_serv->conf->target_port);
     if (!tcp_conn) {
         // LOG_E("tcp connect error %s %u", g_serv->conf->target_addr, g_serv->conf->target_port);
@@ -70,7 +99,29 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, &((skt_kcp_conn_t
     // *)(kcp_conn->user_data))->dest_addr); skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp,
     // ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
+
+    if (is_stat_msg(buf, len)) {
+        kcp_conn->tag = SKCP_CONN_TAG_STAT;
+        char *p = buf + 5;
+        uint64_t pitm = strtoull(p, NULL, 10);
+        uint64_t now = getmillisecond();
+        const int stat_len = 64;
+        char stat_buf[stat_len] = {0};
+        snprintf(stat_buf, stat_len, "stat %llu %llu", pitm, now);
+        LOG_D("kcp_recv_cb stat_buf: %s", stat_buf);
+        int rt = skt_kcp_send(g_serv->skt_kcp, kcp_conn->htkey, stat_buf, stat_len);
+        if (rt < 0) {
+            LOG_E("kcp_recv_cb kcp_send error rt: %d", rt);
+            return SKT_ERROR;
+        }
+        return SKT_OK;
+    }
+
     skt_route_entity_t *entity = skt_route_k2t(g_serv->route, kcp_conn->htkey);
+    if (NULL == entity) {
+        LOG_E("kcp_recv_cb entity error");
+        return SKT_ERROR;
+    }
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, entity->tcp_fd);
     if (NULL == tcp_conn) {
         skt_kcp_close_conn(kcp_conn);
@@ -89,7 +140,17 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 
 static void kcp_close_cb(skcp_conn_t *kcp_conn) {
     // skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, kcp_conn->tcp_fd);
+
+    // 处理stat连接
+    if (kcp_conn->tag != SKCP_CONN_TAG_NORM) {
+        return;
+    }
+
     skt_route_entity_t *entity = skt_route_k2t(g_serv->route, kcp_conn->htkey);
+    if (NULL == entity) {
+        LOG_E("kcp_close_cb entity error");
+        return;
+    }
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, entity->tcp_fd);
     if (NULL == tcp_conn) {
         return;

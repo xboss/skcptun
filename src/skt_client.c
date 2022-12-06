@@ -1,10 +1,49 @@
 #include "skt_client.h"
 
+#include <limits.h>
+
 #include "skt_cipher.h"
 #include "skt_utils.h"
 
 static skt_cli_t *g_cli = NULL;
+static skcp_conn_t *stat_conns[SKT_REMOTE_SERV_MAX_CNT] = {0};
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
+
+static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
+    skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+    skt_kcp_stat_t *stat = kcp_conn->skt_kcp->stat;
+
+    stat->rtt_cnt = stat->rtt_cnt >= INT_MAX ? 0 : stat->rtt_cnt + 1;
+    if (stat->rtt_cnt >= 1000000) {
+        stat->rtt_cnt = 0;
+        stat->max_rtt = 0;
+        stat->min_rtt = INT_MAX;
+        stat->avg_rtt = 0;
+        stat->sum_rtt = 0;
+    }
+    stat->rtt_cnt++;
+
+    char *pEnd = NULL;
+    uint64_t pitm = strtoull(kcp_recv_buf, &pEnd, 10);
+    uint64_t potm = strtoull(pEnd, NULL, 10);
+    uint64_t now = getmillisecond();
+    uint64_t rtt = now - pitm;
+    stat->sum_rtt += rtt;
+    stat->avg_rtt = stat->sum_rtt / stat->rtt_cnt;
+    stat->max_rtt = rtt > stat->max_rtt ? rtt : stat->max_rtt;
+    stat->min_rtt = rtt < stat->min_rtt ? rtt : stat->min_rtt;
+    stat->last_rtt = rtt;
+
+    LOG_D("stat_rtt pitm: %lld now: %lld", pitm, now);
+    LOG_D("stat_rtt kcp_recv_buf: %s", kcp_recv_buf);
+
+    LOG_D("stat_rtt htkey: %s min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d ", conn->htkey, stat->min_rtt,
+          stat->max_rtt, stat->avg_rtt, stat->last_rtt);
+    // if (stat->last_rtt > stat->avg_rtt) {
+    //     LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt: %d crrent_rtt: %d", conn->sess_id, stat->min_rtt,
+    //           stat->max_rtt, stat->avg_rtt, stat->last_rtt);
+    // }
+}
 
 static void tcp_accept_cb(skt_tcp_conn_t *tcp_conn) {
     LOG_D("tcp serv accept_conn_cb fd:%d", tcp_conn->fd);
@@ -41,6 +80,10 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, NULL);
     // skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_cli->cur_skt_kcp, htkey);
     skt_route_entity_t *entity = skt_route_t2k(g_cli->route, tcp_conn->fd);
+    if (NULL == entity) {
+        LOG_E("tcp_close_cb entity error");
+        return;
+    }
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(entity->skt_kcp, entity->htkey);
 
     if (NULL == kcp_conn) {
@@ -57,15 +100,18 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, NULL);
     // skcp_conn_t *kcp_conn = skt_kcp_get_conn(g_cli->cur_skt_kcp, htkey);
     skt_route_entity_t *entity = skt_route_t2k(g_cli->route, tcp_conn->fd);
+    if (NULL == entity) {
+        LOG_E("tcp_recv_cb entity error");
+        return;
+    }
     skcp_conn_t *kcp_conn = skt_kcp_get_conn(entity->skt_kcp, entity->htkey);
     if (NULL == kcp_conn) {
         LOG_D("tcp_recv_cb kcp_conn is NULL fd:%u", tcp_conn->fd);
         return;
     }
 
-    LOG_D("tcp_recv_cb tcpfd: %d htkey: %s kcpfd: %d", tcp_conn->fd, kcp_conn->htkey,
-          ((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp->fd);
-    int rt = skt_kcp_send(((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp, kcp_conn->htkey, buf, len);
+    LOG_D("tcp_recv_cb tcpfd: %d htkey: %s kcpfd: %d", tcp_conn->fd, kcp_conn->htkey, entity->skt_kcp->fd);
+    int rt = skt_kcp_send(entity->skt_kcp, kcp_conn->htkey, buf, len);
     if (rt < 0) {
         skt_kcp_close_conn(kcp_conn);
         skt_tcp_close_conn(tcp_conn);
@@ -78,11 +124,33 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
 //////////////////////
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+    // TODO: stat
+    if (kcp_conn->tag == SKCP_CONN_TAG_STAT) {
+        if (len <= 6) {
+            LOG_E("kcp_recv_cb stat len: %d", len);
+            return SKT_ERROR;
+        }
+        char *p = buf + 5;
+        stat_rtt(kcp_conn, p);
+        return SKT_OK;
+    }
+
+    // for (int i = 0; i < g_cli->skt_kcp_cnt; i++) {
+    //     LOG_D("kcp_recv_cb stat htkey:%s %s", stat_conns[i]->htkey, kcp_conn->htkey);
+    //     if (strcmp(stat_conns[i]->htkey, kcp_conn->htkey) == 0) {
+    //         stat_rtt(kcp_conn, buf);
+    //     }
+    // }
+
     // char htkey[SKCP_HTKEY_LEN] = {0};
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, NULL);
 
     // skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_cli->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
     skt_route_entity_t *entity = skt_route_k2t(g_cli->route, kcp_conn->htkey);
+    if (NULL == entity) {
+        LOG_E("kcp_recv_cb entity error");
+        return SKT_ERROR;
+    }
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_cli->skt_tcp, entity->tcp_fd);
     if (NULL == tcp_conn) {
         skt_kcp_close_conn(kcp_conn);
@@ -109,8 +177,17 @@ static void kcp_close_cb(skcp_conn_t *kcp_conn) {
         return;
     }
 
+    // 处理stat连接
+    if (kcp_conn->tag != SKCP_CONN_TAG_NORM) {
+        return;
+    }
+
     // skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_cli->skt_tcp, kcp_conn->tcp_fd);
     skt_route_entity_t *entity = skt_route_k2t(g_cli->route, kcp_conn->htkey);
+    if (NULL == entity) {
+        LOG_E("kcp_close_cb entity error");
+        return;
+    }
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_cli->skt_tcp, entity->tcp_fd);
     if (NULL == tcp_conn) {
         return;
@@ -154,11 +231,43 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
     return out_buf;
 }
 
+// stat 回调
+static void stat_cb(struct ev_loop *loop, ev_timer *watcher, int revents) {
+    if (EV_ERROR & revents) {
+        LOG_E("stat_cb got invalid event");
+        return;
+    }
+    // skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
+
+    // char *buf = NULL;
+    const int len = 32;
+    char buf[len] = {0};
+    snprintf(buf, len, "stat %llu", getmillisecond());
+    LOG_D("stat_cb buf:%s", buf);
+    for (int i = 0; i < g_cli->skt_kcp_cnt; i++) {
+        skt_kcp_t *skt_kcp = g_cli->skt_kcp[i];
+        int rt = skt_kcp_send(skt_kcp, stat_conns[i]->htkey, buf, len);
+        if (rt < 0) {
+            LOG_E("stat_cb kcp_send error rt: %d", rt);
+            skt_kcp->stat->last_rtt = INT_MAX;
+            continue;
+        }
+        LOG_D("stat_cb send rt:%d", rt);
+    }
+
+    // int rt = skt_kcp_send(((skt_kcp_conn_t *)(kcp_conn->user_data))->skt_kcp, kcp_conn->htkey, buf, len);
+}
+
 //////////////////////
 
 void skt_client_free() {
     if (NULL == g_cli) {
         return;
+    }
+
+    if (g_cli->stat_watcher) {
+        ev_timer_stop(g_cli->loop, g_cli->stat_watcher);
+        FREE_IF(g_cli->stat_watcher);
     }
 
     for (int i = 0; i < g_cli->skt_kcp_cnt; i++) {
@@ -220,8 +329,19 @@ skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
         }
 
         g_cli->skt_kcp[i] = skt_kcp;
+
+        stat_conns[i] = skt_kcp_new_conn(skt_kcp, 0, &skt_kcp->servaddr);
+        stat_conns[i]->tag = SKCP_CONN_TAG_STAT;
         LOG_D("skt_client_init kcpfd: %d %s %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
     }
+
+    // 设置stat定时循环
+    g_cli->stat_watcher = malloc(sizeof(ev_timer));
+    // g_cli->stat_watcher->data = skt_kcp;
+    ev_init(g_cli->stat_watcher, stat_cb);
+    ev_timer_set(g_cli->stat_watcher, 0, 1);
+    ev_timer_start(g_cli->loop, g_cli->stat_watcher);
+    LOG_D("start stat_watcher");
 
     // g_cli->cur_skt_kcp = g_cli->skt_kcp[0];
 

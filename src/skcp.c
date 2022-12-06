@@ -226,6 +226,7 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->user_data = user_data;
     conn->waiting_buf_q = NULL;
     conn->htkey = htkey;
+    conn->tag = SKCP_CONN_TAG_NORM;
 
     ikcpcb *kcp = ikcp_create(conn->sess_id, conn);
     skcp_conf_t *conf = skcp->conf;
