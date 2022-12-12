@@ -35,9 +35,14 @@ static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
     max_rtt = rtt > max_rtt ? rtt : max_rtt;
     min_rtt = rtt < min_rtt ? rtt : min_rtt;
 
+    // LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d cur_rtt:%lld", conn->sess_id, min_rtt, max_rtt,
+    // avg_rtt,
+    //   rtt);
     if (abs(last_avg_rtt - avg_rtt) > 10) {
-        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d", conn->sess_id, min_rtt, max_rtt, avg_rtt);
+        LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d cur_rtt:%lld", conn->sess_id, min_rtt, max_rtt,
+              avg_rtt, rtt);
     }
+
     last_avg_rtt = avg_rtt;
 }
 
