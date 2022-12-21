@@ -70,9 +70,9 @@ static void call_conn_close_cb(skt_kcp_t *skt_kcp, skt_kcp_conn_t *kcp_conn) {
 
 static int init_cli_network(skt_kcp_t *skt_kcp) {
     // 设置客户端
-    //创建socket对象
+    // 创建socket对象
     skt_kcp->fd = socket(AF_INET, SOCK_DGRAM, 0);
-    //设置为非阻塞
+    // 设置为非阻塞
     if (-1 == fcntl(skt_kcp->fd, F_SETFL, fcntl(skt_kcp->fd, F_GETFL) | O_NONBLOCK)) {
         LOG_E("error fcntl");
         close(skt_kcp->fd);
@@ -93,7 +93,7 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         LOG_E("start kcp server socket error");
         return SKT_ERROR;
     }
-    //设置为非阻塞
+    // 设置为非阻塞
     setnonblock(skt_kcp->fd);
 
     struct sockaddr_in servaddr;
@@ -170,7 +170,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     char *out_buf = (char *)buf;
     int out_len = len;
     if (kcp_conn->skt_kcp->encrypt_cb) {
-        out_buf = kcp_conn->skt_kcp->encrypt_cb(buf, len, &out_len);
+        out_buf = kcp_conn->skt_kcp->encrypt_cb(kcp_conn->skt_kcp, buf, len, &out_len);
     }
     if (out_len > conn->skcp->conf->mtu) {
         LOG_E("kcp skt_kcp output encrypt len > mtu:%d", conn->skcp->conf->mtu);
@@ -278,7 +278,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     char *out_buf = raw_buf;
     int out_len = bytes;
     if (skt_kcp->decrypt_cb) {
-        out_buf = skt_kcp->decrypt_cb(raw_buf, bytes, &out_len);
+        out_buf = skt_kcp->decrypt_cb(skt_kcp, raw_buf, bytes, &out_len);
         FREE_IF(raw_buf);
     }
 

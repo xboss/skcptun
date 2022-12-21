@@ -8,6 +8,7 @@
 #include "skt_utils.h"
 
 typedef struct skt_kcp_conn_s skt_kcp_conn_t;
+typedef struct skt_kcp_s skt_kcp_t;
 
 struct skt_kcp_conf_s {
     skcp_conf_t *skcp_conf;
@@ -38,10 +39,9 @@ struct skt_kcp_s {
     void (*new_conn_cb)(skcp_conn_t *kcp_conn);
     void (*conn_close_cb)(skt_kcp_conn_t *kcp_conn);
     int (*kcp_recv_cb)(skcp_conn_t *kcp_conn, char *buf, int len);
-    char *(*encrypt_cb)(const char *in, int in_len, int *out_len);
-    char *(*decrypt_cb)(const char *in, int in_len, int *out_len);
+    char *(*encrypt_cb)(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len);
+    char *(*decrypt_cb)(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len);
 };
-typedef struct skt_kcp_s skt_kcp_t;
 
 struct skt_kcp_conn_s {
     struct sockaddr_in dest_addr;

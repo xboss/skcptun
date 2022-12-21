@@ -93,7 +93,7 @@ static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     return;
 }
 
-static char *kcp_encrypt_cb(const char *in, int in_len, int *out_len) {
+static char *kcp_encrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
     int padding_size = in_len;
     char *after_padding_buf = (char *)in;
     if (in_len % 16 != 0) {
@@ -103,14 +103,14 @@ static char *kcp_encrypt_cb(const char *in, int in_len, int *out_len) {
 
     char *out_buf = malloc(padding_size);
     memset(out_buf, 0, padding_size);
-    skt_aes_cbc_encrpyt(after_padding_buf, &out_buf, padding_size, g_cli->skt_kcp->conf->key, iv);
+    skt_aes_cbc_encrpyt(after_padding_buf, &out_buf, padding_size, skt_kcp->conf->key, iv);
     if (in_len % 16 != 0) {
         FREE_IF(after_padding_buf);
     }
     return out_buf;
 }
 
-static char *kcp_decrypt_cb(const char *in, int in_len, int *out_len) {
+static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
     int padding_size = in_len;
     char *after_padding_buf = (char *)in;
     if (in_len % 16 != 0) {
@@ -120,7 +120,7 @@ static char *kcp_decrypt_cb(const char *in, int in_len, int *out_len) {
 
     char *out_buf = malloc(padding_size);
     memset(out_buf, 0, padding_size);
-    skt_aes_cbc_decrpyt(after_padding_buf, &out_buf, padding_size, g_cli->skt_kcp->conf->key, iv);
+    skt_aes_cbc_decrpyt(after_padding_buf, &out_buf, padding_size, skt_kcp->conf->key, iv);
     if (in_len % 16 != 0) {
         FREE_IF(after_padding_buf);
     }
