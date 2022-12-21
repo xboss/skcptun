@@ -31,9 +31,9 @@ static int init_serv_network(skt_tcp_t *skt_tcp) {
     if (-1 == skt_tcp->listenfd) {
         return SKT_ERROR;
     }
-    //设置立即释放端口并可以再次使用
+    // 设置立即释放端口并可以再次使用
     setreuseaddr(skt_tcp->listenfd);
-    //设置为非阻塞
+    // 设置为非阻塞
     setnonblock(skt_tcp->listenfd);
 
     struct sockaddr_in servaddr;
@@ -123,14 +123,15 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // close
         if (errno != EINPROGRESS) {
             res = 2;
-            if (errno != ECONNRESET) {
-                LOG_W("read_cb tcp close fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
-            }
+            // if (errno != ECONNRESET) {
+            // LOG_W("read_cb tcp close fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
+            // }
         }
     }
 
     if (res) {
-        //关闭事件循环并释放watcher
+        // 关闭事件循环并释放watcher
+        // LOG_W("read_cb tcp close fd:%d", watcher->fd);
         FREE_IF(buffer);
         conn->status = SKT_TCP_CONN_ST_OFF;
         skt_tcp_close_conn(conn);
@@ -273,7 +274,7 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) 
     if (-1 == cli_fd) {
         return;
     }
-    //设置非阻塞
+    // 设置非阻塞
     setnonblock(cli_fd);
 
     skt_tcp_t *tcp = (skt_tcp_t *)(watcher->data);
