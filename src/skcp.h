@@ -57,7 +57,7 @@ struct skcp_conn_s {
     ikcpcb *kcp;
     SKCP_CONN_ST status;
     waiting_buf_t *waiting_buf_q;  // 待发送消息的队列头
-    char iv[33];
+    // char iv[33];
     UT_hash_handle hh;
 };
 

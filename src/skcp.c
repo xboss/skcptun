@@ -456,33 +456,33 @@ static void close_conn(skcp_conn_t *conn, int is_send_close_cmd) {
     SKCP_FREEIF(conn);
 }
 
-static int handle_cmd_conn(skcp_conn_t *conn, skcp_cmd_conn_t *cmd) {
-    if (!cmd) {
-        return -1;
-    }
+// static int handle_cmd_conn(skcp_conn_t *conn, skcp_cmd_conn_t *cmd) {
+//     if (!cmd) {
+//         return -1;
+//     }
 
-    if (SKCP_CONN_ST_READY != conn->status) {
-        return -1;
-    }
+//     if (SKCP_CONN_ST_READY != conn->status) {
+//         return -1;
+//     }
 
-    if ((cmd->flg & SKCP_CMD_CONN_NEED_ENCRYPT) == SKCP_CMD_CONN_NEED_ENCRYPT) {
-        int iv_len = cmd->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd->payload_len;
-        memcpy(conn->iv, cmd->payload, iv_len);
-    }
+//     if ((cmd->flg & SKCP_CMD_CONN_NEED_ENCRYPT) == SKCP_CMD_CONN_NEED_ENCRYPT) {
+//         int iv_len = cmd->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd->payload_len;
+//         memcpy(conn->iv, cmd->payload, iv_len);
+//     }
 
-    skcp_cmd_conn_ack_t *ack;
-    SKCP_BUILD_CMD_CONN_ACK(ack, 0, cmd->payload_len, cmd->payload);
-    char *ack_buf;
-    int ack_buf_len = encode_cmd_conn_ack(ack, &ack_buf);
-    if (ack_buf_len <= 0) {
-        SKCP_FREEIF(ack);
-        return -1;
-    }
-    kcp_send_raw(conn, ack_buf, ack_buf_len);
-    conn->status = SKCP_CONN_ST_ON;
+//     skcp_cmd_conn_ack_t *ack;
+//     SKCP_BUILD_CMD_CONN_ACK(ack, 0, cmd->payload_len, cmd->payload);
+//     char *ack_buf;
+//     int ack_buf_len = encode_cmd_conn_ack(ack, &ack_buf);
+//     if (ack_buf_len <= 0) {
+//         SKCP_FREEIF(ack);
+//         return -1;
+//     }
+//     kcp_send_raw(conn, ack_buf, ack_buf_len);
+//     conn->status = SKCP_CONN_ST_ON;
 
-    return 0;
-}
+//     return 0;
+// }
 
 static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, int *op_type) {
     if (len < SKCP_CMD_HEADER_LEN) {
@@ -492,18 +492,36 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
     SKCP_DECODE_CMD_HEADER(header, in_buf);
     if (SKCP_CMD_CONN == header.type) {
         *op_type = 1;
-        return handle_cmd_conn(conn, decode_cmd_conn(in_buf, len));
+        if (SKCP_CONN_ST_READY != conn->status) {
+            return -1;
+        }
+        skcp_cmd_conn_t *cmd_conn = decode_cmd_conn(in_buf, len);
+        skcp_cmd_conn_ack_t *ack;
+        SKCP_BUILD_CMD_CONN_ACK(ack, 0, cmd_conn->payload_len, cmd_conn->payload);
+        char *ack_buf;
+        int ack_buf_len = encode_cmd_conn_ack(ack, &ack_buf);
+        if (ack_buf_len <= 0) {
+            SKCP_FREEIF(ack);
+            return -1;
+        }
+        kcp_send_raw(conn, ack_buf, ack_buf_len);
+        conn->status = SKCP_CONN_ST_ON;
+
+        // return handle_cmd_conn(conn, decode_cmd_conn(in_buf, len));
     } else if (SKCP_CMD_CONN_ACK == header.type) {
         *op_type = 2;
         if (SKCP_CONN_ST_READY != conn->status) {
             return -1;
         }
         skcp_cmd_conn_ack_t *cmd_conn_ack = decode_cmd_conn_ack(in_buf, len);
-        if (!cmd_conn_ack || cmd_conn_ack->payload_len <= 0) {
+        if (!cmd_conn_ack) {
             return -1;
         }
-        int iv_len = cmd_conn_ack->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd_conn_ack->payload_len;
-        memcpy(conn->iv, cmd_conn_ack->payload, iv_len);
+        if (cmd_conn_ack->payload_len > 0) {
+            memcpy(out_buf, cmd_conn_ack->payload, cmd_conn_ack->payload_len);
+        }
+        // int iv_len = cmd_conn_ack->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd_conn_ack->payload_len;
+        // memcpy(conn->iv, cmd_conn_ack->payload, iv_len);
         conn->status = SKCP_CONN_ST_ON;
     } else if (SKCP_CMD_CLOSE == header.type) {
         *op_type = 3;
@@ -629,7 +647,7 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->user_data = user_data;
     conn->waiting_buf_q = NULL;
     conn->htkey = htkey;
-    memset(conn->iv, 0, sizeof(conn->iv));
+    // memset(conn->iv, 0, sizeof(conn->iv));
 
     ikcpcb *kcp = ikcp_create(conn->sess_id, conn);
     skcp_conf_t *conf = skcp->conf;

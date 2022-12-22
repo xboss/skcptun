@@ -216,6 +216,8 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
+    memset(kcp_conn->iv, 0, sizeof(kcp_conn->iv));
+
     char *htkey = malloc(SKCP_HTKEY_LEN);
     memset(htkey, 0, SKCP_HTKEY_LEN);
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, sock_addr);
@@ -337,15 +339,20 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         FREE_IF(kcp_recv_buf);
         return;
     }
-
+    int iv_len = 0;
     switch (op_type) {
         case 1:
             // 创建连接
+            iv_len = rt > sizeof(kcp_conn->iv) ? sizeof(kcp_conn->iv) : rt;
+            memcpy(kcp_conn->iv, kcp_recv_buf, iv_len);
+
             skt_kcp->new_conn_cb(conn);
             LOG_D("new conn sess_id:%u", conn->sess_id);
             break;
         case 2:
             // 收到connect ack 命令
+            iv_len = rt > sizeof(kcp_conn->iv) ? sizeof(kcp_conn->iv) : rt;
+            memcpy(kcp_conn->iv, kcp_recv_buf, iv_len);
             LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
             conn->last_r_tm = getmillisecond();
             break;
