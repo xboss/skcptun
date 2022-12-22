@@ -57,6 +57,7 @@ struct skcp_conn_s {
     ikcpcb *kcp;
     SKCP_CONN_ST status;
     waiting_buf_t *waiting_buf_q;  // 待发送消息的队列头
+    char iv[33];
     UT_hash_handle hh;
 };
 
@@ -75,9 +76,10 @@ IUINT32 skcp_gen_sess_id(skcp_t *skcp);
 skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data);
 void skcp_close_conn(skcp_conn_t *conn);
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey);
-int skcp_send(skcp_conn_t *conn, const char *buffer, int len);
-int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
-int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now);
+int skcp_send_data(skcp_conn_t *conn, const char *buffer, int len);
+int skcp_send_ctrl(skcp_conn_t *conn, const char *buffer, int len);
+// int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
+// int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now);
 void skcp_update_all(skcp_t *skcp, IUINT32 current);
 void skcp_update(skcp_conn_t *conn, IUINT32 current);
 int skcp_input(skcp_conn_t *conn, const char *data, long size);
@@ -94,22 +96,22 @@ IUINT32 skcp_get_sess_id(const void *data);
  * -3 表示keepalive超时
  */
 int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now);
+
 /**
  * 接收数据
  *
  * @param conn
  * @param buffer
- * @param len
- * @return int
- * >=0 表示成功，返回发送字节数
- * -1 表示错误
- * -2 表示创建连接
- * -3 表示收到connect ack 命令
- * -4 表示收到close 命令
- * -6 表示收到PONG命令
- * -5 表示收到PING命令
+ * @param buf_len
+ * @param op_type 操作类型：
+ *  1：表示创建连接；
+ *  2：表示收到 connect ack；
+ *  3：表示收到close命令；
+ *  4：表示收到data命令；
+ *  5：表示收到control命令
+ * @return >=0 表示成功，返回发送字节数; -1 表示错误
  */
-int skcp_recv(skcp_conn_t *conn, char *buffer, int len);
+int skcp_recv(skcp_conn_t *conn, char *buf, int buf_len, int *op_type);
 int skcp_append_wait_buf(skcp_conn_t *conn, const char *buffer, int len);
 
 #endif

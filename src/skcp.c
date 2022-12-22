@@ -8,23 +8,332 @@
 
 #include "3rd/uthash/utlist.h"
 
+#define SKCP_FREEIF(p) \
+    do {               \
+        if (p) {       \
+            free(p);   \
+            p = NULL;  \
+        }              \
+    } while (0)
+
+/*********************skcp protocol start*********************/
+/*
+define:
+protocol name(8bit): 0xBB
+version(8bit):0x01
+
+cmd:
+connection:
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x01
+    flg(8bit):
+                0x00:no encryption, no authentication, no payload
+                0x01: require encryption, has payload
+                0x02: require authentication, has payload
+    payload length(uint32):
+    palyload(n):
+connection ack:
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x02
+    code(8bit): 0x00:success; 0x01: unknow error; 0x02: encryption error; 0x03: authentication error;
+    payload length(uint32):
+    palyload(n):
+data:
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x03
+    payload length(uint32):
+    palyload(n):
+ping: TODO
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x04
+pong: TODO
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x05
+close:
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x06
+close ack: TODO
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x07
+control:
+    protocol name(8bit): $name
+    version(8bit): $ver
+    cmd(8bit): 0x08
+    payload length(uint32):
+    palyload(n):
+
+*/
+
 #define SKCP_CMD_CONN 0x01
 #define SKCP_CMD_CONN_ACK 0x02
-#define SKCP_CMD_CLOSE 0x03
-// #define SKCP_CMD_CLOSE_ACK 0x04
-#define SKCP_CMD_DATA 0x05
-#define SKCP_CMD_PING 0x06
-#define SKCP_CMD_PONG 0x07
+#define SKCP_CMD_DATA 0x03
+#define SKCP_CMD_PING 0x04
+#define SKCP_CMD_PONG 0x05
+#define SKCP_CMD_CLOSE 0x06
+#define SKCP_CMD_CLOSE_ACK 0x07
+#define SKCP_CMD_CTRL 0x08
 
-#define SKCP_FREE(p)  \
-    do {              \
-        if (p) {      \
-            free(p);  \
-            p = NULL; \
-        }             \
-    } while (0);
+#define SKCP_CMD_HEADER_LEN 24
+#define SKCP_PROTOCOL_NAME 0xBB
+#define SKCP_PROTOCOL_VER_1 0x01
+#define SKCP_CMD_CONN_NEED_ENCRYPT 0x01
+#define SKCP_CMD_CONN_NEED_AUTH 0x02
 
-/************************************************/
+typedef struct {
+    char name;
+    char ver;
+    char type;
+} skcp_cmd_header_t;
+
+typedef struct {
+    skcp_cmd_header_t header;
+    char flg;
+    uint32_t payload_len;
+    char *payload;
+} skcp_cmd_conn_t;
+
+typedef struct {
+    skcp_cmd_header_t header;
+    char code;
+    uint32_t payload_len;
+    char *payload;
+} skcp_cmd_conn_ack_t;
+
+typedef struct {
+    skcp_cmd_header_t header;
+    uint32_t payload_len;
+    char *payload;
+} skcp_cmd_data_t;
+
+typedef struct {
+    skcp_cmd_header_t header;
+} skcp_cmd_close_t;
+
+typedef struct {
+    skcp_cmd_header_t header;
+    uint32_t payload_len;
+    char *payload;
+} skcp_cmd_ctrl_t;
+
+// static skcp_cmd_header_t build_header() {}
+
+#define SKCP_ENCODE_CMD_HEADER(vbuf, vheader) \
+    do {                                      \
+        *vbuf = vheader.name;                 \
+        *(vbuf + 1) = vheader.ver;            \
+        *(vbuf + 2) = vheader.type;           \
+    } while (0)
+
+#define SKCP_DECODE_CMD_HEADER(vheader, vbuf) \
+    do {                                      \
+        vheader.name = *vbuf;                 \
+        vheader.ver = *(vbuf + 1);            \
+        vheader.type = *(vbuf + 2);           \
+    } while (0)
+
+#define SKCP_BUILD_CMD_HEADER(vheader, vtype) \
+    do {                                      \
+        vheader.name = SKCP_PROTOCOL_NAME;    \
+        vheader.ver = SKCP_PROTOCOL_VER_1;    \
+        vheader.type = vtype;                 \
+    } while (0)
+
+#define SKCP_BUILD_CMD_CONN(vcmd, vflg, vpayload_len, vpayload) \
+    do {                                                        \
+        vcmd = malloc(sizeof(skcp_cmd_conn_t));                 \
+        SKCP_BUILD_CMD_HEADER(vcmd->header, SKCP_CMD_CONN);     \
+        vcmd->flg = vflg;                                       \
+        vcmd->payload_len = vpayload_len;                       \
+        vcmd->payload = vpayload;                               \
+    } while (0)
+
+#define SKCP_BUILD_CMD_CONN_ACK(vcmd, vcode, vpayload_len, vpayload) \
+    do {                                                             \
+        vcmd = malloc(sizeof(skcp_cmd_conn_ack_t));                  \
+        SKCP_BUILD_CMD_HEADER(vcmd->header, SKCP_CMD_CONN_ACK);      \
+        vcmd->code = vcode;                                          \
+        vcmd->payload_len = vpayload_len;                            \
+        vcmd->payload = vpayload;                                    \
+    } while (0)
+
+#define SKCP_BUILD_CMD_CLOSE(vcmd)                           \
+    do {                                                     \
+        vcmd = malloc(sizeof(skcp_cmd_close_t));             \
+        SKCP_BUILD_CMD_HEADER(vcmd->header, SKCP_CMD_CLOSE); \
+    } while (0)
+
+#define SKCP_BUILD_CMD_DATA(vcmd, vpayload_len, vpayload)   \
+    do {                                                    \
+        vcmd = malloc(sizeof(skcp_cmd_data_t));             \
+        SKCP_BUILD_CMD_HEADER(vcmd->header, SKCP_CMD_DATA); \
+        vcmd->payload_len = vpayload_len;                   \
+        vcmd->payload = vpayload;                           \
+    } while (0)
+
+#define SKCP_BUILD_CMD_CTRL(vcmd, vpayload_len, vpayload)   \
+    do {                                                    \
+        vcmd = malloc(sizeof(skcp_cmd_ctrl_t));             \
+        SKCP_BUILD_CMD_HEADER(vcmd->header, SKCP_CMD_CTRL); \
+        vcmd->payload_len = vpayload_len;                   \
+        vcmd->payload = vpayload;                           \
+    } while (0)
+
+static int encode_cmd_conn(skcp_cmd_conn_t *cmd, char **out_buf) {
+    if (!cmd || cmd->payload_len < 0) {
+        return 0;
+    }
+    int len = SKCP_CMD_HEADER_LEN + 8 + cmd->payload_len;
+    *out_buf = malloc(len);
+    SKCP_ENCODE_CMD_HEADER(*out_buf, cmd->header);
+    *(*out_buf + 3) = cmd->flg;
+    uint32_t payload_len = htonl(cmd->payload_len);
+    memcpy(*out_buf + 4, &payload_len, 4);
+    if (cmd->payload_len > 0) {
+        memcpy(*out_buf + 8, cmd->payload, cmd->payload_len);
+    }
+    return len;
+}
+
+static skcp_cmd_conn_t *decode_cmd_conn(char *buf, int len) {
+    if (!buf || len < SKCP_CMD_HEADER_LEN + 8) {
+        return NULL;
+    }
+    skcp_cmd_conn_t *cmd = malloc(sizeof(skcp_cmd_conn_t));
+    SKCP_DECODE_CMD_HEADER(cmd->header, buf);
+    cmd->flg = *(buf + 3);
+    cmd->payload_len = ntohl(*(uint32_t *)(buf + 4));
+    if (cmd->payload_len > 0) {
+        cmd->payload = malloc(cmd->payload_len);
+        memcpy(cmd->payload, buf + 8, cmd->payload_len);
+    } else {
+        cmd->payload = NULL;
+    }
+    return cmd;
+}
+
+static int encode_cmd_conn_ack(skcp_cmd_conn_ack_t *cmd, char **out_buf) {
+    if (!cmd || cmd->payload_len < 0) {
+        return 0;
+    }
+    int len = SKCP_CMD_HEADER_LEN + 8 + cmd->payload_len;
+    *out_buf = malloc(len);
+    SKCP_ENCODE_CMD_HEADER(*out_buf, cmd->header);
+    *(*out_buf + 3) = cmd->code;
+    uint32_t payload_len = htonl(cmd->payload_len);
+    memcpy(*out_buf + 4, &payload_len, 4);
+    if (cmd->payload_len > 0) {
+        memcpy(*out_buf + 8, cmd->payload, cmd->payload_len);
+    }
+    return len;
+}
+
+static skcp_cmd_conn_ack_t *decode_cmd_conn_ack(char *buf, int len) {
+    if (!buf || len < SKCP_CMD_HEADER_LEN + 8) {
+        return NULL;
+    }
+    skcp_cmd_conn_ack_t *cmd = malloc(sizeof(skcp_cmd_conn_ack_t));
+    SKCP_DECODE_CMD_HEADER(cmd->header, buf);
+    cmd->code = *(buf + 3);
+    cmd->payload_len = ntohl(*(uint32_t *)(buf + 4));
+    if (cmd->payload_len > 0) {
+        cmd->payload = malloc(cmd->payload_len);
+        memcpy(cmd->payload, buf + 8, cmd->payload_len);
+    } else {
+        cmd->payload = NULL;
+    }
+    return cmd;
+}
+
+static int encode_cmd_data(skcp_cmd_data_t *cmd, char **out_buf) {
+    if (!cmd || cmd->payload_len < 0) {
+        return 0;
+    }
+    int len = SKCP_CMD_HEADER_LEN + cmd->payload_len;
+    *out_buf = malloc(len);
+    SKCP_ENCODE_CMD_HEADER(*out_buf, cmd->header);
+    uint32_t payload_len = htonl(cmd->payload_len);
+    memcpy(*out_buf + 3, &payload_len, 4);
+    if (cmd->payload_len > 0) {
+        memcpy(*out_buf + 7, cmd->payload, cmd->payload_len);
+    }
+    return len;
+}
+
+static skcp_cmd_data_t *decode_cmd_data(char *buf, int len) {
+    if (!buf || len < SKCP_CMD_HEADER_LEN) {
+        return NULL;
+    }
+    skcp_cmd_data_t *cmd = malloc(sizeof(skcp_cmd_data_t));
+    SKCP_DECODE_CMD_HEADER(cmd->header, buf);
+    cmd->payload_len = ntohl(*(uint32_t *)(buf + 3));
+    assert(cmd->payload_len >= 0);
+    if (cmd->payload_len > 0) {
+        cmd->payload = malloc(cmd->payload_len);
+        memcpy(cmd->payload, buf + 7, cmd->payload_len);
+    } else {
+        cmd->payload = NULL;
+    }
+    return cmd;
+}
+
+static int encode_cmd_close(skcp_cmd_close_t *cmd, char **out_buf) {
+    if (!cmd) {
+        return -1;
+    }
+    *out_buf = malloc(SKCP_CMD_HEADER_LEN);
+    SKCP_ENCODE_CMD_HEADER(*out_buf, cmd->header);
+    return SKCP_CMD_HEADER_LEN;
+}
+
+static skcp_cmd_close_t *decode_cmd_close(char *buf, int len) {
+    if (!buf || len < SKCP_CMD_HEADER_LEN) {
+        return NULL;
+    }
+    skcp_cmd_close_t *cmd = malloc(sizeof(skcp_cmd_close_t));
+    SKCP_DECODE_CMD_HEADER(cmd->header, buf);
+    return cmd;
+}
+
+static int encode_cmd_ctrl(skcp_cmd_ctrl_t *cmd, char **out_buf) {
+    if (!cmd || cmd->payload_len < 0) {
+        return 0;
+    }
+    int len = SKCP_CMD_HEADER_LEN + cmd->payload_len;
+    *out_buf = malloc(len);
+    SKCP_ENCODE_CMD_HEADER(*out_buf, cmd->header);
+    uint32_t payload_len = htonl(cmd->payload_len);
+    memcpy(*out_buf + 3, &payload_len, 4);
+    if (cmd->payload_len > 0) {
+        memcpy(*out_buf + 7, cmd->payload, cmd->payload_len);
+    }
+    return len;
+}
+
+static skcp_cmd_ctrl_t *decode_cmd_ctrl(char *buf, int len) {
+    if (!buf || len < SKCP_CMD_HEADER_LEN) {
+        return NULL;
+    }
+    skcp_cmd_ctrl_t *cmd = malloc(sizeof(skcp_cmd_ctrl_t));
+    SKCP_DECODE_CMD_HEADER(cmd->header, buf);
+    cmd->payload_len = ntohl(*(uint32_t *)(buf + 3));
+    assert(cmd->payload_len >= 0);
+    if (cmd->payload_len > 0) {
+        cmd->payload = malloc(cmd->payload_len);
+        memcpy(cmd->payload, buf + 7, cmd->payload_len);
+    } else {
+        cmd->payload = NULL;
+    }
+    return cmd;
+}
+
+/*********************skcp protocol end*********************/
 
 int skcp_append_wait_buf(skcp_conn_t *conn, const char *buffer, int len) {
     if (len > KCP_WAITIMG_BUF_SZ) {
@@ -75,33 +384,30 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     return conn->skcp->conf->output(buf, len, conn);
 }
 
-static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
-    char *raw_buf = NULL;
-    int raw_len = 0;
-    int has_payload = SKCP_CMD_DATA == cmd || SKCP_CMD_PING == cmd || SKCP_CMD_PONG == cmd;
-    if (has_payload) {
-        raw_len = len + 1;
-        raw_buf = malloc(raw_len);
-        snprintf(raw_buf, raw_len, "%c", cmd);
-        char *p = raw_buf + 1;
-        memcpy(p, buf, len);
-    } else {
-        // char s[2] = {0};
-        // s[0] = cmd;
-        // raw_buf = s;
-        // raw_len = 1;
-        srand((unsigned)time(NULL));
-        int jam = rand() % (RAND_MAX - 10000000) + 10000000;
-        char s[10] = {0};
-        snprintf(s, 10, "%c%d", cmd, jam);
-        raw_len = strlen(s);
-        raw_buf = s;
-    }
+static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len) {
+    // char *raw_buf = NULL;
+    // int raw_len = 0;
+    // int has_payload = SKCP_CMD_DATA == cmd || SKCP_CMD_PING == cmd || SKCP_CMD_PONG == cmd;
+    // if (has_payload) {
+    //     raw_len = len + 1;
+    //     raw_buf = malloc(raw_len);
+    //     snprintf(raw_buf, raw_len, "%c", cmd);
+    //     char *p = raw_buf + 1;
+    //     memcpy(p, buf, len);
+    // } else {
+    //     // char s[2] = {0};
+    //     // s[0] = cmd;
+    //     // raw_buf = s;
+    //     // raw_len = 1;
+    //     srand((unsigned)time(NULL));
+    //     int jam = rand() % (RAND_MAX - 10000000) + 10000000;
+    //     char s[10] = {0};
+    //     snprintf(s, 10, "%c%d", cmd, jam);
+    //     raw_len = strlen(s);
+    //     raw_buf = s;
+    // }
 
-    int rt = ikcp_send(conn->kcp, raw_buf, raw_len);
-    if (has_payload) {
-        SKCP_FREE(raw_buf);
-    }
+    int rt = ikcp_send(conn->kcp, buf, len);
     if (rt < 0) {
         // 发送失败
         return -1;
@@ -111,26 +417,32 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
     return rt;
 }
 
-static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
+static void close_conn(skcp_conn_t *conn, int is_send_close_cmd) {
     if (conn->skcp->conn_ht) {
         del_conn(conn);
     }
 
-    if (!close_cmd_flg) {
-        int rt = kcp_send_raw(conn, NULL, 0, SKCP_CMD_CLOSE);
+    if (is_send_close_cmd) {
+        skcp_cmd_close_t *cmd_close;
+        SKCP_BUILD_CMD_CLOSE(cmd_close);
+        char *close_buf = NULL;
+        int close_len = encode_cmd_close(cmd_close, &close_buf);
+        if (close_len > 0) {
+            kcp_send_raw(conn, close_buf, close_len);
+        }
     }
 
     conn->status = SKCP_CONN_ST_OFF;
 
     if (conn->htkey) {
-        SKCP_FREE(conn->htkey);
+        SKCP_FREEIF(conn->htkey);
     }
 
     if (conn->waiting_buf_q) {
         waiting_buf_t *wbtmp, *item;
         DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
             DL_DELETE(conn->waiting_buf_q, item);
-            SKCP_FREE(item);
+            SKCP_FREEIF(item);
         }
         conn->waiting_buf_q = NULL;
     }
@@ -141,45 +453,83 @@ static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
     }
 
     conn->sess_id = 0;  // TODO: for test
-    SKCP_FREE(conn);
+    SKCP_FREEIF(conn);
 }
 
-static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int len) {
-    if (len < 1) {
+static int handle_cmd_conn(skcp_conn_t *conn, skcp_cmd_conn_t *cmd) {
+    if (!cmd) {
         return -1;
     }
 
-    char cmd = *in_buf;
-    if (SKCP_CMD_CONN == cmd) {
-        if (SKCP_CONN_ST_READY != conn->status) {
-            return -1;
-        }
-
-        kcp_send_raw(conn, NULL, 0, SKCP_CMD_CONN_ACK);
-        conn->status = SKCP_CONN_ST_ON;
-        return -2;  // accept connection
-    } else if (SKCP_CMD_CONN_ACK == cmd) {
-        if (SKCP_CONN_ST_READY != conn->status) {
-            return -1;
-        }
-
-        conn->status = SKCP_CONN_ST_ON;
-        return -3;
-    } else if (SKCP_CMD_CLOSE == cmd) {
-        close_conn(conn, 1);
-        return -4;
-    } else if (SKCP_CMD_PING == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
-        return -5;
-    } else if (SKCP_CMD_PONG == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
-        return -6;
-    } else if (SKCP_CMD_DATA == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);
-        return len - 1;
+    if (SKCP_CONN_ST_READY != conn->status) {
+        return -1;
     }
 
-    return -1;
+    if ((cmd->flg & SKCP_CMD_CONN_NEED_ENCRYPT) == SKCP_CMD_CONN_NEED_ENCRYPT) {
+        int iv_len = cmd->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd->payload_len;
+        memcpy(conn->iv, cmd->payload, iv_len);
+    }
+
+    skcp_cmd_conn_ack_t *ack;
+    SKCP_BUILD_CMD_CONN_ACK(ack, 0, cmd->payload_len, cmd->payload);
+    char *ack_buf;
+    int ack_buf_len = encode_cmd_conn_ack(ack, &ack_buf);
+    if (ack_buf_len <= 0) {
+        SKCP_FREEIF(ack);
+        return -1;
+    }
+    kcp_send_raw(conn, ack_buf, ack_buf_len);
+    conn->status = SKCP_CONN_ST_ON;
+
+    return 0;
+}
+
+static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, int *op_type) {
+    if (len < SKCP_CMD_HEADER_LEN) {
+        return -1;
+    }
+    skcp_cmd_header_t header;
+    SKCP_DECODE_CMD_HEADER(header, in_buf);
+    if (SKCP_CMD_CONN == header.type) {
+        *op_type = 1;
+        return handle_cmd_conn(conn, decode_cmd_conn(in_buf, len));
+    } else if (SKCP_CMD_CONN_ACK == header.type) {
+        *op_type = 2;
+        if (SKCP_CONN_ST_READY != conn->status) {
+            return -1;
+        }
+        skcp_cmd_conn_ack_t *cmd_conn_ack = decode_cmd_conn_ack(in_buf, len);
+        if (!cmd_conn_ack || cmd_conn_ack->payload_len <= 0) {
+            return -1;
+        }
+        int iv_len = cmd_conn_ack->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd_conn_ack->payload_len;
+        memcpy(conn->iv, cmd_conn_ack->payload, iv_len);
+        conn->status = SKCP_CONN_ST_ON;
+    } else if (SKCP_CMD_CLOSE == header.type) {
+        *op_type = 3;
+        close_conn(conn, 0);
+    } else if (SKCP_CMD_DATA == header.type) {
+        *op_type = 4;
+        skcp_cmd_data_t *cmd_data = decode_cmd_data(in_buf, len);
+        if (!cmd_data) {
+            return -1;
+        }
+        if (cmd_data->payload_len > 0) {
+            memcpy(out_buf, cmd_data->payload, cmd_data->payload_len);
+        }
+    } else if (SKCP_CMD_CTRL == header.type) {
+        *op_type = 5;
+        skcp_cmd_ctrl_t *cmd_ctrl = decode_cmd_ctrl(in_buf, len);
+        if (!cmd_ctrl) {
+            return -1;
+        }
+        if (cmd_ctrl->payload_len > 0) {
+            memcpy(out_buf, cmd_ctrl->payload, cmd_ctrl->payload_len);
+        }
+    } else {
+        *op_type = 0;
+    }
+    return 0;
 }
 
 /************************************************/
@@ -197,11 +547,11 @@ int skcp_input(skcp_conn_t *conn, const char *data, long size) {
 }
 IUINT32 skcp_get_sess_id(const void *data) { return ikcp_getconv(data); }
 
-int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
-    char *recv_buf = malloc(len);
+int skcp_recv(skcp_conn_t *conn, char *buf, int buf_len, int *op_type) {
+    char *recv_buf = malloc(buf_len);
     int recv_len = 0;
 irecv:
-    recv_len = ikcp_recv(conn->kcp, recv_buf, len);
+    recv_len = ikcp_recv(conn->kcp, recv_buf, buf_len);
     if (recv_len == -1) {
         // empty
         // fprintf(stdout, "warn: ikcp_recv empty\n");
@@ -213,7 +563,7 @@ irecv:
     } else if (recv_len == -3) {
         // resize
         fprintf(stdout, "warn: ikcp_recv need resize\n");
-        SKCP_FREE(recv_buf);
+        SKCP_FREEIF(recv_buf);
         int peeksize = ikcp_peeksize(conn->kcp);
         if (peeksize <= 0) {
             fprintf(stderr, "error: ikcp_peeksize <= 0\n");
@@ -225,25 +575,45 @@ irecv:
 
     ikcp_update(conn->kcp, clock());  // TODO: 跨平台
     if (recv_len > 0) {
-        recv_len = parse_recv_data(conn, recv_buf, buffer, recv_len);
+        recv_len = parse_recv(conn, recv_buf, buf, recv_len, op_type);
     }
-    SKCP_FREE(recv_buf);
+    SKCP_FREEIF(recv_buf);
     return recv_len;
 }
 
-int skcp_send(skcp_conn_t *conn, const char *buffer, int len) { return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA); }
-
-int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
-    char buf[22] = {0};
-    snprintf(buf, 22, "%llu", now);
-    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
+int skcp_send_data(skcp_conn_t *conn, const char *buf, int len) {
+    skcp_cmd_data_t *cmd_data;
+    SKCP_BUILD_CMD_DATA(cmd_data, len, (char *)buf);
+    char *data_buf;
+    int data_len = encode_cmd_data(cmd_data, &data_buf);
+    if (data_len <= 0) {
+        return -1;
+    }
+    return kcp_send_raw(conn, data_buf, data_len);
 }
 
-int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
-    char buf[44] = {0};
-    snprintf(buf, 44, "%llu %llu", tm, now);
-    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
+int skcp_send_ctrl(skcp_conn_t *conn, const char *buf, int len) {
+    skcp_cmd_ctrl_t *cmd_ctrl;
+    SKCP_BUILD_CMD_CTRL(cmd_ctrl, len, (char *)buf);
+    char *ctrl_buf;
+    int ctrl_len = encode_cmd_ctrl(cmd_ctrl, &ctrl_buf);
+    if (ctrl_len <= 0) {
+        return -1;
+    }
+    return kcp_send_raw(conn, ctrl_buf, ctrl_len);
 }
+
+// int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
+//     char buf[22] = {0};
+//     snprintf(buf, 22, "%llu", now);
+//     return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
+// }
+
+// int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
+//     char buf[44] = {0};
+//     snprintf(buf, 44, "%llu %llu", tm, now);
+//     return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
+// }
 
 IUINT32 skcp_gen_sess_id(skcp_t *skcp) {
     skcp->cur_sess_id++;
@@ -259,6 +629,7 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->user_data = user_data;
     conn->waiting_buf_q = NULL;
     conn->htkey = htkey;
+    memset(conn->iv, 0, sizeof(conn->iv));
 
     ikcpcb *kcp = ikcp_create(conn->sess_id, conn);
     skcp_conf_t *conf = skcp->conf;
@@ -269,7 +640,21 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->kcp = kcp;
 
     if (skcp->mode == SKCP_MODE_CLI) {
-        kcp_send_raw(conn, NULL, 0, SKCP_CMD_CONN);
+        // srand((unsigned)time(NULL));
+        skcp_cmd_conn_t *cmd_conn;
+        int rd = rand() % (RAND_MAX - 10000000) + 10000000;
+        char iv[33];
+        snprintf(iv, sizeof(iv), "%d%d%d%d", rd, rd, rd, rd);
+        SKCP_BUILD_CMD_CONN(cmd_conn, SKCP_CMD_CONN_NEED_ENCRYPT, 32, iv);
+        char *conn_buf = NULL;
+        int conn_len = encode_cmd_conn(cmd_conn, &conn_buf);
+        if (conn_len <= 0) {
+            ikcp_release(conn->kcp);
+            conn->kcp = NULL;
+            SKCP_FREEIF(conn);
+            return NULL;
+        }
+        kcp_send_raw(conn, conn_buf, conn_len);
     }
 
     add_conn(conn);
@@ -277,7 +662,7 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     return conn;
 }
 
-void skcp_close_conn(skcp_conn_t *conn) { close_conn(conn, 0); }
+void skcp_close_conn(skcp_conn_t *conn) { close_conn(conn, 1); }
 
 int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
     skcp_t *skcp = conn->skcp;
@@ -285,12 +670,12 @@ int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
         // 连接管理
         if ((now - conn->estab_tm) >= skcp->conf->estab_timeout * 1000l) {
             // 超时
-            close_conn(conn, 0);
+            close_conn(conn, 1);
             return -1;
         }
     } else {
         if (SKCP_CONN_ST_CAN_OFF == conn->status) {
-            close_conn(conn, 0);
+            close_conn(conn, 1);
             return -2;
         } else {
             if ((now - conn->last_r_tm) >= skcp->conf->r_keepalive * 1000l) {
@@ -312,5 +697,5 @@ skcp_t *skcp_init(skcp_conf_t *conf, SKCP_MODE mode) {
 }
 void skcp_free(skcp_t *skcp) {
     skcp->conf = NULL;
-    SKCP_FREE(skcp);
+    SKCP_FREEIF(skcp);
 }

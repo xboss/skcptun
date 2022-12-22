@@ -49,6 +49,8 @@ struct skt_kcp_conn_s {
     int tcp_fd;
 };
 
+#define SKT_GET_KCP_CONN(vskcp_conn) ((skt_kcp_conn_t *)((vskcp_conn)->user_data))
+
 skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, SKCP_MODE mode);
 void skt_kcp_free(skt_kcp_t *skt_kcp);
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr);

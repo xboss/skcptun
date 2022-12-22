@@ -152,7 +152,7 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
                 ((now - conn->last_r_tm) / 1000) > (skt_kcp->conf->skcp_conf->r_keepalive / 2)) {
                 // TODO: 需要优化，目前仅用来统计rtt
                 // LOG_I("send ping sess_id:%u time:%llu", conn->sess_id, now);
-                skcp_send_ping(conn, now);
+                // skcp_send_ping(conn, now);
             }
         }
     }
@@ -204,7 +204,7 @@ int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
     if (NULL == conn) {
         return -1;
     }
-    int rt = skcp_send(conn, buf, len);
+    int rt = skcp_send_data(conn, buf, len);
     return rt;
 }
 
@@ -320,55 +320,107 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     char *kcp_recv_buf = malloc(skt_kcp->conf->kcp_buf_size);
     memset(kcp_recv_buf, 0, skt_kcp->conf->kcp_buf_size);
     int kcp_recv_len = 0;
-    int rt = skcp_recv(conn, kcp_recv_buf, skt_kcp->conf->kcp_buf_size);
-    if (rt > 0) {
-        // 成功
-        conn->last_r_tm = getmillisecond();
-        skt_kcp->kcp_recv_cb(conn, kcp_recv_buf, rt);
-    } else {
-        switch (rt) {
-            case -1:
-                // 错误
-                LOG_D("skcp_recv error");
-                skcp_close_conn(conn);
-                call_conn_close_cb(skt_kcp, kcp_conn);
-                break;
-            case -2:
-                // 创建连接
-                skt_kcp->new_conn_cb(conn);
-                LOG_D("new conn sess_id:%u", conn->sess_id);
-                break;
-            case -3:
-                // 收到connect ack 命令
-                LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
-                conn->last_r_tm = getmillisecond();
-                break;
-            case -4:
-                // 收到close 命令
-                LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
-                conn->last_r_tm = getmillisecond();
-                call_conn_close_cb(skt_kcp, kcp_conn);
-                break;
-            case -5:
-                // 收到ping 命令
-                {
-                    conn->last_r_tm = getmillisecond();
-                    uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
-                    uint64_t now = getmillisecond();
-                    skcp_send_pong(conn, pitm, now);
-                }
-                break;
-            case -6:
-                // 收到pong 命令
-                conn->last_r_tm = getmillisecond();
-                stat_rtt(conn, kcp_recv_buf);
-                break;
-            default:
-                break;
-        }
+    int op_type = 0;
+    int rt = skcp_recv(conn, kcp_recv_buf, skt_kcp->conf->kcp_buf_size, &op_type);
+    if (rt < 0) {
+        // 错误
+        LOG_D("skcp_recv error");
+        skcp_close_conn(conn);
+        call_conn_close_cb(skt_kcp, kcp_conn);
+        FREE_IF(kcp_recv_buf);
+        return;
+    }
+
+    if (rt == 0) {
+        // empty EAGAIN
+        LOG_I("skcp_recv empty");
+        FREE_IF(kcp_recv_buf);
+        return;
+    }
+
+    switch (op_type) {
+        case 1:
+            // 创建连接
+            skt_kcp->new_conn_cb(conn);
+            LOG_D("new conn sess_id:%u", conn->sess_id);
+            break;
+        case 2:
+            // 收到connect ack 命令
+            LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
+            conn->last_r_tm = getmillisecond();
+            break;
+        case 3:
+            // 收到close 命令
+            LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
+            conn->last_r_tm = getmillisecond();
+            call_conn_close_cb(skt_kcp, kcp_conn);
+            break;
+        case 4:
+            // 收到data 命令
+            conn->last_r_tm = getmillisecond();
+            skt_kcp->kcp_recv_cb(conn, kcp_recv_buf, rt);
+            break;
+        case 5:
+            // 收到control命令
+            LOG_D("cmd control sess_id:%u", conn->sess_id);
+            conn->last_r_tm = getmillisecond();
+            break;
+
+        default:
+            LOG_W("skcp_recv no op_type");
+            break;
     }
     FREE_IF(kcp_recv_buf);
     return;
+
+    // if (rt > 0) {
+    //     // 成功
+    //     conn->last_r_tm = getmillisecond();
+    //     skt_kcp->kcp_recv_cb(conn, kcp_recv_buf, rt);
+    // } else {
+    //     switch (rt) {
+    //         case -1:
+    //             // 错误
+    //             LOG_D("skcp_recv error");
+    //             skcp_close_conn(conn);
+    //             call_conn_close_cb(skt_kcp, kcp_conn);
+    //             break;
+    //         case -2:
+    //             // 创建连接
+    //             skt_kcp->new_conn_cb(conn);
+    //             LOG_D("new conn sess_id:%u", conn->sess_id);
+    //             break;
+    //         case -3:
+    //             // 收到connect ack 命令
+    //             LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
+    //             conn->last_r_tm = getmillisecond();
+    //             break;
+    //         case -4:
+    //             // 收到close 命令
+    //             LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
+    //             conn->last_r_tm = getmillisecond();
+    //             call_conn_close_cb(skt_kcp, kcp_conn);
+    //             break;
+    //         case -5:
+    //             // 收到ping 命令
+    //             {
+    //                 conn->last_r_tm = getmillisecond();
+    //                 uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
+    //                 uint64_t now = getmillisecond();
+    //                 skcp_send_pong(conn, pitm, now);
+    //             }
+    //             break;
+    //         case -6:
+    //             // 收到pong 命令
+    //             conn->last_r_tm = getmillisecond();
+    //             stat_rtt(conn, kcp_recv_buf);
+    //             break;
+    //         default:
+    //             break;
+    //     }
+    // }
+    // FREE_IF(kcp_recv_buf);
+    // return;
 }
 
 skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, SKCP_MODE mode) {

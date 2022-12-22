@@ -19,7 +19,7 @@
             free(p);  \
             p = NULL; \
         }             \
-    } while (0);
+    } while (0)
 
 #define LOG_E(fmt, args...)  \
     do {                     \
@@ -27,7 +27,7 @@
         print_now();         \
         printf(fmt, ##args); \
         printf("\n");        \
-    } while (0);
+    } while (0)
 
 #ifdef _WARN_LOG
 #define LOG_W(fmt, args...)  \
@@ -36,12 +36,12 @@
         print_now();         \
         printf(fmt, ##args); \
         printf("\n");        \
-    } while (0);
+    } while (0)
 #else
 #define LOG_W(fmt, args...) \
     do {                    \
         ;                   \
-    } while (0);
+    } while (0)
 #endif
 
 #ifdef _INFO_LOG
@@ -51,12 +51,12 @@
         print_now();         \
         printf(fmt, ##args); \
         printf("\n");        \
-    } while (0);
+    } while (0)
 #else
 #define LOG_I(fmt, args...) \
     do {                    \
         ;                   \
-    } while (0);
+    } while (0)
 #endif
 
 #ifdef _DEBUG_LOG
@@ -66,12 +66,12 @@
         print_now();         \
         printf(fmt, ##args); \
         printf("\n");        \
-    } while (0);
+    } while (0)
 #else
 #define LOG_D(fmt, args...) \
     do {                    \
         ;                   \
-    } while (0);
+    } while (0)
 #endif
 
 void char_to_hex(char* src, int len, char* des);

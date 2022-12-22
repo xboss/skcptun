@@ -336,7 +336,7 @@ void skt_tcp_close_conn(skt_tcp_conn_t *conn) {
 
     if (conn->w_watcher) {
         ev_io_stop(conn->skt_tcp->loop, conn->w_watcher);
-        FREE_IF(conn->w_watcher)
+        FREE_IF(conn->w_watcher);
     }
 
     if (conn->timeout_watcher) {
