@@ -115,7 +115,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     int32_t bytes = read(watcher->fd, buffer, conn->r_buf_size);
     if (bytes < 0) {
         // may error
-        if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno) {
+        if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno && ECONNRESET != errno) {
             res = 1;
             LOG_W("read_cb tcp error fd:%d, errno:%d %s", watcher->fd, errno, strerror(errno));
         }
