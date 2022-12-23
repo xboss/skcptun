@@ -32,11 +32,11 @@ static void send_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents)
         return;
     }
 
-    // LOG_D("send_cb new iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
+// LOG_D("send_cb new iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
 
-    // char str[256] = {0};
-    // snprintf(str, 256, "hello %llu count %d", getmillisecond(), count);
-    const int sz = 5;  // 2100;
+// char str[256] = {0};
+// snprintf(str, 256, "hello %llu count %d", getmillisecond(), count);
+#define sz 5
     char str[sz] = {0};
     str[0] = 'A';
     for (int i = 1; i < sz - 1; i++) {

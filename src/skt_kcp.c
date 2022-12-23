@@ -80,6 +80,8 @@ static int init_cli_network(skt_kcp_t *skt_kcp) {
     skt_kcp->servaddr.sin_port = htons(skt_kcp->conf->port);
     skt_kcp->servaddr.sin_addr.s_addr = inet_addr(skt_kcp->conf->addr);
 
+    LOG_I("kcp client start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
+
     return SKT_OK;
 }
 
@@ -109,7 +111,7 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         return SKT_ERROR;
     }
 
-    LOG_I("udp listening %s %u", skt_kcp->conf->addr, skt_kcp->conf->port);
+    LOG_I("kcp client start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
 
     return SKT_OK;
 }

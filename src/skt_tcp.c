@@ -383,7 +383,8 @@ skt_tcp_t *skt_tcp_init(skt_tcp_conf_t *conf, struct ev_loop *loop) {
         ev_io_init(tcp->accept_watcher, accept_cb, tcp->listenfd, EV_READ);
         tcp->accept_watcher->data = tcp;
         ev_io_start(tcp->loop, tcp->accept_watcher);
-        LOG_I("tcp server start ok fd:%d, addr:%s, port:%u", tcp->listenfd, tcp->conf->serv_addr, tcp->conf->serv_port);
+        LOG_I("tcp server start ok. fd: %d, addr: %s, port: %u", tcp->listenfd, tcp->conf->serv_addr,
+              tcp->conf->serv_port);
     }
 
     return tcp;
