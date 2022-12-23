@@ -7,24 +7,15 @@
 #include <time.h>
 
 #include "3rd/uthash/utlist.h"
+#include "skcp_protocol.h"
 
-#define SKCP_CMD_CONN 0x01
-#define SKCP_CMD_CONN_ACK 0x02
-#define SKCP_CMD_CLOSE 0x03
-// #define SKCP_CMD_CLOSE_ACK 0x04
-#define SKCP_CMD_DATA 0x05
-#define SKCP_CMD_PING 0x06
-#define SKCP_CMD_PONG 0x07
-
-#define SKCP_FREE(p)  \
-    do {              \
-        if (p) {      \
-            free(p);  \
-            p = NULL; \
-        }             \
-    } while (0);
-
-/************************************************/
+#define SKCP_FREEIF(p) \
+    do {               \
+        if (p) {       \
+            free(p);   \
+            p = NULL;  \
+        }              \
+    } while (0)
 
 int skcp_append_wait_buf(skcp_conn_t *conn, const char *buffer, int len) {
     if (len > KCP_WAITIMG_BUF_SZ) {
@@ -75,62 +66,33 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     return conn->skcp->conf->output(buf, len, conn);
 }
 
-static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len, char cmd) {
-    char *raw_buf = NULL;
-    int raw_len = 0;
-    int has_payload = SKCP_CMD_DATA == cmd || SKCP_CMD_PING == cmd || SKCP_CMD_PONG == cmd;
-    if (has_payload) {
-        raw_len = len + 1;
-        raw_buf = malloc(raw_len);
-        snprintf(raw_buf, raw_len, "%c", cmd);
-        char *p = raw_buf + 1;
-        memcpy(p, buf, len);
-    } else {
-        // char s[2] = {0};
-        // s[0] = cmd;
-        // raw_buf = s;
-        // raw_len = 1;
-        srand((unsigned)time(NULL));
-        int jam = rand() % (RAND_MAX - 10000000) + 10000000;
-        char s[10] = {0};
-        snprintf(s, 10, "%c%d", cmd, jam);
-        raw_len = strlen(s);
-        raw_buf = s;
-    }
-
-    int rt = ikcp_send(conn->kcp, raw_buf, raw_len);
-    if (has_payload) {
-        SKCP_FREE(raw_buf);
-    }
+static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len) {
+    int rt = ikcp_send(conn->kcp, buf, len);
     if (rt < 0) {
         // 发送失败
         return -1;
     }
     ikcp_update(conn->kcp, clock());  // TODO: 跨平台
-
     return rt;
 }
 
-static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
+static void close_conn(skcp_conn_t *conn) {
+    // printf("debug: close_conn htkey: %s\n", conn->htkey);
     if (conn->skcp->conn_ht) {
         del_conn(conn);
-    }
-
-    if (!close_cmd_flg) {
-        int rt = kcp_send_raw(conn, NULL, 0, SKCP_CMD_CLOSE);
     }
 
     conn->status = SKCP_CONN_ST_OFF;
 
     if (conn->htkey) {
-        SKCP_FREE(conn->htkey);
+        SKCP_FREEIF(conn->htkey);
     }
 
     if (conn->waiting_buf_q) {
         waiting_buf_t *wbtmp, *item;
         DL_FOREACH_SAFE(conn->waiting_buf_q, item, wbtmp) {
             DL_DELETE(conn->waiting_buf_q, item);
-            SKCP_FREE(item);
+            SKCP_FREEIF(item);
         }
         conn->waiting_buf_q = NULL;
     }
@@ -141,45 +103,105 @@ static void close_conn(skcp_conn_t *conn, int close_cmd_flg) {
     }
 
     conn->sess_id = 0;  // TODO: for test
-    SKCP_FREE(conn);
+    SKCP_FREEIF(conn);
 }
 
-static int parse_recv_data(skcp_conn_t *conn, char *in_buf, char *out_buf, int len) {
-    if (len < 1) {
+static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, int *op_type) {
+    if (len < SKCP_CMD_HEADER_LEN) {
         return -1;
     }
-
-    char cmd = *in_buf;
-    if (SKCP_CMD_CONN == cmd) {
+    int rt = 0;
+    skcp_cmd_header_t header;
+    SKCP_DECODE_CMD_HEADER(header, in_buf);
+    if (SKCP_CMD_CONN == header.type) {
+        *op_type = 1;
         if (SKCP_CONN_ST_READY != conn->status) {
             return -1;
         }
+        skcp_cmd_t *cmd_conn = skcp_decode_cmd(in_buf, len);
+        if (!cmd_conn) {
+            return -1;
+        }
+        if (cmd_conn->header.payload_len > 0) {
+            memcpy(out_buf, cmd_conn->payload, cmd_conn->header.payload_len);
+            rt = cmd_conn->header.payload_len;
+        }
 
-        kcp_send_raw(conn, NULL, 0, SKCP_CMD_CONN_ACK);
+        skcp_cmd_t *ack;
+        SKCP_BUILD_CMD(ack, SKCP_CMD_CONN_ACK, 0x00, cmd_conn->header.payload_len, cmd_conn->payload);
+        SKCP_FREEIF(cmd_conn);
+
+        int ack_buf_len = 0;
+        char *ack_buf = skcp_encode_cmd(ack, &ack_buf_len);
+        SKCP_FREEIF(ack);
+        if (!ack_buf) {
+            return -1;
+        }
+        kcp_send_raw(conn, ack_buf, ack_buf_len);
+
+        SKCP_FREEIF(ack_buf);
         conn->status = SKCP_CONN_ST_ON;
-        return -2;  // accept connection
-    } else if (SKCP_CMD_CONN_ACK == cmd) {
+
+    } else if (SKCP_CMD_CONN_ACK == header.type) {
+        *op_type = 2;
         if (SKCP_CONN_ST_READY != conn->status) {
             return -1;
         }
+        skcp_cmd_t *cmd_conn_ack = skcp_decode_cmd(in_buf, len);
+        if (!cmd_conn_ack) {
+            return -1;
+        }
 
+        if (cmd_conn_ack->header.payload_len > 0) {
+            memcpy(out_buf, cmd_conn_ack->payload, cmd_conn_ack->header.payload_len);
+            rt = cmd_conn_ack->header.payload_len;
+        }
+
+        SKCP_FREEIF(cmd_conn_ack);
         conn->status = SKCP_CONN_ST_ON;
-        return -3;
-    } else if (SKCP_CMD_CLOSE == cmd) {
-        close_conn(conn, 1);
-        return -4;
-    } else if (SKCP_CMD_PING == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
-        return -5;
-    } else if (SKCP_CMD_PONG == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);  // TODO: 返回长度，否则可能会有越界的问题
-        return -6;
-    } else if (SKCP_CMD_DATA == cmd) {
-        memcpy(out_buf, in_buf + 1, len - 1);
-        return len - 1;
+    } else if (SKCP_CMD_CLOSE == header.type) {
+        *op_type = 3;
+        close_conn(conn);
+    } else if (SKCP_CMD_DATA == header.type) {
+        *op_type = 4;
+        skcp_cmd_t *cmd_data = skcp_decode_cmd(in_buf, len);
+        if (!cmd_data) {
+            return -1;
+        }
+        if (cmd_data->header.payload_len > 0) {
+            memcpy(out_buf, cmd_data->payload, cmd_data->header.payload_len);
+            rt = cmd_data->header.payload_len;
+        }
+        SKCP_FREEIF(cmd_data);
+    } else if (SKCP_CMD_CTRL == header.type) {
+        *op_type = 5;
+        skcp_cmd_t *cmd_ctrl = skcp_decode_cmd(in_buf, len);
+        if (!cmd_ctrl) {
+            return -1;
+        }
+        if (cmd_ctrl->header.payload_len > 0) {
+            memcpy(out_buf, cmd_ctrl->payload, cmd_ctrl->header.payload_len);
+            rt = cmd_ctrl->header.payload_len;
+        }
+        SKCP_FREEIF(cmd_ctrl);
+    } else {
+        *op_type = 0;
     }
+    return rt;
+}
 
-    return -1;
+static int send_cmd(skcp_conn_t *conn, const char *buf, int len, char type) {
+    skcp_cmd_t *cmd;
+    SKCP_BUILD_CMD(cmd, type, 0x00, len, (char *)buf);
+    int cmd_len = 0;
+    char *cmd_buf = skcp_encode_cmd(cmd, &cmd_len);
+    SKCP_FREEIF(cmd);
+    if (!cmd_buf) {
+        return -1;
+    }
+    int rt = kcp_send_raw(conn, cmd_buf, cmd_len);
+    SKCP_FREEIF(cmd_buf);
+    return rt;
 }
 
 /************************************************/
@@ -197,60 +219,36 @@ int skcp_input(skcp_conn_t *conn, const char *data, long size) {
 }
 IUINT32 skcp_get_sess_id(const void *data) { return ikcp_getconv(data); }
 
-int skcp_recv(skcp_conn_t *conn, char *buffer, int len) {
-    char *recv_buf = malloc(len);
+int skcp_recv(skcp_conn_t *conn, char *buf, int buf_len, int *op_type) {
+    char *recv_buf = malloc(buf_len);
     int recv_len = 0;
-irecv:
-    recv_len = ikcp_recv(conn->kcp, recv_buf, len);
-    if (recv_len == -1) {
-        // empty
-        // fprintf(stdout, "warn: ikcp_recv empty\n");
-        recv_len = 0;
-    } else if (recv_len == -2) {
-        // no peeksize
-        fprintf(stdout, "warn: ikcp_recv invalid peeksize\n");
-        recv_len = 0;
-    } else if (recv_len == -3) {
-        // resize
-        fprintf(stdout, "warn: ikcp_recv need resize\n");
-        SKCP_FREE(recv_buf);
-        int peeksize = ikcp_peeksize(conn->kcp);
-        if (peeksize <= 0) {
-            fprintf(stderr, "error: ikcp_peeksize <= 0\n");
-            return -1;
+    recv_len = ikcp_recv(conn->kcp, recv_buf, buf_len);
+    if (recv_len < 0) {
+        if (recv_len == -3) {
+            fprintf(stderr, "warn: ikcp_recv peeksize > len, %d\n", buf_len);
         }
-        recv_buf = malloc(peeksize);
-        goto irecv;
+        recv_len = 0;
     }
 
     ikcp_update(conn->kcp, clock());  // TODO: 跨平台
     if (recv_len > 0) {
-        recv_len = parse_recv_data(conn, recv_buf, buffer, recv_len);
+        recv_len = parse_recv(conn, recv_buf, buf, recv_len, op_type);
     }
-    SKCP_FREE(recv_buf);
+    SKCP_FREEIF(recv_buf);
     return recv_len;
 }
 
-int skcp_send(skcp_conn_t *conn, const char *buffer, int len) { return kcp_send_raw(conn, buffer, len, SKCP_CMD_DATA); }
+int skcp_send_data(skcp_conn_t *conn, const char *buf, int len) { return send_cmd(conn, buf, len, SKCP_CMD_DATA); }
 
-int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
-    char buf[22] = {0};
-    snprintf(buf, 22, "%llu", now);
-    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
-}
-
-int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
-    char buf[44] = {0};
-    snprintf(buf, 44, "%llu %llu", tm, now);
-    return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
-}
+int skcp_send_ctrl(skcp_conn_t *conn, const char *buf, int len) { return send_cmd(conn, buf, len, SKCP_CMD_CTRL); }
 
 IUINT32 skcp_gen_sess_id(skcp_t *skcp) {
     skcp->cur_sess_id++;
     return skcp->cur_sess_id;
 }
 
-skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data) {
+skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data,
+                              char *conn_param, int conn_param_len) {
     skcp_conn_t *conn = malloc(sizeof(skcp_conn_t));
     conn->sess_id = sess_id;
     conn->last_r_tm = conn->last_w_tm = conn->estab_tm = now;
@@ -259,6 +257,7 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->user_data = user_data;
     conn->waiting_buf_q = NULL;
     conn->htkey = htkey;
+    // memset(conn->iv, 0, sizeof(conn->iv));
 
     ikcpcb *kcp = ikcp_create(conn->sess_id, conn);
     skcp_conf_t *conf = skcp->conf;
@@ -269,7 +268,19 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->kcp = kcp;
 
     if (skcp->mode == SKCP_MODE_CLI) {
-        kcp_send_raw(conn, NULL, 0, SKCP_CMD_CONN);
+        skcp_cmd_t *cmd_conn;
+        SKCP_BUILD_CMD(cmd_conn, SKCP_CMD_CONN, 0x00, conn_param_len, conn_param);
+        int conn_len = 0;
+        char *conn_buf = skcp_encode_cmd(cmd_conn, &conn_len);
+        SKCP_FREEIF(cmd_conn);
+        if (!conn_buf) {
+            ikcp_release(conn->kcp);
+            conn->kcp = NULL;
+            SKCP_FREEIF(conn);
+            return NULL;
+        }
+        kcp_send_raw(conn, conn_buf, conn_len);
+        SKCP_FREEIF(conn_buf);
     }
 
     add_conn(conn);
@@ -277,7 +288,24 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     return conn;
 }
 
-void skcp_close_conn(skcp_conn_t *conn) { close_conn(conn, 0); }
+void skcp_close_conn(skcp_conn_t *conn) {
+    if (NULL == conn) {
+        return;
+    }
+    skcp_cmd_t *cmd_close;
+    SKCP_BUILD_CMD(cmd_close, SKCP_CMD_CLOSE, 0x00, 0, NULL);
+    int close_len = 0;
+    char *close_buf = skcp_encode_cmd(cmd_close, &close_len);
+    SKCP_FREEIF(cmd_close);
+    if (close_buf) {
+        kcp_send_raw(conn, close_buf, close_len);
+        SKCP_FREEIF(close_buf);
+    }
+
+    if (SKCP_CONN_ST_ON == conn->status || SKCP_CONN_ST_READY == conn->status) {
+        conn->status = SKCP_CONN_ST_CAN_OFF;
+    }
+}
 
 int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
     skcp_t *skcp = conn->skcp;
@@ -285,12 +313,12 @@ int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
         // 连接管理
         if ((now - conn->estab_tm) >= skcp->conf->estab_timeout * 1000l) {
             // 超时
-            close_conn(conn, 0);
+            skcp_close_conn(conn);
             return -1;
         }
     } else {
         if (SKCP_CONN_ST_CAN_OFF == conn->status) {
-            close_conn(conn, 0);
+            close_conn(conn);
             return -2;
         } else {
             if ((now - conn->last_r_tm) >= skcp->conf->r_keepalive * 1000l) {
@@ -312,5 +340,5 @@ skcp_t *skcp_init(skcp_conf_t *conf, SKCP_MODE mode) {
 }
 void skcp_free(skcp_t *skcp) {
     skcp->conf = NULL;
-    SKCP_FREE(skcp);
+    SKCP_FREEIF(skcp);
 }

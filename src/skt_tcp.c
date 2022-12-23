@@ -336,7 +336,7 @@ void skt_tcp_close_conn(skt_tcp_conn_t *conn) {
 
     if (conn->w_watcher) {
         ev_io_stop(conn->skt_tcp->loop, conn->w_watcher);
-        FREE_IF(conn->w_watcher)
+        FREE_IF(conn->w_watcher);
     }
 
     if (conn->timeout_watcher) {
@@ -383,7 +383,8 @@ skt_tcp_t *skt_tcp_init(skt_tcp_conf_t *conf, struct ev_loop *loop) {
         ev_io_init(tcp->accept_watcher, accept_cb, tcp->listenfd, EV_READ);
         tcp->accept_watcher->data = tcp;
         ev_io_start(tcp->loop, tcp->accept_watcher);
-        LOG_I("tcp server start ok fd:%d, addr:%s, port:%u", tcp->listenfd, tcp->conf->serv_addr, tcp->conf->serv_port);
+        LOG_I("tcp server start ok. fd: %d addr: %s, port: %u", tcp->listenfd, tcp->conf->serv_addr,
+              tcp->conf->serv_port);
     }
 
     return tcp;

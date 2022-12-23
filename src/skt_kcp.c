@@ -35,9 +35,6 @@ static void stat_rtt(skcp_conn_t *conn, const char *kcp_recv_buf) {
     max_rtt = rtt > max_rtt ? rtt : max_rtt;
     min_rtt = rtt < min_rtt ? rtt : min_rtt;
 
-    // LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d cur_rtt:%lld", conn->sess_id, min_rtt, max_rtt,
-    // avg_rtt,
-    //   rtt);
     if (abs(last_avg_rtt - avg_rtt) > 10) {
         LOG_I("stat sess_id: %u min_rtt: %d max_rtt: %d avg_rtt:%d cur_rtt:%lld", conn->sess_id, min_rtt, max_rtt,
               avg_rtt, rtt);
@@ -83,6 +80,8 @@ static int init_cli_network(skt_kcp_t *skt_kcp) {
     skt_kcp->servaddr.sin_port = htons(skt_kcp->conf->port);
     skt_kcp->servaddr.sin_addr.s_addr = inet_addr(skt_kcp->conf->addr);
 
+    LOG_I("kcp client start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
+
     return SKT_OK;
 }
 
@@ -112,7 +111,7 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         return SKT_ERROR;
     }
 
-    LOG_I("udp listening %s %u", skt_kcp->conf->addr, skt_kcp->conf->port);
+    LOG_I("kcp client start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
 
     return SKT_OK;
 }
@@ -122,9 +121,7 @@ void skt_kcp_close_conn(skt_kcp_t *skt_kcp, char *htkey) {
     if (NULL == conn) {
         return;
     }
-    if (SKCP_CONN_ST_ON == conn->status || SKCP_CONN_ST_READY == conn->status) {
-        conn->status = SKCP_CONN_ST_CAN_OFF;
-    }
+    skcp_close_conn(conn);
 }
 
 static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
@@ -138,21 +135,20 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
     HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
         skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
         int rt = skcp_check_timeout(conn, now);
-        if (rt == -1 || rt == -2) {
-            // estab timeout or conn can off
+        if (rt == -2) {
+            // conn can off
             LOG_D("conn_timeout_cb rt:%d", rt);
             call_conn_close_cb(skt_kcp, kcp_conn);
         } else if (rt == -3) {
             // conn timeout
             skcp_close_conn(conn);
-            call_conn_close_cb(skt_kcp, kcp_conn);
         } else {
             // send ping
             if (skt_kcp->mode == SKCP_MODE_CLI && conn->status == SKCP_CONN_ST_ON &&
                 ((now - conn->last_r_tm) / 1000) > (skt_kcp->conf->skcp_conf->r_keepalive / 2)) {
                 // TODO: 需要优化，目前仅用来统计rtt
                 // LOG_I("send ping sess_id:%u time:%llu", conn->sess_id, now);
-                skcp_send_ping(conn, now);
+                // skcp_send_ping(conn, now);
             }
         }
     }
@@ -199,12 +195,21 @@ static void kcp_update_cb(struct ev_loop *loop, ev_timer *watcher, int revents) 
     skcp_update_all(skt_kcp->skcp, clock());
 }
 
-int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
+int skt_kcp_send_data(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
     skcp_conn_t *conn = skt_kcp_get_conn(skt_kcp, htkey);
     if (NULL == conn) {
         return -1;
     }
-    int rt = skcp_send(conn, buf, len);
+    int rt = skcp_send_data(conn, buf, len);
+    return rt;
+}
+
+int skt_kcp_send_ctrl(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
+    skcp_conn_t *conn = skt_kcp_get_conn(skt_kcp, htkey);
+    if (NULL == conn) {
+        return -1;
+    }
+    int rt = skcp_send_ctrl(conn, buf, len);
     return rt;
 }
 
@@ -216,17 +221,19 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
+    kcp_conn->tag = SKT_KCP_TAG_NM;
+
     char *htkey = malloc(SKCP_HTKEY_LEN);
     memset(htkey, 0, SKCP_HTKEY_LEN);
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, sock_addr);
     uint64_t now = getmillisecond();
-    skcp_conn_t *conn = skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn);
+    skcp_conn_t *conn = skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn, NULL, 0);
     return conn;
 }
 
 static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     if (EV_ERROR & revents) {
-        LOG_E("read_cb got invalid event");
+        LOG_E("write_cb got invalid event");
         return;
     }
     skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
@@ -320,52 +327,52 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     char *kcp_recv_buf = malloc(skt_kcp->conf->kcp_buf_size);
     memset(kcp_recv_buf, 0, skt_kcp->conf->kcp_buf_size);
     int kcp_recv_len = 0;
-    int rt = skcp_recv(conn, kcp_recv_buf, skt_kcp->conf->kcp_buf_size);
-    if (rt > 0) {
-        // 成功
-        conn->last_r_tm = getmillisecond();
-        skt_kcp->kcp_recv_cb(conn, kcp_recv_buf, rt);
-    } else {
-        switch (rt) {
-            case -1:
-                // 错误
-                LOG_D("skcp_recv error");
-                skcp_close_conn(conn);
-                call_conn_close_cb(skt_kcp, kcp_conn);
-                break;
-            case -2:
-                // 创建连接
-                skt_kcp->new_conn_cb(conn);
-                LOG_D("new conn sess_id:%u", conn->sess_id);
-                break;
-            case -3:
-                // 收到connect ack 命令
-                LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
-                conn->last_r_tm = getmillisecond();
-                break;
-            case -4:
-                // 收到close 命令
-                LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
-                conn->last_r_tm = getmillisecond();
-                call_conn_close_cb(skt_kcp, kcp_conn);
-                break;
-            case -5:
-                // 收到ping 命令
-                {
-                    conn->last_r_tm = getmillisecond();
-                    uint64_t pitm = strtoull(kcp_recv_buf, NULL, 10);
-                    uint64_t now = getmillisecond();
-                    skcp_send_pong(conn, pitm, now);
-                }
-                break;
-            case -6:
-                // 收到pong 命令
-                conn->last_r_tm = getmillisecond();
-                stat_rtt(conn, kcp_recv_buf);
-                break;
-            default:
-                break;
-        }
+    int op_type = 0;
+    int rt = skcp_recv(conn, kcp_recv_buf, skt_kcp->conf->kcp_buf_size, &op_type);
+    if (rt < 0) {
+        // 错误
+        LOG_D("skcp_recv error");
+        skcp_close_conn(conn);
+        FREE_IF(kcp_recv_buf);
+        return;
+    }
+
+    switch (op_type) {
+        case 1:
+            // 创建连接
+            skt_kcp->new_conn_cb(conn);
+            LOG_D("new conn sess_id:%u", conn->sess_id);
+            break;
+        case 2:
+            // 收到connect ack 命令
+            LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
+            conn->last_r_tm = getmillisecond();
+            break;
+        case 3:
+            // 收到close 命令
+            LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
+            conn->last_r_tm = getmillisecond();
+            call_conn_close_cb(skt_kcp, kcp_conn);
+            break;
+        case 4:
+            // 收到data 命令
+            conn->last_r_tm = getmillisecond();
+            if (rt > 0) {
+                skt_kcp->kcp_recv_data_cb(conn, kcp_recv_buf, rt);
+            }
+            break;
+        case 5:
+            // 收到control命令
+            LOG_D("cmd control sess_id:%u", conn->sess_id);
+            conn->last_r_tm = getmillisecond();
+            if (rt > 0) {
+                skt_kcp->kcp_recv_ctrl_cb(conn, kcp_recv_buf, rt);
+            }
+            break;
+
+        default:
+            // LOG_W("skcp_recv no op_type");
+            break;
     }
     FREE_IF(kcp_recv_buf);
     return;
@@ -377,6 +384,8 @@ skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, 
     skt_kcp->data = data;
     skt_kcp->loop = loop;
     skt_kcp->mode = mode;
+    // memset(skt_kcp->iv, 0, sizeof(skt_kcp->iv));
+    // memset(skt_kcp->iv_tmp, 0, sizeof(skt_kcp->iv_tmp));
 
     if (mode == SKCP_MODE_CLI) {
         if (init_cli_network(skt_kcp) != SKT_OK) {
@@ -429,6 +438,13 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         FREE_IF(skt_kcp->r_watcher);
     }
 
+    skcp_conn_t *conn, *tmp;
+    HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
+        skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+        skcp_close_conn(conn);
+        FREE_IF(kcp_conn);
+    }
+
     if (skt_kcp->timeout_watcher) {
         ev_timer_stop(skt_kcp->loop, skt_kcp->timeout_watcher);
         FREE_IF(skt_kcp->timeout_watcher);
@@ -439,17 +455,11 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         FREE_IF(skt_kcp->kcp_update_watcher);
     }
 
-    skcp_conn_t *conn, *tmp;
-    HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
-        skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
-        skcp_close_conn(conn);
-        FREE_IF(kcp_conn);
-    }
-
     if (skt_kcp->w_watcher) {
         ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
         FREE_IF(skt_kcp->w_watcher);
     }
+
     skcp_free(skt_kcp->skcp);
 
     if (skt_kcp->fd) {
