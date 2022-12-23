@@ -73,7 +73,8 @@ typedef struct skcp_s skcp_t;
 skcp_t *skcp_init(skcp_conf_t *conf, SKCP_MODE mode);
 void skcp_free(skcp_t *skcp);
 IUINT32 skcp_gen_sess_id(skcp_t *skcp);
-skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data);
+skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data,
+                              char *conn_param, int conn_param_len);
 void skcp_close_conn(skcp_conn_t *conn);
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey);
 int skcp_send_data(skcp_conn_t *conn, const char *buffer, int len);

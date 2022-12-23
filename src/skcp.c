@@ -101,6 +101,7 @@ static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len) {
 
 // static void close_conn(skcp_conn_t *conn, int is_send_close_cmd) {
 static void close_conn(skcp_conn_t *conn) {
+    printf("debug: close_conn htkey: %s\n", conn->htkey);
     if (conn->skcp->conn_ht) {
         del_conn(conn);
     }
@@ -186,7 +187,8 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
         if (!cmd_conn) {
             return -1;
         }
-        if (cmd_conn->payload_len > 0) {
+        if (cmd_conn->payload_len > 0 && ((cmd_conn->flg & SKCP_CMD_CONN_NEED_ENCRYPT) == SKCP_CMD_CONN_NEED_ENCRYPT ||
+                                          (cmd_conn->flg & SKCP_CMD_CONN_NEED_AUTH) == SKCP_CMD_CONN_NEED_AUTH)) {
             memcpy(out_buf, cmd_conn->payload, cmd_conn->payload_len);
             rt = cmd_conn->payload_len;
         }
@@ -202,10 +204,14 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
             return -1;
         }
         kcp_send_raw(conn, ack_buf, ack_buf_len);
+
+        printf("send conn ack %d\n", ack_buf_len);
+
         SKCP_FREEIF(ack_buf);
         conn->status = SKCP_CONN_ST_ON;
 
     } else if (SKCP_CMD_CONN_ACK == header.type) {
+        printf("recv conn ack start \n");
         *op_type = 2;
         if (SKCP_CONN_ST_READY != conn->status) {
             return -1;
@@ -219,6 +225,9 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
             memcpy(out_buf, cmd_conn_ack->payload, cmd_conn_ack->payload_len);
             rt = cmd_conn_ack->payload_len;
         }
+
+        printf("recv conn ack %d\n", len);
+
         SKCP_FREEIF(cmd_conn_ack);
         conn->status = SKCP_CONN_ST_ON;
     } else if (SKCP_CMD_CLOSE == header.type) {
@@ -355,7 +364,8 @@ IUINT32 skcp_gen_sess_id(skcp_t *skcp) {
     return skcp->cur_sess_id;
 }
 
-skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data) {
+skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT64 now, void *user_data,
+                              char *conn_param, int conn_param_len) {
     skcp_conn_t *conn = malloc(sizeof(skcp_conn_t));
     conn->sess_id = sess_id;
     conn->last_r_tm = conn->last_w_tm = conn->estab_tm = now;
@@ -375,12 +385,12 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
     conn->kcp = kcp;
 
     if (skcp->mode == SKCP_MODE_CLI) {
-        // srand((unsigned)time(NULL));
         skcp_cmd_conn_t *cmd_conn;
-        int rd = rand() % (RAND_MAX - 10000000) + 10000000;
-        char iv[33];
-        snprintf(iv, sizeof(iv), "%d%d%d%d", rd, rd, rd, rd);
-        SKCP_BUILD_CMD_CONN(cmd_conn, SKCP_CMD_CONN_NEED_ENCRYPT, strlen(iv), iv);
+        char flg = 0x00;
+        if (conn_param && conn_param_len > 0) {
+            flg = SKCP_CMD_CONN_NEED_ENCRYPT;
+        }
+        SKCP_BUILD_CMD_CONN(cmd_conn, flg, conn_param_len, conn_param);
         int conn_len = 0;
         char *conn_buf = skcp_encode_cmd_conn(cmd_conn, &conn_len);
         SKCP_FREEIF(cmd_conn);

@@ -139,14 +139,15 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
     HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
         skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
         int rt = skcp_check_timeout(conn, now);
-        if (rt == -1 || rt == -2) {
-            // estab timeout or conn can off
+        // if (rt == -1 || rt == -2) {
+        if (rt == -2) {
+            // conn can off
             LOG_D("conn_timeout_cb rt:%d", rt);
             call_conn_close_cb(skt_kcp, kcp_conn);
         } else if (rt == -3) {
             // conn timeout
             skcp_close_conn(conn);
-            call_conn_close_cb(skt_kcp, kcp_conn);
+            // call_conn_close_cb(skt_kcp, kcp_conn);
         } else {
             // send ping
             if (skt_kcp->mode == SKCP_MODE_CLI && conn->status == SKCP_CONN_ST_ON &&
@@ -211,19 +212,26 @@ int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len) {
 
 skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct sockaddr_in *sock_addr) {
     skt_kcp_conn_t *kcp_conn = malloc(sizeof(skt_kcp_conn_t));
+    // char iv[33] = {0};
     if (skt_kcp->mode == SKCP_MODE_CLI) {
         sess_id = skcp_gen_sess_id(skt_kcp->skcp);
         kcp_conn->dest_addr = skt_kcp->servaddr;
+        if (strlen(skt_kcp->iv) <= 0) {
+            // srand((unsigned)time(NULL));
+            int rd = rand() % (RAND_MAX - 10000000) + 10000000;
+            snprintf(skt_kcp->iv_tmp, sizeof(skt_kcp->iv_tmp), "%d%d%d%d", rd, rd, rd, rd);
+        }
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
-    memset(kcp_conn->iv, 0, sizeof(kcp_conn->iv));
+    // memset(kcp_conn->iv, 0, sizeof(kcp_conn->iv));
 
     char *htkey = malloc(SKCP_HTKEY_LEN);
     memset(htkey, 0, SKCP_HTKEY_LEN);
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, sock_addr);
     uint64_t now = getmillisecond();
-    skcp_conn_t *conn = skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn);
+    skcp_conn_t *conn =
+        skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn, skt_kcp->iv_tmp, strlen(skt_kcp->iv_tmp));
     return conn;
 }
 
@@ -344,16 +352,20 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     switch (op_type) {
         case 1:
             // 创建连接
-            iv_len = rt > sizeof(kcp_conn->iv) ? sizeof(kcp_conn->iv) : rt;
-            memcpy(kcp_conn->iv, kcp_recv_buf, iv_len);
-
             skt_kcp->new_conn_cb(conn);
             LOG_D("new conn sess_id:%u", conn->sess_id);
+            if (strlen(skt_kcp->iv) == 0) {
+                iv_len = rt > sizeof(skt_kcp->iv) ? sizeof(skt_kcp->iv) : rt;
+                memcpy(skt_kcp->iv, kcp_recv_buf, iv_len);
+            }
             break;
         case 2:
             // 收到connect ack 命令
-            iv_len = rt > sizeof(kcp_conn->iv) ? sizeof(kcp_conn->iv) : rt;
-            memcpy(kcp_conn->iv, kcp_recv_buf, iv_len);
+            if (strlen(skt_kcp->iv) == 0) {
+                iv_len = rt > sizeof(skt_kcp->iv) ? sizeof(skt_kcp->iv) : rt;
+                memcpy(skt_kcp->iv, kcp_recv_buf, iv_len);
+                memset(skt_kcp->iv_tmp, 0, sizeof(skt_kcp->iv_tmp));
+            }
             LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
             conn->last_r_tm = getmillisecond();
             break;
@@ -437,6 +449,8 @@ skt_kcp_t *skt_kcp_init(skt_kcp_conf_t *conf, struct ev_loop *loop, void *data, 
     skt_kcp->data = data;
     skt_kcp->loop = loop;
     skt_kcp->mode = mode;
+    memset(skt_kcp->iv, 0, sizeof(skt_kcp->iv));
+    memset(skt_kcp->iv_tmp, 0, sizeof(skt_kcp->iv_tmp));
 
     if (mode == SKCP_MODE_CLI) {
         if (init_cli_network(skt_kcp) != SKT_OK) {

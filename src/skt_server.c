@@ -46,24 +46,24 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
 
 static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
     skt_tcp_conn_t *tcp_conn = skt_tcp_connect(g_serv->skt_tcp, g_serv->conf->target_addr, g_serv->conf->target_port);
-    ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd = tcp_conn->fd;
+    SKT_GET_KCP_CONN(kcp_conn)->tcp_fd = tcp_conn->fd;
     tcp_conn->sess_id = kcp_conn->sess_id;
-    tcp_conn->kcp_cli_addr = ((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr;
+    tcp_conn->kcp_cli_addr = SKT_GET_KCP_CONN(kcp_conn)->dest_addr;
     return;
 }
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    char htkey[SKCP_HTKEY_LEN] = {0};
-    skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, &((skt_kcp_conn_t *)(kcp_conn->user_data))->dest_addr);
-    skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, ((skt_kcp_conn_t *)(kcp_conn->user_data))->tcp_fd);
+    // char htkey[SKCP_HTKEY_LEN] = {0};
+    // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, &SKT_GET_KCP_CONN(kcp_conn)->dest_addr);
+    skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, SKT_GET_KCP_CONN(kcp_conn)->tcp_fd);
     if (NULL == tcp_conn) {
-        skt_kcp_close_conn(g_serv->skt_kcp, htkey);
+        skt_kcp_close_conn(g_serv->skt_kcp, kcp_conn->htkey);
         return SKT_ERROR;
     }
 
     ssize_t rt = skt_tcp_send(tcp_conn, buf, len);
     if (rt < 0) {
-        skt_kcp_close_conn(g_serv->skt_kcp, htkey);
+        skt_kcp_close_conn(g_serv->skt_kcp, kcp_conn->htkey);
         skt_tcp_close_conn(tcp_conn);
         return SKT_ERROR;
     }
