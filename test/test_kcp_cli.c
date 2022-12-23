@@ -27,12 +27,12 @@ static void send_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     LOG_D("send count %d", count);
     if (sconn == NULL) {
         sconn = skt_kcp_new_conn(skt_kcp, 0, NULL);
-        LOG_D("send_cb iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
+        // LOG_D("send_cb iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
         count++;
         return;
     }
 
-    LOG_D("send_cb new iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
+    // LOG_D("send_cb new iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
 
     // char str[256] = {0};
     // snprintf(str, 256, "hello %llu count %d", getmillisecond(), count);
@@ -67,9 +67,9 @@ static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
 
 static char *kcp_encrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
     char *iv = def_iv;
-    if (strlen(skt_kcp->iv) > 0) {
-        iv = skt_kcp->iv;
-    }
+    // if (strlen(skt_kcp->iv) > 0) {
+    //     iv = skt_kcp->iv;
+    // }
 
     int padding_size = in_len;
     char *after_padding_buf = (char *)in;
@@ -89,13 +89,13 @@ static char *kcp_encrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
     char *iv = def_iv;
-    if (strlen(skt_kcp->iv_tmp) > 0) {
-        iv = skt_kcp->iv_tmp;
-    }
+    // if (strlen(skt_kcp->iv_tmp) > 0) {
+    //     iv = skt_kcp->iv_tmp;
+    // }
 
-    if (strlen(skt_kcp->iv) > 0) {
-        iv = skt_kcp->iv;
-    }
+    // if (strlen(skt_kcp->iv) > 0) {
+    //     iv = skt_kcp->iv;
+    // }
 
     int padding_size = in_len;
     char *after_padding_buf = (char *)in;

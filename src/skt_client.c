@@ -47,10 +47,10 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
         return;
     }
 
-    if (strlen(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp->iv) <= 0) {
-        skt_kcp_close_conn(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp, kcp_conn->htkey);
-        skt_tcp_close_conn(tcp_conn);
-    }
+    // if (strlen(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp->iv) <= 0) {
+    //     skt_kcp_close_conn(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp, kcp_conn->htkey);
+    //     skt_tcp_close_conn(tcp_conn);
+    // }
 
     int rt = skt_kcp_send(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp, htkey, buf, len);
     if (rt < 0) {

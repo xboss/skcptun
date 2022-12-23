@@ -216,11 +216,11 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     if (skt_kcp->mode == SKCP_MODE_CLI) {
         sess_id = skcp_gen_sess_id(skt_kcp->skcp);
         kcp_conn->dest_addr = skt_kcp->servaddr;
-        if (strlen(skt_kcp->iv) <= 0) {
-            // srand((unsigned)time(NULL));
-            int rd = rand() % (RAND_MAX - 10000000) + 10000000;
-            snprintf(skt_kcp->iv_tmp, sizeof(skt_kcp->iv_tmp), "%d%d%d%d", rd, rd, rd, rd);
-        }
+        // if (strlen(skt_kcp->iv) <= 0) {
+        //     // srand((unsigned)time(NULL));
+        //     int rd = rand() % (RAND_MAX - 10000000) + 10000000;
+        //     snprintf(skt_kcp->iv_tmp, sizeof(skt_kcp->iv_tmp), "%d%d%d%d", rd, rd, rd, rd);
+        // }
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
@@ -230,8 +230,7 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     memset(htkey, 0, SKCP_HTKEY_LEN);
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, sess_id, sock_addr);
     uint64_t now = getmillisecond();
-    skcp_conn_t *conn =
-        skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn, skt_kcp->iv_tmp, strlen(skt_kcp->iv_tmp));
+    skcp_conn_t *conn = skcp_create_conn(skt_kcp->skcp, htkey, sess_id, now, kcp_conn, NULL, 0);
     return conn;
 }
 
@@ -354,18 +353,18 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
             // 创建连接
             skt_kcp->new_conn_cb(conn);
             LOG_D("new conn sess_id:%u", conn->sess_id);
-            if (strlen(skt_kcp->iv) == 0) {
-                iv_len = rt > sizeof(skt_kcp->iv) ? sizeof(skt_kcp->iv) : rt;
-                memcpy(skt_kcp->iv, kcp_recv_buf, iv_len);
-            }
+            // if (strlen(skt_kcp->iv) == 0) {
+            //     iv_len = rt > sizeof(skt_kcp->iv) ? sizeof(skt_kcp->iv) : rt;
+            //     memcpy(skt_kcp->iv, kcp_recv_buf, iv_len);
+            // }
             break;
         case 2:
             // 收到connect ack 命令
-            if (strlen(skt_kcp->iv) == 0) {
-                iv_len = rt > sizeof(skt_kcp->iv) ? sizeof(skt_kcp->iv) : rt;
-                memcpy(skt_kcp->iv, kcp_recv_buf, iv_len);
-                memset(skt_kcp->iv_tmp, 0, sizeof(skt_kcp->iv_tmp));
-            }
+            // if (strlen(skt_kcp->iv) == 0) {
+            //     iv_len = rt > sizeof(skt_kcp->iv) ? sizeof(skt_kcp->iv) : rt;
+            //     memcpy(skt_kcp->iv, kcp_recv_buf, iv_len);
+            //     memset(skt_kcp->iv_tmp, 0, sizeof(skt_kcp->iv_tmp));
+            // }
             LOG_D("cmd conn ack sess_id:%u", conn->sess_id);
             conn->last_r_tm = getmillisecond();
             break;

@@ -34,9 +34,10 @@ static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
 
 static char *kcp_encrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
     char *iv = def_iv;
-    if (strlen(skt_kcp->iv) > 0) {
-        iv = skt_kcp->iv;
-    }
+    // if (strlen(skt_kcp->iv) > 0) {
+    //     iv = skt_kcp->iv;
+    // }
+
     int padding_size = in_len;
     char *after_padding_buf = (char *)in;
     if (in_len % 16 != 0) {
@@ -55,9 +56,9 @@ static char *kcp_encrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
     char *iv = def_iv;
-    if (strlen(skt_kcp->iv) > 0) {
-        iv = skt_kcp->iv;
-    }
+    // if (strlen(skt_kcp->iv) > 0) {
+    //     iv = skt_kcp->iv;
+    // }
 
     int padding_size = in_len;
     char *after_padding_buf = (char *)in;
