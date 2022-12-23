@@ -231,8 +231,8 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
         conn->status = SKCP_CONN_ST_ON;
     } else if (SKCP_CMD_CLOSE == header.type) {
         *op_type = 3;
-        // close_conn(conn, 0);
         close_conn(conn);
+        // conn->status = SKCP_CONN_ST_CAN_OFF;
     } else if (SKCP_CMD_DATA == header.type) {
         *op_type = 4;
         skcp_cmd_t *cmd_data = skcp_decode_cmd(in_buf, len);
@@ -403,13 +403,11 @@ int skcp_check_timeout(skcp_conn_t *conn, IUINT64 now) {
         // 连接管理
         if ((now - conn->estab_tm) >= skcp->conf->estab_timeout * 1000l) {
             // 超时
-            // close_conn(conn, 1);
             skcp_close_conn(conn);
             return -1;
         }
     } else {
         if (SKCP_CONN_ST_CAN_OFF == conn->status) {
-            // close_conn(conn, 1);
             close_conn(conn);
             return -2;
         } else {

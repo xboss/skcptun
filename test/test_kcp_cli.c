@@ -27,7 +27,7 @@ static void send_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     LOG_D("send count %d", count);
     if (sconn == NULL) {
         sconn = skt_kcp_new_conn(skt_kcp, 0, NULL);
-        // LOG_D("send_cb iv: %s", SKT_GET_KCP_CONN(sconn)->skt_kcp->iv);
+        LOG_D("send_cb new conn");
         count++;
         return;
     }
@@ -62,6 +62,7 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("cli kcp_close_cb");
+    sconn = NULL;
     return;
 }
 
@@ -170,7 +171,7 @@ int main(int argc, char *argv[]) {
     send_watcher = malloc(sizeof(ev_timer));
     send_watcher->data = skt_kcp;
     ev_init(send_watcher, send_cb);
-    ev_timer_set(send_watcher, 3, 3);
+    ev_timer_set(send_watcher, 1, 1);
     ev_timer_start(skt_kcp->loop, send_watcher);
 
     LOG_D("loop run");

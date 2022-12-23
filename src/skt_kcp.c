@@ -224,6 +224,7 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
+    kcp_conn->tag = SKT_KCP_TAG_NM;
     // memset(kcp_conn->iv, 0, sizeof(kcp_conn->iv));
 
     char *htkey = malloc(SKCP_HTKEY_LEN);
@@ -336,7 +337,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         // 错误
         LOG_D("skcp_recv error");
         skcp_close_conn(conn);
-        call_conn_close_cb(skt_kcp, kcp_conn);
+        // call_conn_close_cb(skt_kcp, kcp_conn);
         FREE_IF(kcp_recv_buf);
         return;
     }

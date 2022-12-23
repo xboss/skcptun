@@ -7,6 +7,9 @@
 #include "skcp.h"
 #include "skt_utils.h"
 
+#define SKT_KCP_TAG_NM 0
+#define SKT_KCP_TAG_HT 1
+
 typedef struct skt_kcp_conn_s skt_kcp_conn_t;
 typedef struct skt_kcp_s skt_kcp_t;
 
@@ -51,6 +54,7 @@ struct skt_kcp_conn_s {
     skt_kcp_t *skt_kcp;
     // char iv[33];
     int tcp_fd;
+    int tag;
 };
 
 #define SKT_GET_KCP_CONN(vskcp_conn) ((skt_kcp_conn_t *)((vskcp_conn)->user_data))

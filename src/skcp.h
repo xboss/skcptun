@@ -77,8 +77,8 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
                               char *conn_param, int conn_param_len);
 void skcp_close_conn(skcp_conn_t *conn);
 skcp_conn_t *skcp_get_conn(skcp_t *skcp, char *htkey);
-int skcp_send_data(skcp_conn_t *conn, const char *buffer, int len);
-int skcp_send_ctrl(skcp_conn_t *conn, const char *buffer, int len);
+int skcp_send_data(skcp_conn_t *conn, const char *buf, int len);
+int skcp_send_ctrl(skcp_conn_t *conn, const char *buf, int len);
 // int skcp_send_ping(skcp_conn_t *conn, IUINT64 now);
 // int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now);
 void skcp_update_all(skcp_t *skcp, IUINT32 current);
