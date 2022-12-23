@@ -7,15 +7,46 @@
 
 static char *def_iv = "12345678123456781234567812345678";
 
+static struct ev_timer *send_watcher = NULL;
+static skcp_conn_t *sconn = NULL;
+static int count = 0;
+
 static void send_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
     if (EV_ERROR & revents) {
         LOG_E("send_cb got invalid event");
         return;
     }
-    skcp_conn_t *sconn = (skcp_conn_t *)watcher->data;
-    char str[256] = {0};
-    snprintf(str, 256, "hello %llu", getmillisecond());
+
+    skt_kcp_t *skt_kcp = (skt_kcp_t *)watcher->data;
+    // if (count >= 2) {
+    //     skt_kcp_close_conn(skt_kcp, sconn->htkey);
+    //     ev_timer_stop(skt_kcp->loop, send_watcher);
+    //     // exit(0);
+    // }
+
+    LOG_D("send count %d", count);
+    if (sconn == NULL) {
+        sconn = skt_kcp_new_conn(skt_kcp, 0, NULL);
+        LOG_D("send_cb iv: %s", SKT_GET_KCP_CONN(sconn)->iv);
+        count++;
+        return;
+    }
+
+    LOG_D("send_cb new iv: %s", SKT_GET_KCP_CONN(sconn)->iv);
+
+    // char str[256] = {0};
+    // snprintf(str, 256, "hello %llu count %d", getmillisecond(), count);
+    const int sz = 5;  // 2100;
+    char str[sz] = {0};
+    str[0] = 'A';
+    for (int i = 1; i < sz - 1; i++) {
+        str[i] = 'B';
+    }
+    str[sz - 2] = 'C';
+
     skt_kcp_send(SKT_GET_KCP_CONN(sconn)->skt_kcp, sconn->htkey, str, strlen(str));
+    LOG_D("<%s", str);
+    count++;
 }
 
 static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
@@ -24,12 +55,13 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     memset(str, 0, len + 1);
     memcpy(str, buf, len);
     LOG_D(">%s", str);
+    FREE_IF(str);
 
     return SKT_OK;
 }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
-    LOG_D("cli kcp_close_cb sess_id: %u", kcp_conn->sess_id);
+    LOG_D("cli kcp_close_cb");
     return;
 }
 
@@ -90,8 +122,8 @@ int main(int argc, char *argv[]) {
     skcp_conf->nodelay = 1;
     skcp_conf->resend = 2;
     skcp_conf->nc = 1;
-    skcp_conf->r_keepalive = 600;
-    skcp_conf->w_keepalive = 600;
+    skcp_conf->r_keepalive = 15;  // 600;
+    skcp_conf->w_keepalive = 15;  // 600;
     skcp_conf->estab_timeout = 100;
 
     kcp_conf->skcp_conf = skcp_conf;
@@ -99,7 +131,7 @@ int main(int argc, char *argv[]) {
     kcp_conf->port = atoi(argv[2]);
     kcp_conf->key = "12345678123456781234567812345678";
     kcp_conf->r_buf_size = skcp_conf->mtu;
-    kcp_conf->kcp_buf_size = 2048;
+    kcp_conf->kcp_buf_size = 5000;  // 2048;
     kcp_conf->timeout_interval = 1;
 
     skt_kcp_t *skt_kcp = skt_kcp_init(kcp_conf, loop, NULL, SKCP_MODE_CLI);
@@ -120,11 +152,11 @@ int main(int argc, char *argv[]) {
         skt_kcp->decrypt_cb = NULL;
     }
 
-    skcp_conn_t *sconn = skt_kcp_new_conn(skt_kcp, 0, NULL);
-    struct ev_timer *send_watcher = malloc(sizeof(ev_timer));
-    send_watcher->data = sconn;
+    // skcp_conn_t *sconn = skt_kcp_new_conn(skt_kcp, 0, NULL);
+    send_watcher = malloc(sizeof(ev_timer));
+    send_watcher->data = skt_kcp;
     ev_init(send_watcher, send_cb);
-    ev_timer_set(send_watcher, 1, 5);
+    ev_timer_set(send_watcher, 1, 1);
     ev_timer_start(skt_kcp->loop, send_watcher);
 
     LOG_D("loop run");

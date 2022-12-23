@@ -16,13 +16,19 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     LOG_D("serv kcp_recv_cb sess_id: %u len: %d", kcp_conn->sess_id, len);
     // char htkey[SKCP_HTKEY_LEN] = {0};
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, &SKT_GET_KCP_CONN(kcp_conn)->dest_addr);
+    char *str = malloc(len + 1);
+    memset(str, 0, len + 1);
+    memcpy(str, buf, len);
+    LOG_D(">%s", str);
+    FREE_IF(str);
+
     skt_kcp_send(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp, kcp_conn->htkey, buf, len);
 
     return SKT_OK;
 }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
-    LOG_D("serv kcp_close_cb sess_id: %u", kcp_conn->sess_id);
+    LOG_D("serv kcp_close_cb");
     return;
 }
 
@@ -92,7 +98,7 @@ int main(int argc, char *argv[]) {
     kcp_conf->port = atoi(argv[2]);
     kcp_conf->key = "12345678123456781234567812345678";
     kcp_conf->r_buf_size = skcp_conf->mtu;
-    kcp_conf->kcp_buf_size = 2048;
+    kcp_conf->kcp_buf_size = 5000;  // 2048;
     kcp_conf->timeout_interval = 1;
 
     skt_kcp_t *skt_kcp = skt_kcp_init(kcp_conf, loop, NULL, SKCP_MODE_SERV);

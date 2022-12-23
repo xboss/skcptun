@@ -144,7 +144,7 @@ typedef struct {
 #define SKCP_BUILD_CMD_CONN_ACK(vcmd, vcode, vpayload_len, vpayload) \
     do {                                                             \
         (vcmd) = malloc(sizeof(skcp_cmd_conn_ack_t) + vpayload_len); \
-        SKCP_BUILD_CMD_HEADER((vcmd)->header, SKCP_CMD_CONN);        \
+        SKCP_BUILD_CMD_HEADER((vcmd)->header, SKCP_CMD_CONN_ACK);    \
         (vcmd)->code = (vcode);                                      \
         (vcmd)->payload_len = (vpayload_len);                        \
         memcpy((vcmd)->payload, (vpayload), (vpayload_len));         \

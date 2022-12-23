@@ -122,9 +122,10 @@ void skt_kcp_close_conn(skt_kcp_t *skt_kcp, char *htkey) {
     if (NULL == conn) {
         return;
     }
-    if (SKCP_CONN_ST_ON == conn->status || SKCP_CONN_ST_READY == conn->status) {
-        conn->status = SKCP_CONN_ST_CAN_OFF;
-    }
+    // if (SKCP_CONN_ST_ON == conn->status || SKCP_CONN_ST_READY == conn->status) {
+    //     conn->status = SKCP_CONN_ST_CAN_OFF;
+    // }
+    skcp_close_conn(conn);
 }
 
 static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
@@ -228,7 +229,7 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
 
 static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     if (EV_ERROR & revents) {
-        LOG_E("read_cb got invalid event");
+        LOG_E("write_cb got invalid event");
         return;
     }
     skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
@@ -335,7 +336,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
     if (rt == 0) {
         // empty EAGAIN
-        LOG_I("skcp_recv empty");
+        // LOG_I("skcp_recv empty");
         FREE_IF(kcp_recv_buf);
         return;
     }
@@ -488,6 +489,13 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         FREE_IF(skt_kcp->r_watcher);
     }
 
+    skcp_conn_t *conn, *tmp;
+    HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
+        skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
+        skcp_close_conn(conn);
+        FREE_IF(kcp_conn);
+    }
+
     if (skt_kcp->timeout_watcher) {
         ev_timer_stop(skt_kcp->loop, skt_kcp->timeout_watcher);
         FREE_IF(skt_kcp->timeout_watcher);
@@ -498,17 +506,11 @@ void skt_kcp_free(skt_kcp_t *skt_kcp) {
         FREE_IF(skt_kcp->kcp_update_watcher);
     }
 
-    skcp_conn_t *conn, *tmp;
-    HASH_ITER(hh, skt_kcp->skcp->conn_ht, conn, tmp) {
-        skt_kcp_conn_t *kcp_conn = (skt_kcp_conn_t *)conn->user_data;
-        skcp_close_conn(conn);
-        FREE_IF(kcp_conn);
-    }
-
     if (skt_kcp->w_watcher) {
         ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
         FREE_IF(skt_kcp->w_watcher);
     }
+
     skcp_free(skt_kcp->skcp);
 
     if (skt_kcp->fd) {
