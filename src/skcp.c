@@ -67,57 +67,20 @@ static int kcp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
 }
 
 static int kcp_send_raw(skcp_conn_t *conn, const char *buf, int len) {
-    // char *raw_buf = NULL;
-    // int raw_len = 0;
-    // int has_payload = SKCP_CMD_DATA == cmd || SKCP_CMD_PING == cmd || SKCP_CMD_PONG == cmd;
-    // if (has_payload) {
-    //     raw_len = len + 1;
-    //     raw_buf = malloc(raw_len);
-    //     snprintf(raw_buf, raw_len, "%c", cmd);
-    //     char *p = raw_buf + 1;
-    //     memcpy(p, buf, len);
-    // } else {
-    //     // char s[2] = {0};
-    //     // s[0] = cmd;
-    //     // raw_buf = s;
-    //     // raw_len = 1;
-    //     srand((unsigned)time(NULL));
-    //     int jam = rand() % (RAND_MAX - 10000000) + 10000000;
-    //     char s[10] = {0};
-    //     snprintf(s, 10, "%c%d", cmd, jam);
-    //     raw_len = strlen(s);
-    //     raw_buf = s;
-    // }
-
     int rt = ikcp_send(conn->kcp, buf, len);
     if (rt < 0) {
         // 发送失败
         return -1;
     }
     ikcp_update(conn->kcp, clock());  // TODO: 跨平台
-
     return rt;
 }
 
-// static void close_conn(skcp_conn_t *conn, int is_send_close_cmd) {
 static void close_conn(skcp_conn_t *conn) {
-    printf("debug: close_conn htkey: %s\n", conn->htkey);
+    // printf("debug: close_conn htkey: %s\n", conn->htkey);
     if (conn->skcp->conn_ht) {
         del_conn(conn);
     }
-
-    // if (is_send_close_cmd) {
-    //     skcp_cmd_close_t *cmd_close;
-    //     SKCP_BUILD_CMD_CLOSE(cmd_close);
-    //     int close_len = 0;
-    //     char *close_buf = skcp_encode_cmd_close(cmd_close, &close_len);
-    //     SKCP_FREEIF(cmd_close);
-    //     if (close_buf) {
-    //         printf("debug: close_conn htkey: %s\n", conn->htkey);
-    //         kcp_send_raw(conn, close_buf, close_len);
-    //         SKCP_FREEIF(close_buf);
-    //     }
-    // }
 
     conn->status = SKCP_CONN_ST_OFF;
 
@@ -142,34 +105,6 @@ static void close_conn(skcp_conn_t *conn) {
     conn->sess_id = 0;  // TODO: for test
     SKCP_FREEIF(conn);
 }
-
-// static int handle_cmd_conn(skcp_conn_t *conn, skcp_cmd_conn_t *cmd) {
-//     if (!cmd) {
-//         return -1;
-//     }
-
-//     if (SKCP_CONN_ST_READY != conn->status) {
-//         return -1;
-//     }
-
-//     if ((cmd->flg & SKCP_CMD_CONN_NEED_ENCRYPT) == SKCP_CMD_CONN_NEED_ENCRYPT) {
-//         int iv_len = cmd->payload_len > sizeof(conn->iv) ? sizeof(conn->iv) : cmd->payload_len;
-//         memcpy(conn->iv, cmd->payload, iv_len);
-//     }
-
-//     skcp_cmd_conn_ack_t *ack;
-//     SKCP_BUILD_CMD_CONN_ACK(ack, 0, cmd->payload_len, cmd->payload);
-//     char *ack_buf;
-//     int ack_buf_len = encode_cmd_conn_ack(ack, &ack_buf);
-//     if (ack_buf_len <= 0) {
-//         SKCP_FREEIF(ack);
-//         return -1;
-//     }
-//     kcp_send_raw(conn, ack_buf, ack_buf_len);
-//     conn->status = SKCP_CONN_ST_ON;
-
-//     return 0;
-// }
 
 static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, int *op_type) {
     if (len < SKCP_CMD_HEADER_LEN) {
@@ -204,13 +139,10 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
         }
         kcp_send_raw(conn, ack_buf, ack_buf_len);
 
-        printf("send conn ack %d\n", ack_buf_len);
-
         SKCP_FREEIF(ack_buf);
         conn->status = SKCP_CONN_ST_ON;
 
     } else if (SKCP_CMD_CONN_ACK == header.type) {
-        printf("recv conn ack start \n");
         *op_type = 2;
         if (SKCP_CONN_ST_READY != conn->status) {
             return -1;
@@ -225,14 +157,11 @@ static int parse_recv(skcp_conn_t *conn, char *in_buf, char *out_buf, int len, i
             rt = cmd_conn_ack->header.payload_len;
         }
 
-        printf("recv conn ack %d\n", len);
-
         SKCP_FREEIF(cmd_conn_ack);
         conn->status = SKCP_CONN_ST_ON;
     } else if (SKCP_CMD_CLOSE == header.type) {
         *op_type = 3;
         close_conn(conn);
-        // conn->status = SKCP_CONN_ST_CAN_OFF;
     } else if (SKCP_CMD_DATA == header.type) {
         *op_type = 4;
         skcp_cmd_t *cmd_data = skcp_decode_cmd(in_buf, len);
@@ -293,7 +222,6 @@ IUINT32 skcp_get_sess_id(const void *data) { return ikcp_getconv(data); }
 int skcp_recv(skcp_conn_t *conn, char *buf, int buf_len, int *op_type) {
     char *recv_buf = malloc(buf_len);
     int recv_len = 0;
-    // irecv:
     recv_len = ikcp_recv(conn->kcp, recv_buf, buf_len);
     if (recv_len < 0) {
         if (recv_len == -3) {
@@ -313,18 +241,6 @@ int skcp_recv(skcp_conn_t *conn, char *buf, int buf_len, int *op_type) {
 int skcp_send_data(skcp_conn_t *conn, const char *buf, int len) { return send_cmd(conn, buf, len, SKCP_CMD_DATA); }
 
 int skcp_send_ctrl(skcp_conn_t *conn, const char *buf, int len) { return send_cmd(conn, buf, len, SKCP_CMD_CTRL); }
-
-// int skcp_send_ping(skcp_conn_t *conn, IUINT64 now) {
-//     char buf[22] = {0};
-//     snprintf(buf, 22, "%llu", now);
-//     return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PING);
-// }
-
-// int skcp_send_pong(skcp_conn_t *conn, IUINT64 tm, IUINT64 now) {
-//     char buf[44] = {0};
-//     snprintf(buf, 44, "%llu %llu", tm, now);
-//     return kcp_send_raw(conn, buf, strlen(buf), SKCP_CMD_PONG);
-// }
 
 IUINT32 skcp_gen_sess_id(skcp_t *skcp) {
     skcp->cur_sess_id++;
@@ -353,10 +269,6 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
 
     if (skcp->mode == SKCP_MODE_CLI) {
         skcp_cmd_t *cmd_conn;
-        // char flg = 0x00;
-        // if (conn_param && conn_param_len > 0) {
-        //     flg = SKCP_CMD_CONN_NEED_ENCRYPT;
-        // }
         SKCP_BUILD_CMD(cmd_conn, SKCP_CMD_CONN, 0x00, conn_param_len, conn_param);
         int conn_len = 0;
         char *conn_buf = skcp_encode_cmd(cmd_conn, &conn_len);
@@ -377,7 +289,6 @@ skcp_conn_t *skcp_create_conn(skcp_t *skcp, char *htkey, IUINT32 sess_id, IUINT6
 }
 
 void skcp_close_conn(skcp_conn_t *conn) {
-    // close_conn(conn, 1);
     if (NULL == conn) {
         return;
     }
@@ -387,7 +298,6 @@ void skcp_close_conn(skcp_conn_t *conn) {
     char *close_buf = skcp_encode_cmd(cmd_close, &close_len);
     SKCP_FREEIF(cmd_close);
     if (close_buf) {
-        // printf("debug: send close cmd htkey: %s\n", conn->htkey);
         kcp_send_raw(conn, close_buf, close_len);
         SKCP_FREEIF(close_buf);
     }

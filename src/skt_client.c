@@ -52,7 +52,7 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     //     skt_tcp_close_conn(tcp_conn);
     // }
 
-    int rt = skt_kcp_send(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp, htkey, buf, len);
+    int rt = skt_kcp_send_data(SKT_GET_KCP_CONN(kcp_conn)->skt_kcp, htkey, buf, len);
     if (rt < 0) {
         skt_kcp_close_conn(g_cli->skt_kcp, htkey);
         skt_tcp_close_conn(tcp_conn);
@@ -64,7 +64,7 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
 
 //////////////////////
 
-static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     char htkey[SKCP_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, NULL);
 
@@ -83,6 +83,8 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 
     return SKT_OK;
 }
+
+static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) { return SKT_OK; }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("kcp_close_cb");
@@ -163,7 +165,8 @@ skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
     // skt_kcp->conn_timeout_cb = NULL;
     skt_kcp->new_conn_cb = NULL;
     skt_kcp->conn_close_cb = kcp_close_cb;
-    skt_kcp->kcp_recv_cb = kcp_recv_cb;
+    skt_kcp->kcp_recv_data_cb = kcp_recv_data_cb;
+    skt_kcp->kcp_recv_ctrl_cb = kcp_recv_ctrl_cb;
     if (conf->kcp_conf->key != NULL) {
         skt_kcp->encrypt_cb = kcp_encrypt_cb;
         skt_kcp->decrypt_cb = kcp_decrypt_cb;

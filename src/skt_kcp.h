@@ -39,12 +39,13 @@ struct skt_kcp_s {
 
     void *data;
 
-    char iv[33];
-    char iv_tmp[33];
+    // char iv[33];
+    // char iv_tmp[33];
 
     void (*new_conn_cb)(skcp_conn_t *kcp_conn);
     void (*conn_close_cb)(skt_kcp_conn_t *kcp_conn);
-    int (*kcp_recv_cb)(skcp_conn_t *kcp_conn, char *buf, int len);
+    int (*kcp_recv_data_cb)(skcp_conn_t *kcp_conn, char *buf, int len);
+    int (*kcp_recv_ctrl_cb)(skcp_conn_t *kcp_conn, char *buf, int len);
     char *(*encrypt_cb)(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len);
     char *(*decrypt_cb)(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len);
 };
@@ -64,7 +65,8 @@ void skt_kcp_free(skt_kcp_t *skt_kcp);
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr);
 skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct sockaddr_in *sock_addr);
 void skt_kcp_close_conn(skt_kcp_t *skt_kcp, char *htkey);
-int skt_kcp_send(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len);
+int skt_kcp_send_data(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len);
+int skt_kcp_send_ctrl(skt_kcp_t *skt_kcp, char *htkey, const char *buf, int len);
 skcp_conn_t *skt_kcp_get_conn(skt_kcp_t *skt_kcp, char *htkey);
 
 #endif

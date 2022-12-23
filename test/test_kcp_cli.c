@@ -44,12 +44,12 @@ static void send_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     }
     str[sz - 2] = 'C';
 
-    skt_kcp_send(SKT_GET_KCP_CONN(sconn)->skt_kcp, sconn->htkey, str, strlen(str));
+    skt_kcp_send_data(SKT_GET_KCP_CONN(sconn)->skt_kcp, sconn->htkey, str, strlen(str));
     LOG_D("<%s", str);
     count++;
 }
 
-static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     LOG_D("cli kcp_recv_cb sess_id: %u len: %d", kcp_conn->sess_id, len);
     char *str = malloc(len + 1);
     memset(str, 0, len + 1);
@@ -59,6 +59,8 @@ static int kcp_recv_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 
     return SKT_OK;
 }
+
+static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) { return SKT_OK; }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("cli kcp_close_cb");
@@ -156,7 +158,8 @@ int main(int argc, char *argv[]) {
     };
 
     // skt_kcp->conn_timeout_cb = kcp_timeout_cb;
-    skt_kcp->kcp_recv_cb = kcp_recv_cb;
+    skt_kcp->kcp_recv_data_cb = kcp_recv_data_cb;
+    skt_kcp->kcp_recv_ctrl_cb = kcp_recv_ctrl_cb;
     skt_kcp->new_conn_cb = NULL;
     skt_kcp->conn_close_cb = kcp_close_cb;
     if (kcp_conf->key != NULL) {
@@ -171,7 +174,7 @@ int main(int argc, char *argv[]) {
     send_watcher = malloc(sizeof(ev_timer));
     send_watcher->data = skt_kcp;
     ev_init(send_watcher, send_cb);
-    ev_timer_set(send_watcher, 1, 1);
+    ev_timer_set(send_watcher, 0.1, 0.1);
     ev_timer_start(skt_kcp->loop, send_watcher);
 
     LOG_D("loop run");
