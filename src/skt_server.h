@@ -22,6 +22,8 @@ struct skt_serv_s {
     struct ev_loop *loop;
     skt_kcp_t *skt_kcp;
     skt_tcp_t *skt_tcp;
+
+    skcp_conn_t *ht_conn;
 };
 
 skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop);

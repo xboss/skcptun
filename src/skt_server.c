@@ -6,6 +6,15 @@
 static skt_serv_t *g_serv = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
+static void stat_rtt(skcp_conn_t *conn, const char *buf) {
+    uint64_t itm = strtoull(buf + 2, NULL, 10);
+    uint64_t now = getmillisecond();
+    char str[44] = {0};
+    snprintf(str, 44, "s %llu %llu", itm, now);
+    skt_kcp_send_ctrl(g_serv->skt_kcp, conn->htkey, str, strlen(str));
+    LOG_D("stat_rtt send %s", str);
+}
+
 static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
     char htkey[SKCP_HTKEY_LEN] = {0};
     skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, tcp_conn->sess_id, &tcp_conn->kcp_cli_addr);
@@ -17,6 +26,7 @@ static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
 
     int rt = skt_kcp_send_data(g_serv->skt_kcp, htkey, buf, len);
     if (SKT_ERROR == rt) {
+        // LOG_W("tcp_recv_cb close %s", htkey);
         skt_kcp_close_conn(g_serv->skt_kcp, htkey);
         skt_tcp_close_conn(tcp_conn);
         return;
@@ -37,7 +47,10 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
         return;
     }
 
-    skt_kcp_close_conn(g_serv->skt_kcp, htkey);
+    if (SKT_GET_KCP_CONN(kcp_conn)->tag == SKT_KCP_TAG_NM) {
+        // LOG_W("tcp_close_cb close %s", htkey);
+        skt_kcp_close_conn(g_serv->skt_kcp, htkey);
+    }
 
     return;
 }
@@ -57,12 +70,14 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, &SKT_GET_KCP_CONN(kcp_conn)->dest_addr);
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, SKT_GET_KCP_CONN(kcp_conn)->tcp_fd);
     if (NULL == tcp_conn) {
+        // LOG_W("kcp_recv_data_cb 111 close %s", kcp_conn->htkey);
         skt_kcp_close_conn(g_serv->skt_kcp, kcp_conn->htkey);
         return SKT_ERROR;
     }
 
     ssize_t rt = skt_tcp_send(tcp_conn, buf, len);
     if (rt < 0) {
+        // LOG_W("kcp_recv_data_cb 222 close %s", kcp_conn->htkey);
         skt_kcp_close_conn(g_serv->skt_kcp, kcp_conn->htkey);
         skt_tcp_close_conn(tcp_conn);
         return SKT_ERROR;
@@ -71,9 +86,26 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     return SKT_OK;
 }
 
-static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) { return SKT_OK; }
+static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+    if (buf && len > 3 && buf[0] == 's' && buf[1] == ' ') {
+        // stat msg
+        if (!g_serv->ht_conn) {
+            g_serv->ht_conn = kcp_conn;
+        }
+
+        SKT_GET_KCP_CONN(g_serv->ht_conn)->tag = SKT_KCP_TAG_HT;
+        stat_rtt(kcp_conn, buf);
+        return SKT_OK;
+    }
+    return SKT_OK;
+}
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
+    if (kcp_conn->tag == SKT_KCP_TAG_HT) {
+        g_serv->ht_conn = NULL;
+        return;
+    }
+
     skt_tcp_conn_t *tcp_conn = skt_tcp_get_conn(g_serv->skt_tcp, kcp_conn->tcp_fd);
     if (NULL == tcp_conn) {
         return;
@@ -158,6 +190,8 @@ skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
     }
 
     g_serv->skt_kcp = skt_kcp;
+
+    g_serv->ht_conn = NULL;
 
     return g_serv;
 }
