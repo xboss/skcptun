@@ -1,10 +1,47 @@
 #include "skt_client.h"
 
+#include <limits.h>
+
 #include "skt_cipher.h"
 #include "skt_utils.h"
 
 static skt_cli_t *g_cli = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
+
+static void reset_stat_rtt() {
+    LOG_I("reset stat rtt rtt_cnt: %u", g_cli->rtt_cnt);
+    g_cli->rtt_cnt = 0;
+    g_cli->max_rtt = 0;
+    g_cli->min_rtt = INT_MAX;
+    g_cli->avg_rtt = 0;
+    g_cli->sum_rtt = 0;
+}
+static void stat_rtt(skcp_conn_t *conn, const char *buf) {
+    // g_cli->rtt_cnt = g_cli->rtt_cnt >= INT_MAX ? 0 : g_cli->rtt_cnt + 1;
+    if (g_cli->rtt_cnt >= 100000000) {
+        reset_stat_rtt();
+    }
+    g_cli->rtt_cnt++;
+
+    char *pEnd = NULL;
+    uint64_t itm = strtoull(buf + 2, &pEnd, 10);
+    uint64_t otm = strtoull(pEnd, NULL, 10);
+    uint64_t now = getmillisecond();
+    uint64_t rtt = now - itm;
+    g_cli->sum_rtt += rtt;
+    g_cli->avg_rtt = g_cli->sum_rtt / g_cli->rtt_cnt;
+    g_cli->max_rtt = rtt > g_cli->max_rtt ? rtt : g_cli->max_rtt;
+    g_cli->min_rtt = rtt < g_cli->min_rtt ? rtt : g_cli->min_rtt;
+
+    if (abs(g_cli->last_avg_rtt - g_cli->avg_rtt) > 10) {
+        LOG_I("stat htkey: %s rtt_cnt: %u min_rtt: %d max_rtt: %d avg_rtt:%d cur_rtt:%llu", conn->htkey, g_cli->rtt_cnt,
+              g_cli->min_rtt, g_cli->max_rtt, g_cli->avg_rtt, rtt);
+    }
+    // LOG_I("stat htkey: %s rtt_cnt: %u min_rtt: %d max_rtt: %d avg_rtt:%d cur_rtt:%llu", conn->htkey, g_cli->rtt_cnt,
+    //       g_cli->min_rtt, g_cli->max_rtt, g_cli->avg_rtt, rtt);
+
+    g_cli->last_avg_rtt = g_cli->avg_rtt;
+}
 
 static void tcp_accept_cb(skt_tcp_conn_t *tcp_conn) {
     LOG_D("tcp serv accept_conn_cb fd:%d", tcp_conn->fd);
@@ -84,12 +121,25 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     return SKT_OK;
 }
 
-static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) { return SKT_OK; }
+static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+    if (buf && len > 3 && buf[0] == 's' && buf[1] == ' ') {
+        // stat msg
+        stat_rtt(kcp_conn, buf);
+        return SKT_OK;
+    }
+
+    return SKT_OK;
+}
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("kcp_close_cb");
 
     if (NULL == g_cli->skt_tcp) {
+        return;
+    }
+
+    if (kcp_conn->tag == SKT_KCP_TAG_HT) {
+        g_cli->ht_conn = NULL;
         return;
     }
 
@@ -138,6 +188,30 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 //////////////////////
 
+static void healthy_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
+    if (EV_ERROR & revents) {
+        LOG_E("init_cb got invalid event");
+        return;
+    }
+
+    skt_kcp_t *skt_kcp = (skt_kcp_t *)watcher->data;
+
+    if (!g_cli->ht_conn) {
+        g_cli->ht_conn = skt_kcp_new_conn(skt_kcp, 0, NULL);
+        SKT_GET_KCP_CONN(g_cli->ht_conn)->tag = SKT_KCP_TAG_HT;
+        reset_stat_rtt();
+        // LOG_I("new healthy conn");
+        return;
+    }
+
+    // stat msg format: "cmd(1B) content(nB)", example: "s 1234567890"
+    uint64_t now = getmillisecond();
+    char buf[23] = {0};
+    snprintf(buf, 23, "s %llu", now);
+    skt_kcp_send_ctrl(skt_kcp, g_cli->ht_conn->htkey, buf, strlen(buf));
+    LOG_D("healthy_cb send %s", buf);
+}
+
 skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
     conf->tcp_conf->accept_cb = tcp_accept_cb;
     conf->tcp_conf->close_cb = tcp_close_cb;
@@ -176,6 +250,14 @@ skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
     }
 
     g_cli->skt_kcp = skt_kcp;
+
+    reset_stat_rtt();
+    g_cli->ht_conn = NULL;
+    g_cli->ht_watcher = malloc(sizeof(ev_timer));
+    g_cli->ht_watcher->data = skt_kcp;
+    ev_init(g_cli->ht_watcher, healthy_cb);
+    ev_timer_set(g_cli->ht_watcher, 0, 1);
+    ev_timer_start(skt_kcp->loop, g_cli->ht_watcher);
 
     return g_cli;
 }

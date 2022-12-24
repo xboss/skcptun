@@ -20,6 +20,15 @@ struct skt_cli_s {
     struct ev_loop *loop;
     skt_kcp_t *skt_kcp;
     skt_tcp_t *skt_tcp;
+
+    uint32_t rtt_cnt;
+    int max_rtt;
+    int min_rtt;
+    int avg_rtt;
+    int sum_rtt;
+    int last_avg_rtt;
+    skcp_conn_t *ht_conn;
+    struct ev_timer *ht_watcher;
 };
 
 skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop);

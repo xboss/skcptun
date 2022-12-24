@@ -19,6 +19,11 @@ target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun ev)
 
+# add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
+# target_link_libraries(skcptun_static ssl -static)
+# target_link_libraries(skcptun_static crypto -static)
+# target_link_libraries(skcptun_static ev -static)
+
 ############# test #############
 SET(TEST_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/test/test_tcp_serv.c ${CMAKE_CURRENT_SOURCE_DIR}/src/skt_tcp.c ${CMAKE_CURRENT_SOURCE_DIR}/src/skt_utils.c)
 add_executable(test_tcp_serv  ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH} ${TEST_SRC_FILES})
