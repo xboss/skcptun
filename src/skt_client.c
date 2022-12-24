@@ -9,7 +9,7 @@ static skt_cli_t *g_cli = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
 static void reset_stat_rtt() {
-    LOG_I("reset stat rtt rtt_cnt: %u", g_cli->rtt_cnt);
+    // LOG_I("reset stat rtt rtt_cnt: %u", g_cli->rtt_cnt);
     g_cli->rtt_cnt = 0;
     g_cli->max_rtt = 0;
     g_cli->min_rtt = INT_MAX;
