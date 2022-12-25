@@ -75,7 +75,7 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         return SKT_ERROR;
     }
 
-    LOG_I("kcp client start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
+    LOG_I("kcp server start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
 
     return SKT_OK;
 }
