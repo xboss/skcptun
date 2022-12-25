@@ -314,7 +314,6 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
         case 3:
             // 收到close 命令
             LOG_D("cmd close tcp_fd:%u", kcp_conn->tcp_fd);
-            conn->last_r_tm = getmillisecond();
             call_conn_close_cb(skt_kcp, kcp_conn);
             break;
         case 4:
