@@ -5,6 +5,8 @@
 #include "skt_cipher.h"
 #include "skt_utils.h"
 
+#define SKT_KCP_TAG_HT 1
+
 static skt_cli_t *g_cli = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 

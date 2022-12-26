@@ -7,8 +7,8 @@
 #include "skcp.h"
 #include "skt_utils.h"
 
-#define SKT_KCP_TAG_NM 0
-#define SKT_KCP_TAG_HT 1
+// #define SKT_KCP_TAG_NM 0
+// #define SKT_KCP_TAG_HT 1
 
 typedef struct skt_kcp_conn_s skt_kcp_conn_t;
 typedef struct skt_kcp_s skt_kcp_t;

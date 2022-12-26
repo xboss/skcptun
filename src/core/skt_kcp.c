@@ -184,7 +184,7 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
-    kcp_conn->tag = SKT_KCP_TAG_NM;
+    kcp_conn->tag = 0;
 
     char *htkey = malloc(SKCP_HTKEY_LEN);
     memset(htkey, 0, SKCP_HTKEY_LEN);

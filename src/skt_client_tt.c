@@ -4,10 +4,12 @@
 #include "skt_config.h"
 #include "skt_utils.h"
 
-struct skt_cli_tt_s {
+struct skt_cli_s {
     skt_cli_tt_conf_t *conf;
     struct ev_loop *loop;
     skt_kcp_t *skt_kcp;
+    skcp_conn_t *data_conn;
+    struct ev_timer *bt_watcher;
 
     // uint32_t rtt_cnt;
     // int max_rtt;
@@ -18,9 +20,10 @@ struct skt_cli_tt_s {
     // skcp_conn_t *ht_conn;
     // struct ev_timer *ht_watcher;
 };
+typedef struct skt_cli_s skt_cli_t;
 
-static skt_cli_tt_t *g_cli = NULL;
-static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
+static skt_cli_t *g_cli = NULL;
+static char *iv = "667b02a85c61c580def4521b060265e8";  // TODO: 动态生成
 
 //////////////////////
 
@@ -83,15 +86,32 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 //////////////////////
 
-static skt_cli_tt_t *client_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
-    g_cli = malloc(sizeof(skt_cli_tt_t));
+static void beat_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
+    if (EV_ERROR & revents) {
+        LOG_E("init_cb got invalid event");
+        return;
+    }
+
+    skt_kcp_t *skt_kcp = (skt_kcp_t *)watcher->data;
+
+    if (!g_cli->data_conn) {
+        g_cli->data_conn = skt_kcp_new_conn(skt_kcp, 0, NULL);
+        LOG_I("new data conn");
+        return;
+    }
+}
+
+//////////////////////
+
+int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
+    g_cli = malloc(sizeof(skt_cli_t));
     g_cli->conf = conf;
     g_cli->loop = loop;
 
     skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_cli, SKCP_MODE_CLI);
     if (NULL == skt_kcp) {
         FREE_IF(g_cli);
-        return NULL;
+        return -1;
     };
     // skt_kcp->conn_timeout_cb = NULL;
     skt_kcp->new_conn_cb = NULL;
@@ -106,12 +126,17 @@ static skt_cli_tt_t *client_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) 
         skt_kcp->decrypt_cb = NULL;
     }
 
+    g_cli->data_conn = NULL;
+    g_cli->bt_watcher = malloc(sizeof(ev_timer));
+    g_cli->bt_watcher->data = skt_kcp;
+    ev_init(g_cli->bt_watcher, beat_cb);
+    ev_timer_set(g_cli->bt_watcher, 0, 1);
+    ev_timer_start(skt_kcp->loop, g_cli->bt_watcher);
+
     g_cli->skt_kcp = skt_kcp;
-
-    return g_cli;
+    return 0;
 }
-
-static void client_free() {
+void skt_client_tt_free() {
     if (NULL == g_cli) {
         return;
     }
@@ -123,7 +148,3 @@ static void client_free() {
 
     FREE_IF(g_cli);
 }
-
-//////////////////////
-
-skt_cli_tt_t *skt_start_client_tt(struct ev_loop *loop, const char *conf_file) {}

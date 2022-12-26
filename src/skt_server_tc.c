@@ -3,6 +3,8 @@
 #include "skt_cipher.h"
 #include "skt_utils.h"
 
+#define SKT_KCP_TAG_HT 1
+
 static skt_serv_t *g_serv = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
@@ -47,7 +49,7 @@ static void tcp_close_cb(skt_tcp_conn_t *tcp_conn) {
         return;
     }
 
-    if (SKT_GET_KCP_CONN(kcp_conn)->tag == SKT_KCP_TAG_NM) {
+    if (SKT_GET_KCP_CONN(kcp_conn)->tag == 0) {
         // LOG_W("tcp_close_cb close %s", htkey);
         skt_kcp_close_conn(g_serv->skt_kcp, htkey);
     }
