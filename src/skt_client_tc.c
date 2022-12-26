@@ -1,8 +1,9 @@
-#include "skt_client.h"
+#include "skt_client_tc.h"
 
 #include <limits.h>
 
 #include "skt_cipher.h"
+#include "skt_config.h"
 #include "skt_utils.h"
 
 static skt_cli_t *g_cli = NULL;
@@ -210,6 +211,31 @@ static void healthy_cb(struct ev_loop *loop, struct ev_timer *watcher, int reven
     snprintf(buf, 23, "s %llu", now);
     skt_kcp_send_ctrl(skt_kcp, g_cli->ht_conn->htkey, buf, strlen(buf));
     LOG_D("healthy_cb send %s", buf);
+}
+
+skt_cli_t *skt_start_client(struct ev_loop *loop, const char *conf_file) {
+    if (NULL == loop) {
+        LOG_E("loop create failed");
+        return NULL;
+    }
+
+    skt_cli_conf_t *conf = skt_init_client_tc_conf(conf_file);
+    if (NULL == conf) {
+        return NULL;
+    }
+    skt_cli_t *cli = skt_client_init(conf, loop);
+    if (NULL == cli) {
+        skt_free_client_tc_conf(conf);
+        return NULL;
+    }
+
+    LOG_D("client loop run");
+    ev_run(loop, 0);
+    LOG_D("loop end");
+
+    skt_client_free();
+    skt_free_client_tc_conf(conf);
+    return cli;
 }
 
 skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {

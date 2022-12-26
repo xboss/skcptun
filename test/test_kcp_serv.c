@@ -1,9 +1,9 @@
 #include <arpa/inet.h>
 #include <ev.h>
 
-#include "../src/skt_cipher.h"
-#include "../src/skt_kcp.h"
-#include "../src/skt_utils.h"
+#include "skt_cipher.h"
+#include "skt_kcp.h"
+#include "skt_utils.h"
 
 static char *def_iv = "12345678123456781234567812345678";
 

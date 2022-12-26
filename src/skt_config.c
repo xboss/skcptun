@@ -4,9 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "3rd/cJSON/cJSON.h"
-#include "skt_client.h"
-#include "skt_server.h"
+// #include "3rd/cJSON/cJSON.h"
+#include "cJSON.h"
+#include "skt_client_tc.h"
+#include "skt_server_tc.h"
 #include "skt_utils.h"
 
 #define SKT_CONF_R_BUF_SIZE 1024
@@ -33,7 +34,7 @@ static inline void get_int(cJSON *m_json, char *name, int *value) {
 
 /**********  client config **********/
 
-static skt_cli_conf_t *init_def_cli_conf() {
+static skt_cli_conf_t *init_def_cli_tc_conf() {
     skt_cli_conf_t *cli_conf = malloc(sizeof(skt_cli_conf_t));
     skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
     skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
@@ -73,7 +74,7 @@ static skt_cli_conf_t *init_def_cli_conf() {
     return cli_conf;
 }
 
-void skt_free_client_conf(skt_cli_conf_t *cli_conf) {
+void skt_free_client_tc_conf(skt_cli_conf_t *cli_conf) {
     if (cli_conf) {
         if (cli_conf->kcp_conf) {
             FREE_IF(cli_conf->kcp_conf->skcp_conf);
@@ -90,7 +91,7 @@ void skt_free_client_conf(skt_cli_conf_t *cli_conf) {
     }
 }
 
-skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
+skt_cli_conf_t *skt_init_client_tc_conf(const char *conf_file) {
     FILE *fp;
     if ((fp = fopen(conf_file, "r")) == NULL) {
         LOG_E("can't open conf file %s", conf_file);
@@ -125,7 +126,7 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
         return NULL;
     }
 
-    skt_cli_conf_t *conf = init_def_cli_conf();
+    skt_cli_conf_t *conf = init_def_cli_tc_conf();
 
     get_str(m_json, "local_addr", &conf->tcp_conf->serv_addr);
     if (NULL == conf->tcp_conf->serv_addr) {
@@ -192,7 +193,7 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
 
 /**********  server config **********/
 
-skt_serv_conf_t *init_def_serv_conf() {
+static skt_serv_conf_t *init_def_serv_tc_conf() {
     skt_serv_conf_t *serv_conf = malloc(sizeof(skt_serv_conf_t));
     serv_conf->target_addr = NULL;
     serv_conf->target_port = 3333;
@@ -234,7 +235,7 @@ skt_serv_conf_t *init_def_serv_conf() {
     return serv_conf;
 }
 
-void skt_free_server_conf(skt_serv_conf_t *serv_conf) {
+void skt_free_server_tc_conf(skt_serv_conf_t *serv_conf) {
     if (serv_conf) {
         FREE_IF(serv_conf->target_addr);
         if (serv_conf->kcp_conf) {
@@ -251,7 +252,7 @@ void skt_free_server_conf(skt_serv_conf_t *serv_conf) {
     }
 }
 
-skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
+skt_serv_conf_t *skt_init_server_tc_conf(const char *conf_file) {
     FILE *fp;
     if ((fp = fopen(conf_file, "r")) == NULL) {
         LOG_E("can't open conf file %s", conf_file);
@@ -286,7 +287,7 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
         return NULL;
     }
 
-    skt_serv_conf_t *conf = init_def_serv_conf();
+    skt_serv_conf_t *conf = init_def_serv_tc_conf();
 
     get_str(m_json, "local_addr", &conf->kcp_conf->addr);
     if (NULL == conf->kcp_conf->addr) {

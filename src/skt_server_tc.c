@@ -1,6 +1,7 @@
-#include "skt_server.h"
+#include "skt_server_tc.h"
 
 #include "skt_cipher.h"
+#include "skt_config.h"
 #include "skt_utils.h"
 
 static skt_serv_t *g_serv = NULL;
@@ -150,6 +151,32 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 }
 
 //////////////////////
+
+skt_serv_t *skt_start_server(struct ev_loop *loop, const char *conf_file) {
+    if (NULL == loop) {
+        LOG_E("loop create failed");
+        return NULL;
+    }
+
+    skt_serv_conf_t *conf = skt_init_server_tc_conf(conf_file);
+    if (NULL == conf) {
+        return NULL;
+    }
+
+    skt_serv_t *serv = skt_server_init(conf, loop);
+    if (NULL == serv) {
+        skt_free_server_tc_conf(conf);
+        return NULL;
+    }
+
+    LOG_D("server loop run");
+    ev_run(loop, 0);
+    LOG_D("loop end");
+
+    skt_server_free();
+    skt_free_server_tc_conf(conf);
+    return serv;
+}
 
 skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
     conf->tcp_conf->close_cb = tcp_close_cb;

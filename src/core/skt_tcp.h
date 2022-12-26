@@ -4,9 +4,11 @@
 #include <arpa/inet.h>
 #include <ev.h>
 
-#include "3rd/uthash/uthash.h"
-#include "3rd/uthash/utlist.h"
+// #include "3rd/uthash/uthash.h"
+// #include "3rd/uthash/utlist.h"
 #include "skt_utils.h"
+#include "uthash.h"
+#include "utlist.h"
 
 #define TCP_WAITIMG_BUF_SZ 2048
 

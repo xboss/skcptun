@@ -278,34 +278,34 @@ void run_udp_serv(char *addr, uint16_t port) {
             "Usage: %s mode\n  mode:\n    1: start vpn client\n    2: start udp server\n    3: start udp client\n", \
             argv[0])
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        SKT_TEST_USAGE;
-        return 1;
-    }
+// int main(int argc, char **argv) {
+//     if (argc < 2) {
+//         SKT_TEST_USAGE;
+//         return 1;
+//     }
 
-    char *addr = "0.0.0.0";
-    uint16_t port = 9090;
-    if (strcmp(argv[1], "1") == 0) {
-        vpn_cli();
-    } else if (strcmp(argv[1], "2") == 0) {
-        run_udp_serv(addr, port);
-    } else if (strcmp(argv[1], "3") == 0) {
-        run_udp_cli(addr, port);
-    } else {
-        SKT_TEST_USAGE;
-        return 1;
-    }
+//     char *addr = "0.0.0.0";
+//     uint16_t port = 9090;
+//     if (strcmp(argv[1], "1") == 0) {
+//         vpn_cli();
+//     } else if (strcmp(argv[1], "2") == 0) {
+//         run_udp_serv(addr, port);
+//     } else if (strcmp(argv[1], "3") == 0) {
+//         run_udp_cli(addr, port);
+//     } else {
+//         SKT_TEST_USAGE;
+//         return 1;
+//     }
 
-    /******** test udp server start ********/
+//     /******** test udp server start ********/
 
-    /******** test udp server end ********/
+//     /******** test udp server end ********/
 
-    /******** test udp client start ********/
+//     /******** test udp client start ********/
 
-    /******** test udp client end ********/
+//     /******** test udp client end ********/
 
-    return 0;
-}
+//     return 0;
+// }
 
 #endif /* __APPLE__ */

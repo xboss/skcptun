@@ -2,8 +2,8 @@
 #include <arpa/inet.h>
 #include <ev.h>
 
-#include "../src/skt_tcp.h"
-#include "../src/skt_utils.h"
+#include "skt_tcp.h"
+#include "skt_utils.h"
 
 static void tcp_accept_cb(skt_tcp_conn_t *tcp_conn) {
     LOG_D("tcp serv accept_conn_cb fd:%d", tcp_conn->fd);

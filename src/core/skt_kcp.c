@@ -5,7 +5,8 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include "3rd/uthash/utlist.h"
+// #include "3rd/uthash/utlist.h"
+#include "utlist.h"
 
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr) {
     in_port_t port = 0;
