@@ -8,6 +8,7 @@ message("project dir: ${PROJECT_SOURCE_DIR}")
 
 link_directories("/usr/local/lib")
 
+include_directories(${PROJECT_SOURCE_DIR}/src/)
 include_directories(${PROJECT_SOURCE_DIR}/src/core)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/cJSON)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/uthash)
@@ -56,6 +57,9 @@ target_link_libraries(test_skcp_protocol ssl)
 target_link_libraries(test_skcp_protocol crypto)
 target_link_libraries(test_skcp_protocol ev)
 
-# SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/src/skt_tuntap_osx.c ${PROJECT_SOURCE_DIR}/src/skt_utils.c)
-# add_executable(test_tuntap_osx  ${TEST_SRC_FILES})
+SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_tuntap_cli.c  ${PROJECT_SOURCE_DIR}/src/skt_client_tt.c ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
+add_executable(test_tuntap_cli ${TEST_SRC_FILES})
+target_link_libraries(test_tuntap_cli ssl)
+target_link_libraries(test_tuntap_cli crypto)
+target_link_libraries(test_tuntap_cli ev)
 
