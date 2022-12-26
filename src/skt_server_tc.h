@@ -18,8 +18,16 @@ struct skt_serv_conf_s {
 };
 typedef struct skt_serv_conf_s skt_serv_conf_t;
 
-// skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop);
-// void skt_server_free();
-skt_serv_t *skt_start_server(struct ev_loop *loop, const char *conf_file);
+struct skt_serv_s {
+    skt_serv_conf_t *conf;
+    struct ev_loop *loop;
+    skt_kcp_t *skt_kcp;
+    skt_tcp_t *skt_tcp;
+
+    skcp_conn_t *ht_conn;
+};
+
+skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop);
+void skt_server_free();
 
 #endif

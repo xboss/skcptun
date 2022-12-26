@@ -3,24 +3,7 @@
 #include <limits.h>
 
 #include "skt_cipher.h"
-#include "skt_config.h"
 #include "skt_utils.h"
-
-struct skt_cli_s {
-    skt_cli_conf_t *conf;
-    struct ev_loop *loop;
-    skt_kcp_t *skt_kcp;
-    skt_tcp_t *skt_tcp;
-
-    uint32_t rtt_cnt;
-    int max_rtt;
-    int min_rtt;
-    int avg_rtt;
-    int sum_rtt;
-    int last_avg_rtt;
-    skcp_conn_t *ht_conn;
-    struct ev_timer *ht_watcher;
-};
 
 static skt_cli_t *g_cli = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
@@ -229,7 +212,7 @@ static void healthy_cb(struct ev_loop *loop, struct ev_timer *watcher, int reven
     LOG_D("healthy_cb send %s", buf);
 }
 
-skt_cli_t *client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
+skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
     conf->tcp_conf->accept_cb = tcp_accept_cb;
     conf->tcp_conf->close_cb = tcp_close_cb;
     conf->tcp_conf->recv_cb = tcp_recv_cb;
@@ -278,8 +261,7 @@ skt_cli_t *client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
 
     return g_cli;
 }
-
-static void client_free() {
+void skt_client_free() {
     if (NULL == g_cli) {
         return;
     }
@@ -295,31 +277,4 @@ static void client_free() {
     }
 
     FREE_IF(g_cli);
-}
-
-//////////////////////
-
-skt_cli_t *skt_start_client(struct ev_loop *loop, const char *conf_file) {
-    if (NULL == loop) {
-        LOG_E("loop create failed");
-        return NULL;
-    }
-
-    skt_cli_conf_t *conf = skt_init_client_tc_conf(conf_file);
-    if (NULL == conf) {
-        return NULL;
-    }
-    skt_cli_t *cli = client_init(conf, loop);
-    if (NULL == cli) {
-        skt_free_client_tc_conf(conf);
-        return NULL;
-    }
-
-    LOG_D("client loop run");
-    ev_run(loop, 0);
-    LOG_D("loop end");
-
-    client_free();
-    skt_free_client_tc_conf(conf);
-    return cli;
 }
