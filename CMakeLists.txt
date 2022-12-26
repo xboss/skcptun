@@ -63,3 +63,10 @@ target_link_libraries(test_tuntap_cli ssl)
 target_link_libraries(test_tuntap_cli crypto)
 target_link_libraries(test_tuntap_cli ev)
 
+SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_tuntap_serv.c  ${PROJECT_SOURCE_DIR}/src/skt_server_tt.c ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
+add_executable(test_tuntap_serv ${TEST_SRC_FILES})
+target_link_libraries(test_tuntap_serv ssl)
+target_link_libraries(test_tuntap_serv crypto)
+target_link_libraries(test_tuntap_serv ev)
+
+

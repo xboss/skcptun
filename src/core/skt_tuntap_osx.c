@@ -122,6 +122,8 @@ int skt_tuntap_write(int fd, char *buf, int len) {
     if (r <= sizeof(type)) return 0;
 
     return r - sizeof(type);
+
+    // return write(fd, buf, len);
 }
 
 //////////////////////////////////////

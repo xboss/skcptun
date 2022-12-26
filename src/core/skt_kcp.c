@@ -210,8 +210,14 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 int rt = sendto(kcp_conn->skt_kcp->fd, item->buf, item->len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
                                 sizeof(kcp_conn->dest_addr));
                 if (-1 == rt) {
-                    LOG_W("write_cb sendto error fd:%d  sess_id:%u errno: %d %s", kcp_conn->skt_kcp->fd, conn->sess_id,
-                          errno, strerror(errno));
+                    // TODO: debug start
+                    char ip[64] = {0};
+                    inet_ntop(AF_INET, &kcp_conn->dest_addr, ip, sizeof(ip));
+                    // TODO: debug end
+                    LOG_W("write_cb sendto error fd:%d  sess_id:%u ip:%s errno: %d %s", kcp_conn->skt_kcp->fd,
+                          conn->sess_id, ip, errno, strerror(errno));
+
+                    ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
                     return;
                 }
                 conn->last_w_tm = getmillisecond();
