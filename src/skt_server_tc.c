@@ -4,6 +4,15 @@
 #include "skt_config.h"
 #include "skt_utils.h"
 
+struct skt_serv_s {
+    skt_serv_conf_t *conf;
+    struct ev_loop *loop;
+    skt_kcp_t *skt_kcp;
+    skt_tcp_t *skt_tcp;
+
+    skcp_conn_t *ht_conn;
+};
+
 static skt_serv_t *g_serv = NULL;
 static char *iv = "667b02a85c61c786def4521b060265e8";  // TODO: 动态生成
 
@@ -152,33 +161,7 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 //////////////////////
 
-skt_serv_t *skt_start_server(struct ev_loop *loop, const char *conf_file) {
-    if (NULL == loop) {
-        LOG_E("loop create failed");
-        return NULL;
-    }
-
-    skt_serv_conf_t *conf = skt_init_server_tc_conf(conf_file);
-    if (NULL == conf) {
-        return NULL;
-    }
-
-    skt_serv_t *serv = skt_server_init(conf, loop);
-    if (NULL == serv) {
-        skt_free_server_tc_conf(conf);
-        return NULL;
-    }
-
-    LOG_D("server loop run");
-    ev_run(loop, 0);
-    LOG_D("loop end");
-
-    skt_server_free();
-    skt_free_server_tc_conf(conf);
-    return serv;
-}
-
-skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
+static skt_serv_t *server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
     conf->tcp_conf->close_cb = tcp_close_cb;
     conf->tcp_conf->recv_cb = tcp_recv_cb;
     conf->tcp_conf->accept_cb = NULL;
@@ -223,7 +206,7 @@ skt_serv_t *skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
     return g_serv;
 }
 
-void skt_server_free() {
+static void server_free() {
     if (NULL == g_serv) {
         return;
     }
@@ -236,4 +219,32 @@ void skt_server_free() {
         g_serv->skt_tcp = NULL;
     }
     FREE_IF(g_serv);
+}
+
+//////////////////////
+
+skt_serv_t *skt_start_server(struct ev_loop *loop, const char *conf_file) {
+    if (NULL == loop) {
+        LOG_E("loop create failed");
+        return NULL;
+    }
+
+    skt_serv_conf_t *conf = skt_init_server_tc_conf(conf_file);
+    if (NULL == conf) {
+        return NULL;
+    }
+
+    skt_serv_t *serv = server_init(conf, loop);
+    if (NULL == serv) {
+        skt_free_server_tc_conf(conf);
+        return NULL;
+    }
+
+    LOG_D("server loop run");
+    ev_run(loop, 0);
+    LOG_D("loop end");
+
+    server_free();
+    skt_free_server_tc_conf(conf);
+    return serv;
 }

@@ -19,7 +19,6 @@
 #include <syslog.h>
 #include <unistd.h>
 
-// #define DEV_NAME_PREFIX "utun"
 const char dev_name_prefix[] = "utun";
 
 int skt_tuntap_open(int *dev_name_id) {
