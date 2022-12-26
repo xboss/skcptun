@@ -33,7 +33,7 @@ int skt_tuntap_open(char *dev_name, int name_len) {
     /* preparation of the struct ifr, of type "struct ifreq" */
     memset(&ifr, 0, sizeof(ifr));
 
-    ifr.ifr_flags = IFF_TUN; /* IFF_TUN or IFF_TAP, plus maybe IFF_NO_PI */
+    ifr.ifr_flags = IFF_TUN | IFF_NO_PI; /* IFF_TUN or IFF_TAP, plus maybe IFF_NO_PI */
 
     // if (*dev_name) {
     //     /* if a device name was specified, put it in the structure; otherwise,
@@ -61,6 +61,12 @@ void skt_tuntap_setup(char *dev_name, char *device_ip) {
     printf("run: %s\n", buf);
     system(buf);
 
+    // TODO: ifconfig tun0 netmask 255.255.255.0
+    memset(buf, 0, 256);
+    snprintf(buf, sizeof(buf), "ifconfig %s netmask 255.255.255.0", dev_name);
+    printf("run: %s\n", buf);
+    system(buf);
+
     memset(buf, 0, 256);
     snprintf(buf, sizeof(buf), "ip link set %s up", dev_name);
     printf("run: %s\n", buf);
@@ -70,21 +76,21 @@ void skt_tuntap_setup(char *dev_name, char *device_ip) {
 int skt_tuntap_read(int fd, char *buf, int len) { return read(fd, buf, len); }
 
 int skt_tuntap_write(int fd, char *buf, int len) {
-    u_int32_t type = htonl(AF_INET);  // IPV4
-    struct iovec iv[2];
+    // u_int32_t type = htonl(AF_INET);  // IPV4
+    // struct iovec iv[2];
 
-    iv[0].iov_base = &type;
-    iv[0].iov_len = sizeof(type);
-    iv[1].iov_base = buf;
-    iv[1].iov_len = len;
+    // iv[0].iov_base = &type;
+    // iv[0].iov_len = sizeof(type);
+    // iv[1].iov_base = buf;
+    // iv[1].iov_len = len;
 
-    int r = writev(fd, iv, 2);
+    // int r = writev(fd, iv, 2);
 
-    if (r < 0) return r;
-    if (r <= sizeof(type)) return 0;
+    // if (r < 0) return r;
+    // if (r <= sizeof(type)) return 0;
 
-    return r - sizeof(type);
-    // return write(fd, buf, len);
+    // return r - sizeof(type);
+    return write(fd, buf, len);
 }
 
 #endif

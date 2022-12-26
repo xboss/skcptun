@@ -59,8 +59,9 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
         printf("%02x ", (buf[i] & 0xFF));
         if ((i - 4) % 16 == 15) printf("\n");
     }
-    printf("\n");
+    printf("buf_len: %d\n", len);
 
+    // char *p = buf + 4;
     char src_ip[20] = {0};
     char dest_ip[20] = {0};
     inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
