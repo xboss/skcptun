@@ -1,4 +1,4 @@
-#include "skt_client_tt.h"
+#include "skt_server_tt.h"
 
 #include <unistd.h>
 
@@ -7,8 +7,8 @@
 #include "skt_tuntap.h"
 #include "skt_utils.h"
 
-struct skt_cli_s {
-    skt_cli_tt_conf_t *conf;
+struct skt_serv_s {
+    skt_serv_tt_conf_t *conf;
     struct ev_loop *loop;
     skt_kcp_t *skt_kcp;
     skcp_conn_t *data_conn;
@@ -26,9 +26,9 @@ struct skt_cli_s {
     // skcp_conn_t *ht_conn;
     // struct ev_timer *ht_watcher;
 };
-typedef struct skt_cli_s skt_cli_t;
+typedef struct skt_serv_s skt_serv_t;
 
-static skt_cli_t *g_ctx = NULL;
+static skt_serv_t *g_ctx = NULL;
 static char *iv = "667b02a85c61c580def4521b060265e8";  // TODO: 动态生成
 
 //////////////////////
@@ -64,6 +64,8 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 }
 
 //////////////////////
+
+static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) { return; }
 
 static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     // char htkey[SKCP_HTKEY_LEN] = {0};
@@ -136,22 +138,22 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 //////////////////////
 
-static void beat_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
-    if (EV_ERROR & revents) {
-        LOG_E("init_cb got invalid event");
-        return;
-    }
+// static void beat_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
+//     if (EV_ERROR & revents) {
+//         LOG_E("init_cb got invalid event");
+//         return;
+//     }
 
-    skt_kcp_t *skt_kcp = (skt_kcp_t *)watcher->data;
+//     skt_kcp_t *skt_kcp = (skt_kcp_t *)watcher->data;
 
-    if (!g_ctx->data_conn) {
-        g_ctx->data_conn = skt_kcp_new_conn(skt_kcp, 0, NULL);
-        LOG_I("new data conn by beat_cb");
-        return;
-    }
-}
+//     if (!g_ctx->data_conn) {
+//         g_ctx->data_conn = skt_kcp_new_conn(skt_kcp, 0, NULL);
+//         LOG_I("new data conn by beat_cb");
+//         return;
+//     }
+// }
 
-static int init_vpn_cli() {
+static int init_vpn_serv() {
     int dev_name_id = -1;
     int utunfd = skt_tuntap_open(&dev_name_id);
 
@@ -167,17 +169,17 @@ static int init_vpn_cli() {
 
 //////////////////////
 
-int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
-    g_ctx = malloc(sizeof(skt_cli_t));
+int skt_server_tt_init(skt_serv_tt_conf_t *conf, struct ev_loop *loop) {
+    g_ctx = malloc(sizeof(skt_serv_t));
     g_ctx->conf = conf;
     g_ctx->loop = loop;
 
-    g_ctx->tun_fd = init_vpn_cli();
+    g_ctx->tun_fd = init_vpn_serv();
     if (g_ctx->tun_fd < 0) {
         return -1;
     }
 
-    skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_ctx, SKCP_MODE_CLI);
+    skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_ctx, SKCP_MODE_SERV);
     if (NULL == skt_kcp) {
         FREE_IF(g_ctx);
         return -1;
@@ -195,13 +197,13 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
         skt_kcp->decrypt_cb = NULL;
     }
 
-    // 定时
-    g_ctx->data_conn = NULL;
-    g_ctx->bt_watcher = malloc(sizeof(ev_timer));
-    g_ctx->bt_watcher->data = skt_kcp;
-    ev_init(g_ctx->bt_watcher, beat_cb);
-    ev_timer_set(g_ctx->bt_watcher, 0, 1);
-    ev_timer_start(skt_kcp->loop, g_ctx->bt_watcher);
+    // // 定时
+    // g_ctx->data_conn = kcp_new_conn_cb;
+    // g_ctx->bt_watcher = malloc(sizeof(ev_timer));
+    // g_ctx->bt_watcher->data = skt_kcp;
+    // ev_init(g_ctx->bt_watcher, beat_cb);
+    // ev_timer_set(g_ctx->bt_watcher, 0, 1);
+    // ev_timer_start(skt_kcp->loop, g_ctx->bt_watcher);
 
     // 设置tun读事件循环
     g_ctx->r_watcher = malloc(sizeof(struct ev_io));
@@ -218,7 +220,8 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
     g_ctx->skt_kcp = skt_kcp;
     return 0;
 }
-void skt_client_tt_free() {
+
+void skt_server_tt_free() {
     if (NULL == g_ctx) {
         return;
     }
