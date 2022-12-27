@@ -57,7 +57,7 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
     for (int i = 0; i < len; i++) {
         printf("%02x ", (buf[i] & 0xFF));
-        if ((i - 4) % 16 == 15) printf("\n");
+        if ((i) % 16 == 15) printf("\n");
     }
     printf("\n");
 
@@ -84,7 +84,7 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 
     for (int i = 0; i < len; i++) {
         printf("%02x ", (buf[i] & 0xFF));
-        if ((i - 4) % 16 == 15) printf("\n");
+        if ((i) % 16 == 15) printf("\n");
     }
     printf("\n");
 

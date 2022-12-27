@@ -80,8 +80,17 @@ int skt_tuntap_open(char *dev_name, int name_len) {
 }
 
 void skt_tuntap_setup(char *dev_name, char *device_ip) {
+    // uint32_t dest_ip;
+    // inet_pton(AF_INET, device_ip, &dest_ip);
+    // printf("dest_ip: %d\n", dest_ip);
+    // dest_ip++;
+    // printf("dest_ip: %d\n", dest_ip);
+    // char dest_ip_str[32] = {0};
+    // inet_ntop(AF_INET, &dest_ip, dest_ip_str, sizeof(dest_ip_str));
+    // printf("dest_ip_str: %s\n", dest_ip_str);
+
     char buf[256] = {0};
-    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, device_ip, device_ip);
+    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, device_ip, "192.168.2.2");  // TODO: test
     printf("run: %s\n", buf);
     system(buf);
 

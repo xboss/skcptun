@@ -69,4 +69,5 @@ target_link_libraries(test_tuntap_serv ssl)
 target_link_libraries(test_tuntap_serv crypto)
 target_link_libraries(test_tuntap_serv ev)
 
-
+SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_raw_sock.c)
+add_executable(test_raw_sock ${TEST_SRC_FILES})
