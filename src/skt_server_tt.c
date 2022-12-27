@@ -104,10 +104,20 @@ static void raw_ip_read_cb(struct ev_loop *loop, struct ev_io *watcher, int reve
     char raw_buf[2048] = {0};
     struct sockaddr_in cliaddr;
     socklen_t cliaddr_len = sizeof(cliaddr);
-    printf("start recv raw_fd: %d\n", g_ctx->raw_fd);
+    printf(">>>>> start recv raw_fd: %d\n", g_ctx->raw_fd);
     int32_t bytes = recvfrom(g_ctx->raw_fd, raw_buf, 2048, 0, (struct sockaddr *)&cliaddr, &cliaddr_len);
     if (-1 == bytes) {
         perror("recvfrom error");
+        return;
+    }
+
+    char src_ip[20] = {0};
+    char dest_ip[20] = {0};
+    inet_ntop(AF_INET, raw_buf + 12, src_ip, sizeof(src_ip));
+    inet_ntop(AF_INET, raw_buf + 16, dest_ip, sizeof(dest_ip));
+
+    printf(">>>>> raw_ip_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
+    if (strcmp(dest_ip, "192.168.2.1") != 0) {
         return;
     }
 
@@ -116,12 +126,6 @@ static void raw_ip_read_cb(struct ev_loop *loop, struct ev_io *watcher, int reve
         if ((i) % 16 == 15) printf("\n");
     }
     printf("bytes: %d\n", bytes);
-
-    char src_ip[20] = {0};
-    char dest_ip[20] = {0};
-    inet_ntop(AF_INET, raw_buf + 12, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, raw_buf + 16, dest_ip, sizeof(dest_ip));
-    printf("raw_ip_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
     if (g_ctx->data_conn) {
         int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, raw_buf, bytes);
@@ -281,7 +285,8 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 // }
 
 static int init_raw_sock() {
-    g_ctx->raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP | IPPROTO_UDP | IPPROTO_ICMP);
+    // g_ctx->raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP | IPPROTO_UDP | IPPROTO_ICMP);
+    g_ctx->raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (g_ctx->raw_fd == -1) {
         perror("init_raw_sock error");
         return -1;
