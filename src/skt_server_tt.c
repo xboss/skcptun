@@ -1,25 +1,12 @@
 #include "skt_server_tt.h"
 
+#include <netinet/ip.h>
 #include <unistd.h>
 
 #include "skt_cipher.h"
 #include "skt_config.h"
 #include "skt_tuntap.h"
 #include "skt_utils.h"
-
-typedef struct  // 定义IP首部
-{
-    unsigned char h_verlen;         // 4位首部长度+4位IP版本号
-    unsigned char tos;              // 8位服务类型TOS
-    unsigned short total_len;       // 16位总长度（字节）
-    unsigned short ident;           // 16位标识
-    unsigned short frag_and_flags;  // 3位标志位
-    unsigned char ttl;              // 8位生存时间 TTL
-    unsigned char proto;            // 8位协议 (TCP, UDP 或其他)
-    unsigned short checksum;        // 16位IP首部校验和
-    unsigned int sourceIP;          // 32位源IP地址
-    unsigned int destIP;            // 32位目的IP地址
-} ip_header_t;
 
 struct skt_serv_s {
     skt_serv_tt_conf_t *conf;
@@ -31,7 +18,9 @@ struct skt_serv_s {
     // struct ev_io *tun_r_watcher;
     struct ev_io *w_watcher;
     // int tun_fd;
-    int raw_fd;
+    // int raw_fd;
+    int raw_r_fd;
+    int raw_w_fd;
     struct sockaddr_in dest_addr;
 
     // uint32_t rtt_cnt;
@@ -49,14 +38,6 @@ static skt_serv_t *g_ctx = NULL;
 static char *iv = "667b02a85c61c580def4521b060265e8";  // TODO: 动态生成
 
 //////////////////////
-
-// static void tun_write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
-//     if (EV_ERROR & revents) {
-//         LOG_E("tun_write_cb got invalid event");
-//         return;
-//     }
-//     skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
-// }
 
 // static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 //     if (EV_ERROR & revents) {
@@ -94,6 +75,14 @@ static char *iv = "667b02a85c61c580def4521b060265e8";  // TODO: 动态生成
 //     }
 // }
 
+// static void raw_ip_write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
+//     if (EV_ERROR & revents) {
+//         LOG_E("raw_ip_write_cb got invalid event");
+//         return;
+//     }
+//     skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
+// }
+
 static void raw_ip_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     if (EV_ERROR & revents) {
         LOG_E("tun_read_cb got invalid event");
@@ -102,30 +91,48 @@ static void raw_ip_read_cb(struct ev_loop *loop, struct ev_io *watcher, int reve
     skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
 
     char raw_buf[2048] = {0};
-    struct sockaddr_in cliaddr;
-    socklen_t cliaddr_len = sizeof(cliaddr);
-    printf(">>>>> start recv raw_fd: %d\n", g_ctx->raw_fd);
-    int32_t bytes = recvfrom(g_ctx->raw_fd, raw_buf, 2048, 0, (struct sockaddr *)&cliaddr, &cliaddr_len);
+    ssize_t bytes = recv(g_ctx->raw_r_fd, raw_buf, sizeof(raw_buf), 0);
     if (-1 == bytes) {
         perror("recvfrom error");
         return;
     }
+    struct ip *ip = (struct ip *)raw_buf;
 
-    char src_ip[20] = {0};
-    char dest_ip[20] = {0};
-    inet_ntop(AF_INET, raw_buf + 12, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, raw_buf + 16, dest_ip, sizeof(dest_ip));
-
+    char src_ip[64] = {0};
+    char dest_ip[64] = {0};
+    inet_ntop(AF_INET, &ip->ip_src, src_ip, sizeof(src_ip));
+    inet_ntop(AF_INET, &ip->ip_dst, dest_ip, sizeof(dest_ip));
     printf(">>>>> raw_ip_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
     if (strcmp(dest_ip, "192.168.2.1") != 0) {
         return;
     }
 
-    for (int i = 0; i < bytes; i++) {
-        printf("%02x ", (raw_buf[i] & 0xFF));
-        if ((i) % 16 == 15) printf("\n");
-    }
-    printf("bytes: %d\n", bytes);
+    printf(">>>>> raw_ip_read_cb recv bytes: %zd\n", bytes);
+
+    // struct sockaddr_in cliaddr;
+    // socklen_t cliaddr_len = sizeof(cliaddr);
+    // printf(">>>>> start recv raw_fd: %d\n", g_ctx->raw_fd);
+    // int32_t bytes = recvfrom(g_ctx->raw_fd, raw_buf, 2048, 0, (struct sockaddr *)&cliaddr, &cliaddr_len);
+    // if (-1 == bytes) {
+    //     perror("recvfrom error");
+    //     return;
+    // }
+
+    // char src_ip[20] = {0};
+    // char dest_ip[20] = {0};
+    // inet_ntop(AF_INET, raw_buf + 12, src_ip, sizeof(src_ip));
+    // inet_ntop(AF_INET, raw_buf + 16, dest_ip, sizeof(dest_ip));
+
+    // printf(">>>>> raw_ip_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
+    // if (strcmp(dest_ip, "192.168.2.1") != 0) {
+    //     return;
+    // }
+
+    // for (int i = 0; i < bytes; i++) {
+    //     printf("%02x ", (raw_buf[i] & 0xFF));
+    //     if ((i) % 16 == 15) printf("\n");
+    // }
+    // printf("bytes: %d\n", bytes);
 
     if (g_ctx->data_conn) {
         int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, raw_buf, bytes);
@@ -153,16 +160,17 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     // char htkey[SKCP_HTKEY_LEN] = {0};
     // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, NULL);
 
-    for (int i = 0; i < len; i++) {
-        printf("%02x ", (buf[i] & 0xFF));
-        if ((i) % 16 == 15) printf("\n");
-    }
-    printf("\nbuf_len: %d\n------\n", len);
+    // for (int i = 0; i < len; i++) {
+    //     printf("%02x ", (buf[i] & 0xFF));
+    //     if ((i) % 16 == 15) printf("\n");
+    // }
+    // printf("\nbuf_len: %d\n------\n", len);
 
-    char src_ip[64] = {0};
-    char dest_ip[64] = {0};
-    inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
+    // char src_ip[64] = {0};
+    // char dest_ip[64] = {0};
+    // inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
+    // inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
+
     // printf("kcp_recv_data_cb 111111 src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
     // uint32_t hostip;
     // inet_pton(AF_INET, "104.168.158.246", &hostip);
@@ -170,8 +178,9 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     // // hostip = htonl(hostip);
     // printf("2222 hostip: %u\n", hostip);
     // memcpy(buf + 12, &hostip, sizeof(hostip));
-    inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
-    printf("kcp_recv_data_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
+
+    // inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
+    // printf("kcp_recv_data_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
     // char bbb[1024] = {0};
     // memcpy(bbb + 4, buf, len);
@@ -182,10 +191,24 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     // }
     // printf("w_len: %d\n", w_len);
 
-    g_ctx->dest_addr.sin_addr.s_addr = inet_addr(dest_ip);
-    printf("kcp_recv_data_cb send args: raw_fd: %d s_buf_len: %d addr: %s\n", g_ctx->raw_fd, len,
+    struct ip *ip = (struct ip *)buf;
+
+    char src_ip[64] = {0};
+    char dest_ip[64] = {0};
+    inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
+    inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
+
+    // uint32_t hostip;
+    // inet_pton(AF_INET, "104.168.158.246", &hostip);
+    // printf("2222 hostip: %u\n", hostip);
+    // memcpy(buf + 12, &hostip, sizeof(hostip));
+
+    printf("kcp_recv_data_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
+
+    g_ctx->dest_addr.sin_addr.s_addr = ip->ip_dst.s_addr;  // inet_addr(dest_ip);
+    printf("kcp_recv_data_cb send args: raw_r_fd: %d s_buf_len: %d addr: %s\n", g_ctx->raw_r_fd, len,
            inet_ntoa(g_ctx->dest_addr.sin_addr));
-    int s_bytes = sendto(g_ctx->raw_fd, buf, len, 0, (struct sockaddr *)&g_ctx->dest_addr, sizeof(g_ctx->dest_addr));
+    int s_bytes = sendto(g_ctx->raw_w_fd, buf, len, 0, (struct sockaddr *)&g_ctx->dest_addr, sizeof(g_ctx->dest_addr));
     if (s_bytes < 0) {
         perror("sendto error");
         return SKT_ERROR;
@@ -286,17 +309,28 @@ static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int 
 
 static int init_raw_sock() {
     // g_ctx->raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP | IPPROTO_UDP | IPPROTO_ICMP);
-    g_ctx->raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-    if (g_ctx->raw_fd == -1) {
+    g_ctx->raw_r_fd = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);  // AF_INET, SOCK_RAW, IPPROTO_UDP);
+    if (g_ctx->raw_r_fd == -1) {
         perror("init_raw_sock error");
         return -1;
     }
+    // 设置为非阻塞
+    setnonblock(g_ctx->raw_r_fd);
+
+    g_ctx->raw_w_fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    if (g_ctx->raw_w_fd == -1) {
+        perror("init_raw_sock error");
+        close(g_ctx->raw_r_fd);
+        return -1;
+    }
+    // 设置为非阻塞
+    setnonblock(g_ctx->raw_w_fd);
 
     bzero(&g_ctx->dest_addr, sizeof(g_ctx->dest_addr));
     g_ctx->dest_addr.sin_family = AF_INET;
     // g_ctx->dest_addr.sin_addr.s_addr = inet_addr(addr);
 
-    return g_ctx->raw_fd;
+    return 0;
 }
 
 //////////////////////
@@ -336,8 +370,14 @@ int skt_server_tt_init(skt_serv_tt_conf_t *conf, struct ev_loop *loop) {
     // 设置remote读事件循环
     g_ctx->r_watcher = malloc(sizeof(struct ev_io));
     g_ctx->r_watcher->data = skt_kcp;
-    ev_io_init(g_ctx->r_watcher, raw_ip_read_cb, g_ctx->raw_fd, EV_READ);
+    ev_io_init(g_ctx->r_watcher, raw_ip_read_cb, g_ctx->raw_r_fd, EV_READ);
     ev_io_start(g_ctx->loop, g_ctx->r_watcher);
+
+    // // 设置remote写事件循环
+    // g_ctx->r_watcher = malloc(sizeof(struct ev_io));
+    // g_ctx->r_watcher->data = skt_kcp;
+    // ev_io_init(g_ctx->r_watcher, raw_ip_write_cb, g_ctx->raw_w_fd, EV_WRITE);
+    // ev_io_start(g_ctx->loop, g_ctx->r_watcher);
 
     // // 定时
     // g_ctx->data_conn = kcp_new_conn_cb;
@@ -374,9 +414,14 @@ void skt_server_tt_free() {
     //     g_ctx->tun_fd = -1;
     // }
 
-    if (g_ctx->raw_fd >= 0) {
-        close(g_ctx->raw_fd);
-        g_ctx->raw_fd = -1;
+    if (g_ctx->raw_r_fd >= 0) {
+        close(g_ctx->raw_r_fd);
+        g_ctx->raw_r_fd = -1;
+    }
+
+    if (g_ctx->raw_w_fd >= 0) {
+        close(g_ctx->raw_w_fd);
+        g_ctx->raw_w_fd = -1;
     }
 
     if (g_ctx->skt_kcp) {

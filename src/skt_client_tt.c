@@ -186,6 +186,9 @@ static int init_vpn_cli() {
         return -1;
     }
 
+    // 设置为非阻塞
+    setnonblock(utunfd);
+
     skt_tuntap_setup(dev_name, "192.168.2.1");
 
     return utunfd;
