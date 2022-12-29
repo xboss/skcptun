@@ -69,6 +69,11 @@ static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
 }
 
 static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+    if (!g_ctx->data_conn) {
+        g_ctx->data_conn = kcp_conn;
+        LOG_I("set data conn by kcp_recv_data_cb");
+    }
+
     struct ip *ip = (struct ip *)buf;
     char src_ip[64] = {0};
     char dest_ip[64] = {0};
@@ -81,7 +86,7 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
         LOG_E("skt_tuntap_write error tun_fd: %d", g_ctx->tun_fd);
         return SKT_ERROR;
     }
-    printf("w_len: %d len: %d\n", w_len, len);
+    printf("kcp_recv_data_cb w_len: %d len: %d\n", w_len, len);
 
     return SKT_OK;
 }

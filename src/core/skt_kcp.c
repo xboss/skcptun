@@ -341,7 +341,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
         default:
             // LOG_W("skcp_recv no op_type");
-            conn->last_r_tm = getmillisecond();
+            // conn->last_r_tm = getmillisecond();
             break;
     }
     FREE_IF(kcp_recv_buf);

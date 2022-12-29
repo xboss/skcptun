@@ -76,12 +76,6 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 //////////////////////
 
 static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    for (int i = 0; i < len; i++) {
-        printf("%02x ", (buf[i] & 0xFF));
-        if ((i) % 16 == 15) printf("\n");
-    }
-    printf("\n");
-
     char src_ip[20] = {0};
     char dest_ip[20] = {0};
     inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
