@@ -18,13 +18,6 @@ int skt_tuntap_open(char *dev_name, int name_len) {
     int fd;
     char *clonedev = "/dev/net/tun";
 
-    /* Arguments taken by the function:
-     *
-     * char *dev: the name of an interface (or '\0'). MUST have enough
-     *   space to hold the interface name if '\0' is passed
-     * int flags: interface flags (eg, IFF_TUN etc.)
-     */
-
     /* open the clone device */
     if ((fd = open(clonedev, O_RDWR)) < 0) {
         return -1;
@@ -35,20 +28,12 @@ int skt_tuntap_open(char *dev_name, int name_len) {
 
     ifr.ifr_flags = IFF_TUN | IFF_NO_PI; /* IFF_TUN or IFF_TAP, plus maybe IFF_NO_PI */
 
-    // if (*dev_name) {
-    //     /* if a device name was specified, put it in the structure; otherwise,
-    //      * the kernel will try to allocate the "next" device of the
-    //      * specified type */
-    //     strncpy(ifr.ifr_name, dev_name, IFNAMSIZ);
-    // }
-
     /* try to create the device */
     if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
         close(fd);
         return -1;
     }
 
-    // strcpy(dev, ifr.ifr_name);
     snprintf(dev_name, name_len, "%s", ifr.ifr_name);
     printf("dev_name: %s\n", dev_name);
 
@@ -75,22 +60,6 @@ void skt_tuntap_setup(char *dev_name, char *device_ip) {
 
 int skt_tuntap_read(int fd, char *buf, int len) { return read(fd, buf, len); }
 
-int skt_tuntap_write(int fd, char *buf, int len) {
-    // u_int32_t type = htonl(AF_INET);  // IPV4
-    // struct iovec iv[2];
-
-    // iv[0].iov_base = &type;
-    // iv[0].iov_len = sizeof(type);
-    // iv[1].iov_base = buf;
-    // iv[1].iov_len = len;
-
-    // int r = writev(fd, iv, 2);
-
-    // if (r < 0) return r;
-    // if (r <= sizeof(type)) return 0;
-
-    // return r - sizeof(type);
-    return write(fd, buf, len);
-}
+int skt_tuntap_write(int fd, char *buf, int len) { return write(fd, buf, len); }
 
 #endif

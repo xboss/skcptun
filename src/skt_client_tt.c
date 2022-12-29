@@ -55,10 +55,6 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
         return;
     }
 
-    // for (int i = 0; i < len; i++) {
-    //     printf("%02x ", (buf[i] & 0xFF));
-    //     if ((i) % 16 == 15) printf("\n");
-    // }
     printf("tun_read_cb buf_len: %d\n", len);
 
     char src_ip[20] = {0};
@@ -80,9 +76,6 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 //////////////////////
 
 static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    // char htkey[SKCP_HTKEY_LEN] = {0};
-    // skt_kcp_gen_htkey(htkey, SKCP_HTKEY_LEN, kcp_conn->sess_id, NULL);
-
     for (int i = 0; i < len; i++) {
         printf("%02x ", (buf[i] & 0xFF));
         if ((i) % 16 == 15) printf("\n");
@@ -104,21 +97,11 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     return SKT_OK;
 }
 
-static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    // if (buf && len > 3 && buf[0] == 's' && buf[1] == ' ') {
-    //     // stat msg
-    //     stat_rtt(kcp_conn, buf);
-    //     return SKT_OK;
-    // }
-
-    return SKT_OK;
-}
+static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) { return SKT_OK; }
 
 static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     LOG_D("kcp_close_cb");
     if (kcp_conn->tag == 0) {
-        // data conn
-        // g_ctx->data_conn = NULL;
         // reconnect
         g_ctx->data_conn = skt_kcp_new_conn(g_ctx->skt_kcp, 0, NULL);
         LOG_I("new data conn by reconnect");
@@ -190,7 +173,7 @@ static int init_vpn_cli() {
     // 设置为非阻塞
     setnonblock(utunfd);
 
-    skt_tuntap_setup(dev_name, "192.168.2.1");
+    skt_tuntap_setup(dev_name, "192.168.2.2");
 
     return utunfd;
 }
@@ -254,9 +237,18 @@ void skt_client_tt_free() {
         return;
     }
 
+    if (g_ctx->r_watcher) {
+        ev_io_stop(g_ctx->loop, g_ctx->r_watcher);
+        FREE_IF(g_ctx->r_watcher);
+    }
+
     if (g_ctx->tun_fd >= 0) {
         close(g_ctx->tun_fd);
         g_ctx->tun_fd = -1;
+    }
+
+    if (g_ctx->data_conn) {
+        skt_kcp_close_conn(g_ctx->skt_kcp, g_ctx->data_conn->htkey);
     }
 
     if (g_ctx->skt_kcp) {

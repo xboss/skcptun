@@ -74,6 +74,7 @@
     } while (0)
 #endif
 
+unsigned short ip_checksum(unsigned short* buf, int nword);
 void char_to_hex(char* src, int len, char* des);
 void* skt_mem_clone(void* src, size_t len);
 void _PR(const void* buf, int len);
