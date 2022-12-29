@@ -55,11 +55,11 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
         return;
     }
 
-    for (int i = 0; i < len; i++) {
-        printf("%02x ", (buf[i] & 0xFF));
-        if ((i) % 16 == 15) printf("\n");
-    }
-    printf("\n");
+    // for (int i = 0; i < len; i++) {
+    //     printf("%02x ", (buf[i] & 0xFF));
+    //     if ((i) % 16 == 15) printf("\n");
+    // }
+    printf("tun_read_cb buf_len: %d\n", len);
 
     char src_ip[20] = {0};
     char dest_ip[20] = {0};
@@ -73,6 +73,7 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
             LOG_E("skt_kcp_send_data error htkey: %s", g_ctx->data_conn->htkey);
             return;
         }
+        printf("tun_read_cb send rt: %d\n", rt);
     }
 }
 

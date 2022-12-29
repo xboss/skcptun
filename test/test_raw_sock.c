@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "skt_tuntap_osx.c"
-#include "skt_utils.c"
+#include "skt_tuntap.h"
+#include "skt_utils.h"
 
 #define RECV_LEN 2048
 
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
         // inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
         printf("src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
-        inet_pton(AF_INET, "192.168.1.5", &ip->ip_src);
+        inet_pton(AF_INET, "192.168.3.26", &ip->ip_src);
         inet_pton(AF_INET, "182.61.200.6", &ip->ip_dst);
         inet_ntop(AF_INET, &ip->ip_src, src_ip, sizeof(src_ip));
         inet_ntop(AF_INET, &ip->ip_dst, dest_ip, sizeof(dest_ip));
