@@ -12,7 +12,7 @@ static void stat_rtt(skcp_conn_t *conn, const char *buf) {
     char str[44] = {0};
     snprintf(str, 44, "s %llu %llu", itm, now);
     skt_kcp_send_ctrl(g_serv->skt_kcp, conn->htkey, str, strlen(str));
-    LOG_D("stat_rtt send %s", str);
+    // LOG_D("stat_rtt send %s", str);
 }
 
 static void tcp_recv_cb(skt_tcp_conn_t *tcp_conn, const char *buf, int len) {
@@ -87,6 +87,8 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
 }
 
 static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
+    // LOG_D("------ kcp_conn_cnt:%d", HASH_COUNT(kcp_conn->skcp->conn_ht));
+
     if (buf && len > 3 && buf[0] == 's' && buf[1] == ' ') {
         // stat msg
         if (!g_serv->ht_conn) {
@@ -110,6 +112,7 @@ static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
     if (NULL == tcp_conn) {
         return;
     }
+    // LOG_D("------ tcp_conn_cnt:%d", HASH_COUNT(tcp_conn->skt_tcp->conn_ht));
 
     skt_tcp_close_conn(tcp_conn);
     return;

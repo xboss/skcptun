@@ -209,7 +209,7 @@ static void healthy_cb(struct ev_loop *loop, struct ev_timer *watcher, int reven
     char buf[23] = {0};
     snprintf(buf, 23, "s %llu", now);
     skt_kcp_send_ctrl(skt_kcp, g_cli->ht_conn->htkey, buf, strlen(buf));
-    LOG_D("healthy_cb send %s", buf);
+    // LOG_D("healthy_cb send %s", buf);
 }
 
 skt_cli_t *skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {

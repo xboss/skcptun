@@ -113,6 +113,12 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     memset(buffer, 0, conn->r_buf_size);
     int res = 0;
     int32_t bytes = read(watcher->fd, buffer, conn->r_buf_size);
+
+    // if (bytes <= 0) {
+    //     LOG_D("------ read_cb fd: %d bytes: %d status: %d  errno:%d %s", watcher->fd, bytes, conn->status, errno,
+    //           strerror(errno));
+    // }
+
     if (bytes < 0) {
         // may error
         if (EINTR != errno && EAGAIN != errno && EWOULDBLOCK != errno && ECONNRESET != errno) {
@@ -131,7 +137,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
 
     if (res) {
         // 关闭事件循环并释放watcher
-        // LOG_W("read_cb tcp close fd:%d", watcher->fd);
+        // LOG_D("------ read_cb tcp close fd:%d", watcher->fd);
         FREE_IF(buffer);
         conn->status = SKT_TCP_CONN_ST_OFF;
         skt_tcp_close_conn(conn);
@@ -140,13 +146,13 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     }
 
     if (bytes > 0) {
+        conn->last_r_tm = getmillisecond();
         if (tcp->conf->recv_cb) {
             tcp->conf->recv_cb(conn, buffer, bytes);
         }
     }
 
     FREE_IF(buffer);
-    conn->last_r_tm = getmillisecond();
 }
 
 static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
