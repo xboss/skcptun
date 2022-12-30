@@ -97,6 +97,12 @@ void skt_tuntap_setup(char *dev_name, char *device_ip) {
     printf("run: %s\n", buf);
     system(buf);
 
+    // ifconfig utun5 mtu 1400
+    memset(buf, 0, 256);
+    snprintf(buf, sizeof(buf), "ifconfig %s mtu 1302", dev_name);  // 192.168.2.1");  // TODO: test
+    printf("run: %s\n", buf);
+    system(buf);
+
     // memset(buf, 0, 256);
     // snprintf(buf, sizeof(buf), "ip route add 192.168.2.0/24 via 192.168.2.1");  // 192.168.2.1");  // TODO: test
     // printf("run: %s\n", buf);

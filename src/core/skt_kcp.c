@@ -132,7 +132,7 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
         out_buf = kcp_conn->skt_kcp->encrypt_cb(kcp_conn->skt_kcp, buf, len, &out_len);
     }
     if (out_len > conn->skcp->conf->mtu) {
-        LOG_E("kcp skt_kcp output encrypt len > mtu:%d", conn->skcp->conf->mtu);
+        LOG_E("kcp skt_kcp output encrypt len: %d, out_len: %d > mtu:%d", len, out_len, conn->skcp->conf->mtu);
     }
 
     skcp_append_wait_buf(conn, out_buf, out_len);

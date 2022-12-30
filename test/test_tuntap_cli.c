@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
     skt_kcp_conf_t kcp_conf;
     skcp_conf_t skcp_conf;
     skcp_conf.interval = 10;
-    skcp_conf.mtu = 1024;  // TODO: 和IP包大小保持一致
+    skcp_conf.mtu = 1400;  // 1024;  // TODO: 和IP包大小保持一致
     skcp_conf.rcvwnd = 128;
     skcp_conf.sndwnd = 128;
     skcp_conf.nodelay = 1;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     kcp_conf.addr = argv[1];  //"127.0.0.1";
     kcp_conf.port = atoi(argv[2]);
     kcp_conf.key = "12345678123456781234567812345678";
-    kcp_conf.r_buf_size = skcp_conf.mtu;
+    kcp_conf.r_buf_size = 1500;  // skcp_conf.mtu;
     kcp_conf.kcp_buf_size = 2048;
     kcp_conf.timeout_interval = 1;
 
