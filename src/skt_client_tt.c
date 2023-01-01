@@ -4,6 +4,7 @@
 
 #include "skt_cipher.h"
 #include "skt_config.h"
+#include "skt_ip_filter.h"
 #include "skt_tuntap.h"
 #include "skt_utils.h"
 
@@ -16,6 +17,7 @@ struct skt_cli_s {
     struct ev_io *r_watcher;
     struct ev_io *w_watcher;
     int tun_fd;
+    skt_ip_filter_t *ip_filter;
 
     // uint32_t rtt_cnt;
     // int max_rtt;
@@ -57,11 +59,21 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
     printf("tun_read_cb buf_len: %d\n", len);
 
+    // char src_ip[20] = {0};
+    // char dest_ip[20] = {0};
+    // inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
+    // inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
+
+    struct ip *ip = (struct ip *)buf;
     char src_ip[20] = {0};
     char dest_ip[20] = {0};
-    inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
+    inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
+    inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
     printf("tun_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
+
+    if (skt_ip_filter_is_in(g_ctx->ip_filter, )) {
+        /* code */
+    }
 
     if (g_ctx->data_conn) {
         int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);
@@ -222,6 +234,7 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
     // ev_io_init(g_ctx->w_watcher, tun_write_cb, g_ctx->tun_fd, EV_WRITE);
     // ev_io_start(g_ctx->loop, g_ctx->w_watcher);
 
+    g_ctx->ip_filter = skt_load_ip_list("~/chn_ip.txt");
     g_ctx->skt_kcp = skt_kcp;
 
     return 0;
