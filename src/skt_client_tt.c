@@ -1,5 +1,6 @@
 #include "skt_client_tt.h"
 
+#include <netinet/ip.h>
 #include <unistd.h>
 
 #include "skt_cipher.h"
@@ -71,9 +72,9 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
     printf("tun_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
-    if (skt_ip_filter_is_in(g_ctx->ip_filter, )) {
-        /* code */
-    }
+    // if (skt_ip_filter_is_in(g_ctx->ip_filter, ip->ip_dst)) {
+    //     //
+    // }
 
     if (g_ctx->data_conn) {
         int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);

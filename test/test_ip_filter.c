@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     char ip[] = "8.8.8.8";
     struct in_addr ip_addr;
     inet_pton(AF_INET, ip, &ip_addr);
-    if (skt_is_in_ip_list(filter, ip_addr)) {
+    if (skt_ip_filter_is_in(filter, ip_addr)) {
         LOG_D("ip %s is in ip list", ip);
     } else {
         LOG_D("ip %s is not in ip list", ip);
