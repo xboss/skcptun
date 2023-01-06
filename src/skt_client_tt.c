@@ -18,6 +18,8 @@ struct skt_cli_s {
     struct ev_io *r_watcher;
     struct ev_io *w_watcher;
     int tun_fd;
+    int raw_w_fd;
+    struct sockaddr_in dest_raw_addr;
     skt_ip_filter_t *ip_filter;
 
     // uint32_t rtt_cnt;
@@ -73,7 +75,29 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     printf("tun_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
     // if (skt_ip_filter_is_in(g_ctx->ip_filter, ip->ip_dst)) {
-    //     //
+    //     // route to default net
+    //     // printf("tun_read_cb skt_ip_filter_is_in: %s\n", dest_ip);
+    //     // inet_pton(AF_INET, "192.168.3.26", &ip->ip_src);
+    //     // ip->ip_sum = 0;
+    //     // ip->ip_sum = ip_checksum((unsigned short *)ip, 10);
+
+    //     // int w_len = skt_tuntap_write(g_ctx->tun_fd, buf, len);
+    //     // if (w_len < 0) {
+    //     //     printf("skt_tuntap_write error tun_fd: %d\n", g_ctx->tun_fd);
+    //     //     perror("tun_read_cb skt_tuntap_write error");
+    //     //     return;
+    //     // }
+    //     // printf("tun_read_cb skt_tuntap_write %d %d\n", w_len, len);
+
+    //     g_ctx->dest_raw_addr.sin_addr.s_addr = ip->ip_dst.s_addr;  // inet_addr(dest_ip);
+    //     int s_bytes = sendto(g_ctx->raw_w_fd, buf, len, 0, (struct sockaddr *)&g_ctx->dest_raw_addr,
+    //                          sizeof(g_ctx->dest_raw_addr));
+    //     if (s_bytes < 0) {
+    //         perror("tun_read_cb raw sendto error");
+    //         return;
+    //     }
+    //     printf("tun_read_cb sendto raw bytes: %d\n", s_bytes);
+    //     return;
     // }
 
     if (g_ctx->data_conn) {
@@ -185,7 +209,71 @@ static int init_vpn_cli() {
     return utunfd;
 }
 
+static int init_raw_sock(char *bind_ip) {
+    int raw_w_fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    if (raw_w_fd == -1) {
+        perror("init_raw_sock error");
+        return -1;
+    }
+
+    struct sockaddr_in servaddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(bind_ip);
+    // servaddr.sin_port = htons(skt_kcp->conf->port);
+    if (-1 == bind(raw_w_fd, (struct sockaddr *)&servaddr, sizeof(servaddr))) {
+        perror("bind error");
+        close(raw_w_fd);
+        return -1;
+    }
+
+    setnonblock(raw_w_fd);
+
+    // int on = 1;
+    // if (setsockopt(raw_w_fd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) == -1) {
+    //     perror("setsockopt");
+    //     return (0);
+    // }
+
+    bzero(&g_ctx->dest_raw_addr, sizeof(g_ctx->dest_raw_addr));
+    g_ctx->dest_raw_addr.sin_family = AF_INET;
+
+    return raw_w_fd;
+}
+
 //////////////////////
+
+void skt_client_tt_free() {
+    if (NULL == g_ctx) {
+        return;
+    }
+
+    if (g_ctx->r_watcher) {
+        ev_io_stop(g_ctx->loop, g_ctx->r_watcher);
+        FREE_IF(g_ctx->r_watcher);
+    }
+
+    if (g_ctx->tun_fd >= 0) {
+        close(g_ctx->tun_fd);
+        g_ctx->tun_fd = -1;
+    }
+
+    if (g_ctx->raw_w_fd >= 0) {
+        close(g_ctx->raw_w_fd);
+        g_ctx->raw_w_fd = -1;
+    }
+
+    if (g_ctx->data_conn) {
+        skt_kcp_close_conn(g_ctx->skt_kcp, g_ctx->data_conn->htkey);
+    }
+
+    if (g_ctx->skt_kcp) {
+        skt_kcp_free(g_ctx->skt_kcp);
+        g_ctx->skt_kcp = NULL;
+    }
+
+    FREE_IF(g_ctx);
+}
 
 int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
     g_ctx = malloc(sizeof(skt_cli_t));
@@ -194,12 +282,19 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
 
     g_ctx->tun_fd = init_vpn_cli();
     if (g_ctx->tun_fd < 0) {
+        skt_client_tt_free();
         return -1;
     }
 
+    // g_ctx->raw_w_fd = init_raw_sock("192.168.3.26");
+    // if (g_ctx->raw_w_fd < 0) {
+    //     skt_client_tt_free();
+    //     return -1;
+    // }
+
     skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_ctx, SKCP_MODE_CLI);
     if (NULL == skt_kcp) {
-        FREE_IF(g_ctx);
+        skt_client_tt_free();
         return -1;
     };
     // skt_kcp->conn_timeout_cb = NULL;
@@ -235,34 +330,13 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
     // ev_io_init(g_ctx->w_watcher, tun_write_cb, g_ctx->tun_fd, EV_WRITE);
     // ev_io_start(g_ctx->loop, g_ctx->w_watcher);
 
-    g_ctx->ip_filter = skt_load_ip_list("~/chn_ip.txt");
+    g_ctx->ip_filter = skt_load_ip_list("/Users/sunji/chn_ip.txt");
+    if (!g_ctx->ip_filter) {
+        skt_client_tt_free();
+        return -1;
+    }
+
     g_ctx->skt_kcp = skt_kcp;
 
     return 0;
-}
-void skt_client_tt_free() {
-    if (NULL == g_ctx) {
-        return;
-    }
-
-    if (g_ctx->r_watcher) {
-        ev_io_stop(g_ctx->loop, g_ctx->r_watcher);
-        FREE_IF(g_ctx->r_watcher);
-    }
-
-    if (g_ctx->tun_fd >= 0) {
-        close(g_ctx->tun_fd);
-        g_ctx->tun_fd = -1;
-    }
-
-    if (g_ctx->data_conn) {
-        skt_kcp_close_conn(g_ctx->skt_kcp, g_ctx->data_conn->htkey);
-    }
-
-    if (g_ctx->skt_kcp) {
-        skt_kcp_free(g_ctx->skt_kcp);
-        g_ctx->skt_kcp = NULL;
-    }
-
-    FREE_IF(g_ctx);
 }
