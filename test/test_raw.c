@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 
     int fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (fd == -1) {
-        perror("skcp_raw_sock_new icmp error");
+        perror("skt_raw_sock_new icmp error");
         close(fd);
         return -1;
     }
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
     int s_bytes = sendto(fd, ip_packet, len, 0, (struct sockaddr*)&dst_addr, sizeof(dst_addr));
 
     if (s_bytes < 0) {
-        perror("skcp_raw_sock_send sendto error");
+        perror("skt_raw_sock_send sendto error");
         return -1;
     }
 

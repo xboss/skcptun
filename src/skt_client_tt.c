@@ -6,6 +6,7 @@
 #include "skt_cipher.h"
 #include "skt_config.h"
 #include "skt_ip_filter.h"
+#include "skt_raw_sock.h"
 #include "skt_tuntap.h"
 #include "skt_utils.h"
 
@@ -18,7 +19,9 @@ struct skt_cli_s {
     struct ev_io *r_watcher;
     struct ev_io *w_watcher;
     int tun_fd;
-    int raw_w_fd;
+    // int raw_w_fd;
+    skt_raw_sock_t *raw_sock;
+
     struct sockaddr_in dest_raw_addr;
     skt_ip_filter_t *ip_filter;
 
@@ -74,9 +77,12 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
     printf("tun_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
-    // if (skt_ip_filter_is_in(g_ctx->ip_filter, ip->ip_dst)) {
-    //     // route to default net
-    //     // printf("tun_read_cb skt_ip_filter_is_in: %s\n", dest_ip);
+    if (skt_ip_filter_is_in(g_ctx->ip_filter, ip->ip_dst)) {
+        // route to default net
+        printf("tun_read_cb skt_ip_filter_is_in: %s\n", dest_ip);
+        skt_raw_sock_send(g_ctx->raw_sock, buf, len, NULL, NULL);
+        return;
+    }
     //     // inet_pton(AF_INET, "192.168.3.26", &ip->ip_src);
     //     // ip->ip_sum = 0;
     //     // ip->ip_sum = ip_checksum((unsigned short *)ip, 10);
@@ -209,37 +215,37 @@ static int init_vpn_cli() {
     return utunfd;
 }
 
-static int init_raw_sock(char *bind_ip) {
-    int raw_w_fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-    if (raw_w_fd == -1) {
-        perror("init_raw_sock error");
-        return -1;
-    }
+// static int init_raw_sock(char *bind_ip) {
+//     int raw_w_fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+//     if (raw_w_fd == -1) {
+//         perror("init_raw_sock error");
+//         return -1;
+//     }
 
-    struct sockaddr_in servaddr;
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(bind_ip);
-    // servaddr.sin_port = htons(skt_kcp->conf->port);
-    if (-1 == bind(raw_w_fd, (struct sockaddr *)&servaddr, sizeof(servaddr))) {
-        perror("bind error");
-        close(raw_w_fd);
-        return -1;
-    }
+//     struct sockaddr_in servaddr;
+//     bzero(&servaddr, sizeof(servaddr));
+//     servaddr.sin_family = AF_INET;
+//     servaddr.sin_addr.s_addr = inet_addr(bind_ip);
+//     // servaddr.sin_port = htons(skt_kcp->conf->port);
+//     if (-1 == bind(raw_w_fd, (struct sockaddr *)&servaddr, sizeof(servaddr))) {
+//         perror("bind error");
+//         close(raw_w_fd);
+//         return -1;
+//     }
 
-    setnonblock(raw_w_fd);
+//     setnonblock(raw_w_fd);
 
-    // int on = 1;
-    // if (setsockopt(raw_w_fd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) == -1) {
-    //     perror("setsockopt");
-    //     return (0);
-    // }
+//     // int on = 1;
+//     // if (setsockopt(raw_w_fd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) == -1) {
+//     //     perror("setsockopt");
+//     //     return (0);
+//     // }
 
-    bzero(&g_ctx->dest_raw_addr, sizeof(g_ctx->dest_raw_addr));
-    g_ctx->dest_raw_addr.sin_family = AF_INET;
+//     bzero(&g_ctx->dest_raw_addr, sizeof(g_ctx->dest_raw_addr));
+//     g_ctx->dest_raw_addr.sin_family = AF_INET;
 
-    return raw_w_fd;
-}
+//     return raw_w_fd;
+// }
 
 //////////////////////
 
@@ -258,9 +264,13 @@ void skt_client_tt_free() {
         g_ctx->tun_fd = -1;
     }
 
-    if (g_ctx->raw_w_fd >= 0) {
-        close(g_ctx->raw_w_fd);
-        g_ctx->raw_w_fd = -1;
+    // if (g_ctx->raw_w_fd >= 0) {
+    //     close(g_ctx->raw_w_fd);
+    //     g_ctx->raw_w_fd = -1;
+    // }
+    if (g_ctx->raw_sock) {
+        skt_raw_sock_free(g_ctx->raw_sock);
+        g_ctx->raw_sock = NULL;
     }
 
     if (g_ctx->data_conn) {
@@ -291,6 +301,11 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
     //     skt_client_tt_free();
     //     return -1;
     // }
+    g_ctx->raw_sock = skt_raw_sock_new("192.168.3.26");
+    if (!g_ctx->raw_sock) {
+        skt_client_tt_free();
+        return -1;
+    }
 
     skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_ctx, SKCP_MODE_CLI);
     if (NULL == skt_kcp) {

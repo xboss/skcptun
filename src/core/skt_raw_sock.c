@@ -28,7 +28,7 @@ static struct sockaddr_in* bind_addr(int fd, char* bind_ip, uint16_t port) {
     return bind_addr;
 }
 
-void skcp_raw_sock_free(skcp_raw_sock_t* raw_sock) {
+void skt_raw_sock_free(skt_raw_sock_t* raw_sock) {
     if (raw_sock == NULL) {
         return;
     }
@@ -58,20 +58,20 @@ void skcp_raw_sock_free(skcp_raw_sock_t* raw_sock) {
     raw_sock = NULL;
 }
 
-skcp_raw_sock_t* skcp_raw_sock_new(char* bind_ip) {
-    skcp_raw_sock_t* raw_sock = malloc(sizeof(skcp_raw_sock_t));
-    bzero(raw_sock, sizeof(skcp_raw_sock_t));
+skt_raw_sock_t* skt_raw_sock_new(char* bind_ip) {
+    skt_raw_sock_t* raw_sock = malloc(sizeof(skt_raw_sock_t));
+    bzero(raw_sock, sizeof(skt_raw_sock_t));
     int flag = 1;
 
     raw_sock->fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (raw_sock->fd == -1) {
-        perror("skcp_raw_sock_new icmp error");
-        skcp_raw_sock_free(raw_sock);
+        perror("skt_raw_sock_new icmp error");
+        skt_raw_sock_free(raw_sock);
         return NULL;
     }
 
     if (setsockopt(raw_sock->fd, IPPROTO_IP, IP_HDRINCL, &flag, sizeof(flag)) < 0) {
-        perror("skcp_raw_sock_new set IP_HDRINCL error");
+        perror("skt_raw_sock_new set IP_HDRINCL error");
     }
     printf("flag: %d\n", flag);
 
@@ -79,73 +79,74 @@ skcp_raw_sock_t* skcp_raw_sock_new(char* bind_ip) {
         raw_sock->bind_addr = bind_addr(raw_sock->fd, bind_ip, 0);
         // printf("--- %s bind_addr %s\n", bind_ip, inet_ntoa(raw_sock->bind_addr->sin_addr));
         if (!raw_sock->bind_addr) {
-            skcp_raw_sock_free(raw_sock);
+            skt_raw_sock_free(raw_sock);
             return NULL;
         }
+        printf("skt_raw_sock_new bind_addr: %s\n", inet_ntoa(raw_sock->bind_addr->sin_addr));
     }
 
     // raw_sock->icmp_fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     // if (raw_sock->icmp_fd == -1) {
-    //     perror("skcp_raw_sock_new icmp error");
-    //     skcp_raw_sock_free(raw_sock);
+    //     perror("skt_raw_sock_new icmp error");
+    //     skt_raw_sock_free(raw_sock);
     //     return NULL;
     // }
 
     // if (setsockopt(raw_sock->icmp_fd, IPPROTO_IP, IP_HDRINCL, &flag, sizeof(flag)) < 0) {
-    //     perror("skcp_raw_sock_new set IP_HDRINCL error");
+    //     perror("skt_raw_sock_new set IP_HDRINCL error");
     // }
     // printf("flag: %d\n", flag);
 
     // if (bind_ip) {
     //     raw_sock->bind_addr = bind_addr(raw_sock->icmp_fd, bind_ip, 0);
     //     if (!raw_sock->bind_addr) {
-    //         skcp_raw_sock_free(raw_sock);
+    //         skt_raw_sock_free(raw_sock);
     //         return NULL;
     //     }
     // }
 
     // raw_sock->ipv4_fd = socket(AF_INET, SOCK_RAW, IPPROTO_IPV4);
     // if (raw_sock->ipv4_fd == -1) {
-    //     perror("skcp_raw_sock_new ipv4 error");
-    //     skcp_raw_sock_free(raw_sock);
+    //     perror("skt_raw_sock_new ipv4 error");
+    //     skt_raw_sock_free(raw_sock);
     //     return NULL;
     // }
     // if (setsockopt(raw_sock->ipv4_fd, IPPROTO_IP, IP_HDRINCL, &flag, sizeof(flag)) < 0) {
-    //     perror("skcp_raw_sock_new set IP_HDRINCL error");
+    //     perror("skt_raw_sock_new set IP_HDRINCL error");
     // }
     // printf("flag: %d\n", flag);
     // if (bind_ip) {
     //     raw_sock->bind_addr = bind_addr(raw_sock->ipv4_fd, bind_ip, 0);
     //     if (!raw_sock->bind_addr) {
-    //         skcp_raw_sock_free(raw_sock);
+    //         skt_raw_sock_free(raw_sock);
     //         return NULL;
     //     }
     // }
 
     // raw_sock->tcp_fd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     // if (raw_sock->tcp_fd == -1) {
-    //     perror("skcp_raw_sock_new tcp error");
-    //     skcp_raw_sock_free(raw_sock);
+    //     perror("skt_raw_sock_new tcp error");
+    //     skt_raw_sock_free(raw_sock);
     //     return NULL;
     // }
     // if (bind_ip) {
     //     raw_sock->bind_addr = bind_addr(raw_sock->tcp_fd, bind_ip, 0);
     //     if (!raw_sock->bind_addr) {
-    //         skcp_raw_sock_free(raw_sock);
+    //         skt_raw_sock_free(raw_sock);
     //         return NULL;
     //     }
     // }
 
     // raw_sock->udp_fd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     // if (raw_sock->udp_fd == -1) {
-    //     perror("skcp_raw_sock_new udp error");
-    //     skcp_raw_sock_free(raw_sock);
+    //     perror("skt_raw_sock_new udp error");
+    //     skt_raw_sock_free(raw_sock);
     //     return NULL;
     // }
     // if (bind_ip) {
     //     raw_sock->bind_addr = bind_addr(raw_sock->udp_fd, bind_ip, 0);
     //     if (!raw_sock->bind_addr) {
-    //         skcp_raw_sock_free(raw_sock);
+    //         skt_raw_sock_free(raw_sock);
     //         return NULL;
     //     }
     // }
@@ -153,7 +154,7 @@ skcp_raw_sock_t* skcp_raw_sock_new(char* bind_ip) {
     return raw_sock;
 }
 
-int skcp_raw_sock_send(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char* new_src_ip, char* new_dst_ip) {
+int skt_raw_sock_send(skt_raw_sock_t* raw_sock, char* ip_packet, int len, char* new_src_ip, char* new_dst_ip) {
     if (!raw_sock || !ip_packet || len < 20) {
         return -1;
     }
@@ -172,24 +173,25 @@ int skcp_raw_sock_send(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char
     // printf("bind_addr %s\n", inet_ntoa(raw_sock->bind_addr->sin_addr));
     // printf("ip_src %s\n", inet_ntoa(ip->ip_src));
     if (raw_sock->bind_addr) {
-        ip->ip_src = raw_sock->bind_addr->sin_addr;
+        ip->ip_src.s_addr = raw_sock->bind_addr->sin_addr.s_addr;
     }
 
     struct sockaddr_in dst_addr;
     bzero(&dst_addr, sizeof(dst_addr));
     dst_addr.sin_family = AF_INET;
-    dst_addr.sin_addr = ip->ip_dst;
+    dst_addr.sin_addr.s_addr = ip->ip_dst.s_addr;
 
-    int iphead_len = ip->ip_hl * 4;
-
-    printf("ip_src %s\n", inet_ntoa(ip->ip_src));
+    printf("skt_raw_sock_send bind_addr: %s\n", inet_ntoa(raw_sock->bind_addr->sin_addr));
+    printf("skt_raw_sock_send ip_src: %s\n", inet_ntoa(ip->ip_src));
+    printf("skt_raw_sock_send ip_dst: %s\n", inet_ntoa(ip->ip_dst));
+    printf("skt_raw_sock_send dst_addr: %s\n", inet_ntoa(dst_addr.sin_addr));
 
     int s_bytes = sendto(raw_sock->fd, ip_packet, len, 0, (struct sockaddr*)&dst_addr, sizeof(dst_addr));
     if (s_bytes < 0) {
-        perror("skcp_raw_sock_send sendto error");
+        perror("skt_raw_sock_send sendto error");
         return -1;
     }
-    LOG_D("skcp_raw_sock_send send bytes: %d", s_bytes);
+    LOG_D("skt_raw_sock_send send bytes: %d", s_bytes);
     return s_bytes;
 
     // int s_bytes = -1;
@@ -231,7 +233,7 @@ int skcp_raw_sock_send(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char
     // buf = NULL;
 }
 
-// int skcp_raw_sock_msend(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char* src_ip, char* dst_ip) {
+// int skt_raw_sock_msend(skt_raw_sock_t* raw_sock, char* ip_packet, int len, char* src_ip, char* dst_ip) {
 //     if (!raw_sock || !ip_packet || len < 20) {
 //         return -1;
 //     }
@@ -325,7 +327,7 @@ int skcp_raw_sock_send(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char
 //     buf = NULL;
 
 //     if (s_bytes < 0) {
-//         perror("skcp_raw_sock_msend sendto error");
+//         perror("skt_raw_sock_msend sendto error");
 //         return -1;
 //     }
 //     printf("send %s(%s) bytes: %d\n", dst_ip, inet_ntoa(dst_addr.sin_addr), s_bytes);

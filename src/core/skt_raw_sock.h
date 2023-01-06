@@ -10,12 +10,12 @@ typedef struct {
     // int udp_fd;
     int fd;
     struct sockaddr_in* bind_addr;
-} skcp_raw_sock_t;
+} skt_raw_sock_t;
 
-skcp_raw_sock_t* skcp_raw_sock_new(char* bind_ip);
-int skcp_raw_sock_send(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char* new_src_ip, char* new_dst_ip);
-// int skcp_raw_sock_msend(skcp_raw_sock_t* raw_sock, char* ip_packet, int len, char* src_ip, char* dst_ip);
-// int skcp_raw_sock_recv(skcp_raw_sock_t* raw_sock, char* buf);
-void skcp_raw_sock_free(skcp_raw_sock_t* raw_sock);
+skt_raw_sock_t* skt_raw_sock_new(char* bind_ip);
+int skt_raw_sock_send(skt_raw_sock_t* raw_sock, char* ip_packet, int len, char* new_src_ip, char* new_dst_ip);
+// int skt_raw_sock_msend(skt_raw_sock_t* raw_sock, char* ip_packet, int len, char* src_ip, char* dst_ip);
+// int skt_raw_sock_recv(skt_raw_sock_t* raw_sock, char* buf);
+void skt_raw_sock_free(skt_raw_sock_t* raw_sock);
 
 #endif
