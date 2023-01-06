@@ -175,7 +175,7 @@ static int test_raw_sock(char *addr) {
 // }
 
 int main(int argc, char *argv[]) {
-    skcp_raw_sock_t *raw_sock = skcp_raw_sock_new(NULL);
+    skcp_raw_sock_t *raw_sock = skcp_raw_sock_new("192.168.3.26");
     assert(raw_sock);
 
     char icmp_packet[] = {0x45, 0x00, 0x00, 0x54, 0x7c, 0x3a, 0x00, 0x00, 0x40, 0x01, 0xbe, 0x7c, 0xc0, 0xa8,
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
                           0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29,
                           0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37};
 
-    int rt = skcp_raw_sock_send(raw_sock, icmp_packet, sizeof(icmp_packet));
+    int rt = skcp_raw_sock_send(raw_sock, icmp_packet, sizeof(icmp_packet), NULL, "192.168.3.26");
     assert(rt > 0);
 
     return 0;
