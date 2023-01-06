@@ -1,5 +1,5 @@
-#ifndef _SKCP_RAW_SOCK_H
-#define _SKCP_RAW_SOCK_H
+#ifndef _SKT_RAW_SOCK_H
+#define _SKT_RAW_SOCK_H
 
 #include <netinet/in.h>
 

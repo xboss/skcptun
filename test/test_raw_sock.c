@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "skcp_raw_sock.h"
+#include "skt_raw_sock.h"
 #include "skt_tuntap.h"
 #include "skt_utils.h"
 
