@@ -93,7 +93,13 @@ void skt_tuntap_setup(char *dev_name, char *device_ip) {
     // system(buf);
 
     char buf[256] = {0};
-    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, device_ip, device_ip);  // TODO: test
+    // snprintf(buf, sizeof(buf), "ip addr add %s/24 dev %s", device_ip, dev_name);
+    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, device_ip, "192.168.2.5");  // TODO: test
+    printf("run: %s\n", buf);
+    system(buf);
+
+    memset(buf, 0, 256);
+    snprintf(buf, sizeof(buf), "ip route add %s/24 via %s", "192.168.2.0", device_ip);  // 192.168.2.1");  // TODO: test
     printf("run: %s\n", buf);
     system(buf);
 

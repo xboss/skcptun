@@ -63,7 +63,7 @@ skt_raw_sock_t* skt_raw_sock_new(char* bind_ip) {
     bzero(raw_sock, sizeof(skt_raw_sock_t));
     int flag = 1;
 
-    raw_sock->fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    raw_sock->fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (raw_sock->fd == -1) {
         perror("skt_raw_sock_new icmp error");
         skt_raw_sock_free(raw_sock);
@@ -163,6 +163,7 @@ int skt_raw_sock_send(skt_raw_sock_t* raw_sock, char* ip_packet, int len, char* 
     ip->ip_id = 0;
     ip->ip_sum = 0;
     ip->ip_len = len;
+    ip->ip_off = IP_DF;
     // ip->ip_src.s_addr = INADDR_ANY;
     if (new_src_ip) {
         inet_aton(new_src_ip, &ip->ip_src);

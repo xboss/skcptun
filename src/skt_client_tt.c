@@ -77,12 +77,13 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
     printf("tun_read_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
 
-    if (skt_ip_filter_is_in(g_ctx->ip_filter, ip->ip_dst)) {
-        // route to default net
-        printf("tun_read_cb skt_ip_filter_is_in: %s\n", dest_ip);
-        skt_raw_sock_send(g_ctx->raw_sock, buf, len, NULL, NULL);
-        return;
-    }
+    // if (skt_ip_filter_is_in(g_ctx->ip_filter, ip->ip_dst)) {
+    //     // route to default net
+    //     printf("tun_read_cb skt_ip_filter_is_in: %s\n", dest_ip);
+    //     skt_raw_sock_send(g_ctx->raw_sock, buf, len, NULL, NULL);
+    //     return;
+    // }
+
     //     // inet_pton(AF_INET, "192.168.3.26", &ip->ip_src);
     //     // ip->ip_sum = 0;
     //     // ip->ip_sum = ip_checksum((unsigned short *)ip, 10);
@@ -268,6 +269,7 @@ void skt_client_tt_free() {
     //     close(g_ctx->raw_w_fd);
     //     g_ctx->raw_w_fd = -1;
     // }
+
     if (g_ctx->raw_sock) {
         skt_raw_sock_free(g_ctx->raw_sock);
         g_ctx->raw_sock = NULL;
@@ -296,16 +298,11 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
         return -1;
     }
 
-    // g_ctx->raw_w_fd = init_raw_sock("192.168.3.26");
-    // if (g_ctx->raw_w_fd < 0) {
+    // g_ctx->raw_sock = skt_raw_sock_new("192.168.1.5");
+    // if (!g_ctx->raw_sock) {
     //     skt_client_tt_free();
     //     return -1;
     // }
-    g_ctx->raw_sock = skt_raw_sock_new("192.168.3.26");
-    if (!g_ctx->raw_sock) {
-        skt_client_tt_free();
-        return -1;
-    }
 
     skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_ctx, SKCP_MODE_CLI);
     if (NULL == skt_kcp) {
@@ -345,11 +342,11 @@ int skt_client_tt_init(skt_cli_tt_conf_t *conf, struct ev_loop *loop) {
     // ev_io_init(g_ctx->w_watcher, tun_write_cb, g_ctx->tun_fd, EV_WRITE);
     // ev_io_start(g_ctx->loop, g_ctx->w_watcher);
 
-    g_ctx->ip_filter = skt_load_ip_list("/Users/sunji/chn_ip.txt");
-    if (!g_ctx->ip_filter) {
-        skt_client_tt_free();
-        return -1;
-    }
+    // g_ctx->ip_filter = skt_load_ip_list("/Users/sunji/chn_ip.txt");
+    // if (!g_ctx->ip_filter) {
+    //     skt_client_tt_free();
+    //     return -1;
+    // }
 
     g_ctx->skt_kcp = skt_kcp;
 
