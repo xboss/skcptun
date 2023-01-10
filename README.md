@@ -2,8 +2,8 @@
 skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWRT and Linux and MacOS, implemented in c language.
 
 ## 状态
-“又不是不能用”
-* 现在是基于“tun”模块的模式，如果需要使用tcp模式可以checkout[tcp_mode_ver_0.4](https://github.com/xboss/skcptun/tree/tcp_mode_ver_0.4)版本，tcp模式已不再维护
+* “又不是不能用”
+* 现在是基于“tun”模块的模式，如果需要使用tcp模式可以检出[tcp_mode_ver_0.4](https://github.com/xboss/skcptun/tree/tcp_mode_ver_0.4)版本，tcp模式已不再维护
 
 ## 特性
 * 基于可靠UDP的加密隧道，加密后的传输数据没有任何特征。
