@@ -77,30 +77,23 @@ int skt_tuntap_open(char *dev_name, int name_len) {
 }
 
 void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
-    // uint32_t dest_ip;
-    // inet_pton(AF_INET, device_ip, &dest_ip);
-    // printf("dest_ip: %d\n", dest_ip);
-    // dest_ip++;
-    // printf("dest_ip: %d\n", dest_ip);
-    // char dest_ip_str[32] = {0};
-    // inet_ntop(AF_INET, &dest_ip, dest_ip_str, sizeof(dest_ip_str));
-    // printf("dest_ip_str: %s\n", dest_ip_str);
-
-    // // 192.168.3.180
-    // char buf[256] = {0};
-    // snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, "192.168.3.180", "192.168.3.180");  // TODO: test
-    // printf("run: %s\n", buf);
-    // system(buf);
-
     char buf[256] = {0};
     // snprintf(buf, sizeof(buf), "ip addr add %s/24 dev %s", device_ip, dev_name);
-    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, "192.168.2.5");  // TODO: test
-    // snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, dev_ip);  // TODO: test
+    // snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, "192.168.2.5");  // TODO: test
+    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, dev_ip);  // TODO: test
     printf("run: %s\n", buf);
     system(buf);
 
+    struct in_addr ip_n;
+    inet_aton(dev_ip, &ip_n);
+    struct in_addr ip_mask;
+    inet_aton(dev_mask, &ip_mask);
+    ip_n.s_addr = ip_n.s_addr & ip_mask.s_addr;
+
     memset(buf, 0, 256);
-    snprintf(buf, sizeof(buf), "ip route add %s/24 via %s", "192.168.2.0", dev_ip);  // 192.168.2.1");  // TODO: test
+    // snprintf(buf, sizeof(buf), "ip route add %s/24 via %s", "192.168.2.0", dev_ip);  // 192.168.2.1");  // TODO: test
+    // route -n add -net 172.2.2.2 -netmask 255.255.255.0 192.168.2.2
+    snprintf(buf, sizeof(buf), "route -n add -net %s -netmask %s %s", inet_ntoa(ip_n), dev_mask, dev_ip);
     printf("run: %s\n", buf);
     system(buf);
 

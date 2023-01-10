@@ -56,11 +56,13 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 //////////////////////
 
 static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
-    if (!g_ctx->data_conn) {
-        g_ctx->data_conn = kcp_conn;
-        LOG_I("new data conn by kcp_new_conn_cb");
-        return;
-    }
+    // if (!g_ctx->data_conn) {
+    //     g_ctx->data_conn = kcp_conn;
+    //     LOG_I("new data conn by kcp_new_conn_cb");
+    //     return;
+    // }
+    g_ctx->data_conn = kcp_conn;
+    LOG_I("new data conn by kcp_new_conn_cb");
     return;
 }
 
