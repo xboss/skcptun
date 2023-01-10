@@ -4,9 +4,9 @@
 #include <mcheck.h>
 #endif
 
-#include "skt_client_tc.h"
+#include "skt_client.h"
 #include "skt_config.h"
-#include "skt_server_tc.h"
+#include "skt_server.h"
 #include "skt_utils.h"
 
 static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
@@ -21,21 +21,21 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 
 /**********  server config **********/
 
-static skt_serv_t *start_server(struct ev_loop *loop, const char *conf_file) {
+static int start_server(struct ev_loop *loop, const char *conf_file) {
     if (NULL == loop) {
         LOG_E("loop create failed");
-        return NULL;
+        return -1;
     }
 
-    skt_serv_conf_t *conf = skt_init_server_tc_conf(conf_file);
+    skt_serv_conf_t *conf = skt_init_server_conf(conf_file);
     if (NULL == conf) {
-        return NULL;
+        return -1;
     }
 
-    skt_serv_t *serv = skt_server_init(conf, loop);
-    if (NULL == serv) {
-        skt_free_server_tc_conf(conf);
-        return NULL;
+    int rt = skt_server_init(conf, loop);
+    if (-1 == rt) {
+        skt_free_server_conf(conf);
+        return rt;
     }
 
     LOG_D("server loop run");
@@ -43,26 +43,27 @@ static skt_serv_t *start_server(struct ev_loop *loop, const char *conf_file) {
     LOG_D("loop end");
 
     skt_server_free();
-    skt_free_server_tc_conf(conf);
-    return serv;
+    skt_free_server_conf(conf);
+    return rt;
 }
 
 /**********  client config **********/
 
-static skt_cli_t *start_client(struct ev_loop *loop, const char *conf_file) {
+static int start_client(struct ev_loop *loop, const char *conf_file) {
     if (NULL == loop) {
         LOG_E("loop create failed");
-        return NULL;
+        return -1;
     }
 
-    skt_cli_conf_t *conf = skt_init_client_tc_conf(conf_file);
+    skt_cli_conf_t *conf = skt_init_client_conf(conf_file);
     if (NULL == conf) {
-        return NULL;
+        return -1;
     }
-    skt_cli_t *cli = skt_client_init(conf, loop);
-    if (NULL == cli) {
-        skt_free_client_tc_conf(conf);
-        return NULL;
+
+    int rt = skt_client_init(conf, loop);
+    if (-1 == rt) {
+        skt_free_client_conf(conf);
+        return rt;
     }
 
     LOG_D("client loop run");
@@ -70,8 +71,8 @@ static skt_cli_t *start_client(struct ev_loop *loop, const char *conf_file) {
     LOG_D("loop end");
 
     skt_client_free();
-    skt_free_client_tc_conf(conf);
-    return cli;
+    skt_free_client_conf(conf);
+    return rt;
 }
 
 ///////////////////////////////
@@ -110,14 +111,12 @@ int main(int argc, char *argv[]) {
     ev_signal_start(loop, &sig_stop_watcher);
 
     if (strcmp(argv[1], "s") == 0) {
-        skt_serv_t *serv = start_server(loop, conf_file);
-        if (NULL == serv) {
+        if (0 != start_server(loop, conf_file)) {
             return -1;
         }
 
     } else if (strcmp(argv[1], "c") == 0) {
-        skt_cli_t *cli = start_client(loop, conf_file);
-        if (NULL == cli) {
+        if (0 != start_client(loop, conf_file)) {
             return -1;
         }
     } else {

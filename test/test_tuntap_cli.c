@@ -1,4 +1,4 @@
-#include "skt_client_tt.h"
+#include "skt_client.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
@@ -35,11 +35,11 @@ int main(int argc, char *argv[]) {
     kcp_conf.kcp_buf_size = 2048;
     kcp_conf.timeout_interval = 1;
 
-    skt_cli_tt_conf_t conf;
+    skt_cli_conf_t conf;
     conf.kcp_conf = &kcp_conf;
-    int rt = skt_client_tt_init(&conf, loop);
+    int rt = skt_client_init(&conf, loop);
     if (rt != 0) {
-        LOG_E("skt_client_tt_init error");
+        LOG_E("skt_client_init error");
         return 1;
     }
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     ev_run(loop, 0);
     LOG_D("loop end");
 
-    skt_client_tt_free();
+    skt_client_free();
 
     return 0;
 }

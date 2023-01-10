@@ -40,15 +40,15 @@ int skt_tuntap_open(char *dev_name, int name_len) {
     return fd;
 }
 
-void skt_tuntap_setup(char *dev_name, char *device_ip) {
+void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
     char buf[256] = {0};
-    snprintf(buf, sizeof(buf), "ip addr add %s/24 dev %s", device_ip, dev_name);
+    snprintf(buf, sizeof(buf), "ip addr add %s/24 dev %s", dev_ip, dev_name);
     printf("run: %s\n", buf);
     system(buf);
 
     // TODO: ifconfig tun0 netmask 255.255.255.0
     memset(buf, 0, 256);
-    snprintf(buf, sizeof(buf), "ifconfig %s netmask 255.255.255.0", dev_name);
+    snprintf(buf, sizeof(buf), "ifconfig %s netmask %s", dev_name, dev_mask);
     printf("run: %s\n", buf);
     system(buf);
 

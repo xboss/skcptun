@@ -76,7 +76,7 @@ int skt_tuntap_open(char *dev_name, int name_len) {
     return fd;
 }
 
-void skt_tuntap_setup(char *dev_name, char *device_ip) {
+void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
     // uint32_t dest_ip;
     // inet_pton(AF_INET, device_ip, &dest_ip);
     // printf("dest_ip: %d\n", dest_ip);
@@ -94,12 +94,13 @@ void skt_tuntap_setup(char *dev_name, char *device_ip) {
 
     char buf[256] = {0};
     // snprintf(buf, sizeof(buf), "ip addr add %s/24 dev %s", device_ip, dev_name);
-    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, device_ip, "192.168.2.5");  // TODO: test
+    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, "192.168.2.5");  // TODO: test
+    // snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, dev_ip);  // TODO: test
     printf("run: %s\n", buf);
     system(buf);
 
     memset(buf, 0, 256);
-    snprintf(buf, sizeof(buf), "ip route add %s/24 via %s", "192.168.2.0", device_ip);  // 192.168.2.1");  // TODO: test
+    snprintf(buf, sizeof(buf), "ip route add %s/24 via %s", "192.168.2.0", dev_ip);  // 192.168.2.1");  // TODO: test
     printf("run: %s\n", buf);
     system(buf);
 
