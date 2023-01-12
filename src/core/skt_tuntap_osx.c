@@ -78,9 +78,7 @@ int skt_tuntap_open(char *dev_name, int name_len) {
 
 void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
     char buf[256] = {0};
-    // snprintf(buf, sizeof(buf), "ip addr add %s/24 dev %s", device_ip, dev_name);
-    // snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, "192.168.2.5");  // TODO: test
-    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, dev_ip);  // TODO: test
+    snprintf(buf, sizeof(buf), "ifconfig %s %s %s", dev_name, dev_ip, dev_ip);
     printf("run: %s\n", buf);
     system(buf);
 
@@ -91,22 +89,15 @@ void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
     ip_n.s_addr = ip_n.s_addr & ip_mask.s_addr;
 
     memset(buf, 0, 256);
-    // snprintf(buf, sizeof(buf), "ip route add %s/24 via %s", "192.168.2.0", dev_ip);  // 192.168.2.1");  // TODO: test
-    // route -n add -net 172.2.2.2 -netmask 255.255.255.0 192.168.2.2
     snprintf(buf, sizeof(buf), "route -n add -net %s -netmask %s %s", inet_ntoa(ip_n), dev_mask, dev_ip);
     printf("run: %s\n", buf);
     system(buf);
 
     // ifconfig utun5 mtu 1400
     memset(buf, 0, 256);
-    snprintf(buf, sizeof(buf), "ifconfig %s mtu 1302", dev_name);  // 192.168.2.1");  // TODO: test
+    snprintf(buf, sizeof(buf), "ifconfig %s mtu 1302", dev_name);
     printf("run: %s\n", buf);
     system(buf);
-
-    // memset(buf, 0, 256);
-    // snprintf(buf, sizeof(buf), "ip route add 192.168.2.0/24 via 192.168.2.1");  // 192.168.2.1");  // TODO: test
-    // printf("run: %s\n", buf);
-    // system(buf);
 }
 
 int skt_tuntap_read(int fd, char *buf, int len) {

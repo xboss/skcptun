@@ -46,7 +46,6 @@ void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
     printf("run: %s\n", buf);
     system(buf);
 
-    // TODO: ifconfig tun0 netmask 255.255.255.0
     memset(buf, 0, 256);
     snprintf(buf, sizeof(buf), "ifconfig %s netmask %s", dev_name, dev_mask);
     printf("run: %s\n", buf);
@@ -54,7 +53,7 @@ void skt_tuntap_setup(char *dev_name, char *dev_ip, char *dev_mask) {
 
     // ifconfig utun5 mtu 1400
     memset(buf, 0, 256);
-    snprintf(buf, sizeof(buf), "ifconfig %s mtu 1302", dev_name);  // 192.168.2.1");  // TODO: test
+    snprintf(buf, sizeof(buf), "ifconfig %s mtu 1302", dev_name);
     printf("run: %s\n", buf);
     system(buf);
 
