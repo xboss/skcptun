@@ -5,7 +5,8 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include "3rd/uthash/utlist.h"
+// #include "3rd/uthash/utlist.h"
+#include "utlist.h"
 
 void skt_kcp_gen_htkey(char *htkey, int key_len, uint32_t sess_id, struct sockaddr_in *sock_addr) {
     in_port_t port = 0;
@@ -75,7 +76,7 @@ static int init_serv_network(skt_kcp_t *skt_kcp) {
         return SKT_ERROR;
     }
 
-    LOG_I("kcp client start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
+    LOG_I("kcp server start ok. fd: %d addr: %s port: %u", skt_kcp->fd, skt_kcp->conf->addr, skt_kcp->conf->port);
 
     return SKT_OK;
 }
@@ -130,8 +131,11 @@ static int kcp_output(const char *buf, int len, skcp_conn_t *conn) {
     if (kcp_conn->skt_kcp->encrypt_cb) {
         out_buf = kcp_conn->skt_kcp->encrypt_cb(kcp_conn->skt_kcp, buf, len, &out_len);
     }
-    if (out_len > conn->skcp->conf->mtu) {
-        LOG_E("kcp skt_kcp output encrypt len > mtu:%d", conn->skcp->conf->mtu);
+    // if (out_len > conn->skcp->conf->mtu) {
+    //     LOG_E("kcp skt_kcp output encrypt len: %d, out_len: %d > mtu:%d", len, out_len, conn->skcp->conf->mtu);
+    // }
+    if (out_len > 1420) {
+        LOG_E("kcp skt_kcp output encrypt len: %d, out_len: %d > mtu:%d", len, out_len, 1420);
     }
 
     skcp_append_wait_buf(conn, out_buf, out_len);
@@ -183,7 +187,7 @@ skcp_conn_t *skt_kcp_new_conn(skt_kcp_t *skt_kcp, uint32_t sess_id, struct socka
     }
     kcp_conn->skt_kcp = skt_kcp;
     kcp_conn->tcp_fd = 0;
-    kcp_conn->tag = SKT_KCP_TAG_NM;
+    kcp_conn->tag = 0;
 
     char *htkey = malloc(SKCP_HTKEY_LEN);
     memset(htkey, 0, SKCP_HTKEY_LEN);
@@ -209,8 +213,14 @@ static void write_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
                 int rt = sendto(kcp_conn->skt_kcp->fd, item->buf, item->len, 0, (struct sockaddr *)&kcp_conn->dest_addr,
                                 sizeof(kcp_conn->dest_addr));
                 if (-1 == rt) {
-                    LOG_W("write_cb sendto error fd:%d  sess_id:%u errno: %d %s", kcp_conn->skt_kcp->fd, conn->sess_id,
-                          errno, strerror(errno));
+                    // TODO: debug start
+                    char ip[64] = {0};
+                    inet_ntop(AF_INET, &kcp_conn->dest_addr, ip, sizeof(ip));
+                    // TODO: debug end
+                    LOG_W("write_cb sendto error fd:%d  sess_id:%u ip:%s errno: %d %s", kcp_conn->skt_kcp->fd,
+                          conn->sess_id, ip, errno, strerror(errno));
+
+                    ev_io_stop(skt_kcp->loop, skt_kcp->w_watcher);
                     return;
                 }
                 conn->last_w_tm = getmillisecond();

@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "../src/skcp_protocol.h"
+#include "skcp_protocol.h"
 
 #define FREE_IF(p)    \
     do {              \

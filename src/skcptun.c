@@ -21,21 +21,21 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 
 /**********  server config **********/
 
-static skt_serv_t *start_server(struct ev_loop *loop, const char *conf_file) {
+static int start_server(struct ev_loop *loop, const char *conf_file) {
     if (NULL == loop) {
         LOG_E("loop create failed");
-        return NULL;
+        return -1;
     }
 
     skt_serv_conf_t *conf = skt_init_server_conf(conf_file);
     if (NULL == conf) {
-        return NULL;
+        return -1;
     }
 
-    skt_serv_t *serv = skt_server_init(conf, loop);
-    if (NULL == serv) {
+    int rt = skt_server_init(conf, loop);
+    if (-1 == rt) {
         skt_free_server_conf(conf);
-        return NULL;
+        return rt;
     }
 
     LOG_D("server loop run");
@@ -44,25 +44,26 @@ static skt_serv_t *start_server(struct ev_loop *loop, const char *conf_file) {
 
     skt_server_free();
     skt_free_server_conf(conf);
-    return serv;
+    return rt;
 }
 
 /**********  client config **********/
 
-static skt_cli_t *start_client(struct ev_loop *loop, const char *conf_file) {
+static int start_client(struct ev_loop *loop, const char *conf_file) {
     if (NULL == loop) {
         LOG_E("loop create failed");
-        return NULL;
+        return -1;
     }
 
     skt_cli_conf_t *conf = skt_init_client_conf(conf_file);
     if (NULL == conf) {
-        return NULL;
+        return -1;
     }
-    skt_cli_t *cli = skt_client_init(conf, loop);
-    if (NULL == cli) {
+
+    int rt = skt_client_init(conf, loop);
+    if (-1 == rt) {
         skt_free_client_conf(conf);
-        return NULL;
+        return rt;
     }
 
     LOG_D("client loop run");
@@ -71,7 +72,7 @@ static skt_cli_t *start_client(struct ev_loop *loop, const char *conf_file) {
 
     skt_client_free();
     skt_free_client_conf(conf);
-    return cli;
+    return rt;
 }
 
 ///////////////////////////////
@@ -110,14 +111,12 @@ int main(int argc, char *argv[]) {
     ev_signal_start(loop, &sig_stop_watcher);
 
     if (strcmp(argv[1], "s") == 0) {
-        skt_serv_t *serv = start_server(loop, conf_file);
-        if (NULL == serv) {
+        if (0 != start_server(loop, conf_file)) {
             return -1;
         }
 
     } else if (strcmp(argv[1], "c") == 0) {
-        skt_cli_t *cli = start_client(loop, conf_file);
-        if (NULL == cli) {
+        if (0 != start_client(loop, conf_file)) {
             return -1;
         }
     } else {

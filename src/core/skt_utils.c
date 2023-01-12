@@ -12,6 +12,16 @@
 #include <sys/time.h>
 #include <time.h>
 
+unsigned short ip_checksum(unsigned short* buf, int nword) {
+    unsigned long sum;
+
+    for (sum = 0; nword > 0; nword--) sum += *buf++;
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum += (sum >> 16);
+
+    return ~sum;
+}
+
 void* skt_mem_clone(void* src, size_t len) {
     void* new = malloc(len);
     memcpy(new, src, len);

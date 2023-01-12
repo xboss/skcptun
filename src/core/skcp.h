@@ -1,8 +1,10 @@
 #ifndef _SKCP_H
 #define _SKCP_H
 
-#include "3rd/kcp/ikcp.h"
-#include "3rd/uthash/uthash.h"
+// #include "3rd/kcp/ikcp.h"
+// #include "3rd/uthash/uthash.h"
+#include "ikcp.h"
+#include "uthash.h"
 
 #define KCP_WAITIMG_BUF_SZ 2048
 

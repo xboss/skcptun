@@ -2,7 +2,8 @@
 skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWRT and Linux and MacOS, implemented in c language.
 
 ## 状态
-“又不是不能用”
+* “又不是不能用”
+* 现在是基于“tun”模块的模式，如果需要使用tcp模式可以检出[tcp_mode_ver_0.4](https://github.com/xboss/skcptun/tree/tcp_mode_ver_0.4)版本，tcp模式已不再维护
 
 ## 特性
 * 基于可靠UDP的加密隧道，加密后的传输数据没有任何特征。
@@ -21,10 +22,25 @@ cd build
 cmake ..
 make
 ```
+## 环境配置
+* 由于是通过虚拟网卡的技术建立的隧道，需要做必要的网络设置。
+* 以linux（debian）为例，需要内核支持tun模块。通过“modinfo tun”命令确认。
+* 需要安装 "iproute2" 和 “iptables” 工具包。
+
+### 服务端
+* 开启ip转发，将“net.ipv4.ip_forward=1” 添加到 "/etc/sysctl.conf" 文件，执行“sysctl -p”生效。
+打开ip转发
+* 修改默认转发策略 “iptables -P FORWARD ACCEPT”
+* 修改nat的源地址改成出口网卡的地址 “iptables -t nat -A POSTROUTING -s 192.168.2.1/24 -o enp1s0 -j MASQUERADE”
+
+### 客户端
+* 开启ip转发
+
 ## 使用
-skcptun \<mode\> \<configfile\>
+sudo skcptun \<mode\> \<configfile\>
 * mode是运行模式，服务端为s，客户端为c
 * configfile是配置文件地址
+* 需要root权限运行
 
 ### 客户端：
 配置文件（json）：
@@ -32,20 +48,23 @@ skcptun \<mode\> \<configfile\>
 {
     "password":"your password",
     "speed_mode":1,
-    "keepalive":600,
-    "local_addr":"0.0.0.0",
-    "local_port":1234,
-    "remote_addr":"104.168.158.246",
-    "remote_port":2345
+    "keepalive":15,
+    "tun_ip":"192.168.2.2",
+    "tun_mask":"255.255.255.0",
+    "remote_addr":"1.1.1.1",
+    "remote_port":1111
 }
 ```
-* local_addr和local_port是本地监听的ip和端口（TCP）
-* remote_addr和remote_port是需要连接的服务端的ip和端口（UDP）
-* keepalive单位是秒
+* password 是用来加密两端通讯数据包的密码
+* speed_mode 为1表示极速模式，0为普通模式
+* keepalive 单位是秒
+* tun_ip 是虚拟网卡的ip，需要和服务端设置保持一致
+* tun_mask 是虚拟网卡的子网掩码，需要和服务端设置保持一致
+* remote_addr和remote_port 是需要连接的服务端的ip和端口（UDP）
 
 运行:
 ```
-./sckptun c skcptun_client.conf
+sudo ./sckptun c skcptun_client.conf
 ```
 
 ### 服务端
@@ -54,20 +73,18 @@ skcptun \<mode\> \<configfile\>
 {
     "password":"your password",
     "speed_mode":1,
-    "keepalive":600,
-    "local_addr":"0.0.0.0",
-    "local_port":2345,
-    "target_addr":"127.0.0.1",
-    "target_port":3456
+    "keepalive":15,
+    "tun_ip":"192.168.2.2",
+    "tun_mask":"255.255.255.0"
+    "listen_addr":"1.1.1.1",
+    "listen_port":1111
 }
 ```
-* local_addr和local_port是服务端监听的ip和端口（UDP）
-* target_addr和target_port是需要连接的目标ip和端口（TCP）
-* 服务端的password必须和客户端保持一致，密码不是用来鉴权，仅用来加密数据
+* listen_addr和listen_port 是服务端监听的ip和端口（UDP）
 
 运行:
 ```
-./sckptun s skcptun_server.conf
+sudo ./sckptun s skcptun_server.conf
 ```
 
 ## 测试

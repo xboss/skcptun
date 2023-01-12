@@ -6,8 +6,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "3rd/uthash/utlist.h"
+// #include "3rd/uthash/utlist.h"
 #include "skcp_protocol.h"
+#include "utlist.h"
 
 #define SKCP_FREEIF(p) \
     do {               \
