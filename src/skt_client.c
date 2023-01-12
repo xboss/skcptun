@@ -57,11 +57,11 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     }
 
     struct ip *ip = (struct ip *)buf;
-    char src_ip[20] = {0};
-    char dest_ip[20] = {0};
-    inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
-    LOG_D("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
+    // char src_ip[20] = {0};
+    // char dest_ip[20] = {0};
+    // inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
+    // inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
+    // LOG_D("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
 
     if (g_ctx->data_conn) {
         int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);
@@ -69,7 +69,7 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
             LOG_E("skt_kcp_send_data error htkey: %s", g_ctx->data_conn->htkey);
             return;
         }
-        LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
+        // LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
     }
 }
 
@@ -88,7 +88,7 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
         return SKT_ERROR;
     }
 
-    LOG_D(">>>>> kcp_recv_data_cb len: %d src_ip: %s dest_ip: %s", w_len, src_ip, dest_ip);
+    // LOG_D(">>>>> kcp_recv_data_cb len: %d src_ip: %s dest_ip: %s", w_len, src_ip, dest_ip);
 
     return SKT_OK;
 }

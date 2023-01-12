@@ -37,11 +37,11 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     }
 
     struct ip *ip = (struct ip *)buf;
-    char src_ip[64] = {0};
-    char dest_ip[64] = {0};
-    inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
-    LOG_D("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
+    // char src_ip[64] = {0};
+    // char dest_ip[64] = {0};
+    // inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
+    // inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
+    // LOG_D("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
 
     if (g_ctx->data_conn) {
         int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);
@@ -49,7 +49,7 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
             LOG_E("skt_kcp_send_data error htkey: %s", g_ctx->data_conn->htkey);
             return;
         }
-        LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
+        // LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
     }
 }
 
@@ -62,14 +62,14 @@ static void kcp_new_conn_cb(skcp_conn_t *kcp_conn) {
     //     return;
     // }
     g_ctx->data_conn = kcp_conn;
-    LOG_I("new data conn by kcp_new_conn_cb");
+    LOG_I("new data conn by kcp_new_conn_cb sess_id: %u", g_ctx->data_conn->sess_id);
     return;
 }
 
 static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
     if (!g_ctx->data_conn) {
         g_ctx->data_conn = kcp_conn;
-        LOG_I("set data conn by kcp_recv_data_cb");
+        LOG_I("set data conn by kcp_recv_data_cb sess_id: %u", g_ctx->data_conn->sess_id);
     }
 
     struct ip *ip = (struct ip *)buf;
@@ -83,7 +83,7 @@ static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
         LOG_E("skt_tuntap_write error tun_fd: %d", g_ctx->tun_fd);
         return SKT_ERROR;
     }
-    LOG_D(">>>>> kcp_recv_data_cb len: %d src_ip: %s dest_ip: %s", w_len, src_ip, dest_ip);
+    // LOG_D(">>>>> kcp_recv_data_cb len: %d src_ip: %s dest_ip: %s", w_len, src_ip, dest_ip);
 
     return SKT_OK;
 }
