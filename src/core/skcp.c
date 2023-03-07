@@ -753,7 +753,7 @@ void skcp_close_conn(skcp_t *skcp, uint32_t cid) {
     if (!conn) {
         return;
     }
-    _LOG("skcp_close_conn cid: %u", cid);
+    // _LOG("skcp_close_conn cid: %u", cid);
     skcp->conf->on_close(cid);
 
     free_conn(skcp, conn);
@@ -812,9 +812,6 @@ void skcp_free(skcp_t *skcp) {
         return;
     }
 
-    skcp->conf = NULL;
-    skcp->user_data = NULL;
-
     if (skcp->r_watcher) {
         ev_io_stop(skcp->loop, skcp->r_watcher);
         _FREEIF(skcp->r_watcher);
@@ -847,6 +844,9 @@ void skcp_free(skcp_t *skcp) {
         }
         free_conn_slots(skcp->conn_slots);
     }
+
+    skcp->conf = NULL;
+    skcp->user_data = NULL;
 
     _FREEIF(skcp);
 }

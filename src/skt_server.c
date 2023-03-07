@@ -120,7 +120,7 @@ static void skcp_on_recv(uint32_t cid, char *buf, int len, SKCP_MSG_TYPE msg_typ
     //     LOG_I("set data conn by kcp_recv_data_cb sess_id: %u", g_ctx->data_conn->sess_id);
     // }
 
-    LOG_I("server on_recv msg_type: %d cid: %u len: %d", msg_type, cid, len);
+    LOG_D("server on_recv msg_type: %d cid: %u len: %d", msg_type, cid, len);
     struct ip *ip = (struct ip *)buf;
     // char src_ip[64] = {0};
     // char dest_ip[64] = {0};
