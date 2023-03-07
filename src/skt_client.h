@@ -1,10 +1,10 @@
 #ifndef _SKT_CLIENT_H
 #define _SKT_CLIENT_H
 
-#include "skt_kcp.h"
+#include "skcp.h"
 
 typedef struct skt_cli_conf_s {
-    skt_kcp_conf_t *kcp_conf;
+    skcp_conf_t *skcp_conf;
     char *tun_ip;
     char *tun_mask;
 } skt_cli_conf_t;

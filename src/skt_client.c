@@ -3,7 +3,7 @@
 #include <netinet/ip.h>
 #include <unistd.h>
 
-#include "skt_cipher.h"
+// #include "skt_cipher.h"
 // #include "skt_config.h"
 #include "skt_tuntap.h"
 #include "skt_utils.h"
@@ -11,11 +11,12 @@
 struct skt_cli_s {
     skt_cli_conf_t *conf;
     struct ev_loop *loop;
-    skt_kcp_t *skt_kcp;
-    skcp_conn_t *data_conn;
+    skcp_t *skcp;
+    // skcp_conn_t *data_conn;
+    uint32_t cid;
     struct ev_timer *bt_watcher;
     struct ev_io *r_watcher;
-    struct ev_io *w_watcher;
+    // struct ev_io *w_watcher;
     int tun_fd;
 
     // uint32_t rtt_cnt;
@@ -30,7 +31,7 @@ struct skt_cli_s {
 typedef struct skt_cli_s skt_cli_t;
 
 static skt_cli_t *g_ctx = NULL;
-static char *iv = "667b02a85c61c580def4521b060265e8";  // TODO: 动态生成
+// static char *iv = "667b02a85c61c580def4521b060265e8";  // TODO: 动态生成
 
 //////////////////////
 
@@ -47,7 +48,7 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
         LOG_E("tun_read_cb got invalid event");
         return;
     }
-    skt_kcp_t *skt_kcp = (skt_kcp_t *)(watcher->data);
+    skcp_t *skcp = (skcp_t *)(watcher->data);
 
     char buf[1500];
     int len = skt_tuntap_read(g_ctx->tun_fd, buf, 1500);
@@ -56,88 +57,70 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
         return;
     }
 
-    struct ip *ip = (struct ip *)buf;
+    if (g_ctx->cid <= 0) {
+        LOG_E("tun_read_cb g_ctx->cid error : %u", g_ctx->cid);
+        return;
+    }
+
+    int rt = skcp_send(g_ctx->skcp, g_ctx->cid, buf, len);
+    if (rt < 0) {
+        LOG_E("skcp_send error cid: %u", g_ctx->cid);
+        return;
+    }
+
+    // struct ip *ip = (struct ip *)buf;
     // char src_ip[20] = {0};
     // char dest_ip[20] = {0};
     // inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
     // inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
     // LOG_D("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
 
-    if (g_ctx->data_conn) {
-        int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);
-        if (rt < 0) {
-            LOG_E("skt_kcp_send_data error htkey: %s", g_ctx->data_conn->htkey);
-            return;
-        }
-        // LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
-    }
+    // if (g_ctx->data_conn) {
+    //     int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);
+    //     if (rt < 0) {
+    //         LOG_E("skt_kcp_send_data error htkey: %s", g_ctx->data_conn->htkey);
+    //         return;
+    //     }
+    //     // LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
+    // }
 }
 
 //////////////////////
 
-static int kcp_recv_data_cb(skcp_conn_t *kcp_conn, char *buf, int len) {
-    char src_ip[20] = {0};
-    char dest_ip[20] = {0};
-    inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
+static void skcp_on_recv(uint32_t cid, char *buf, int len, SKCP_MSG_TYPE msg_type) {
+    // char src_ip[20] = {0};
+    // char dest_ip[20] = {0};
+    // inet_ntop(AF_INET, buf + 12, src_ip, sizeof(src_ip));
+    // inet_ntop(AF_INET, buf + 16, dest_ip, sizeof(dest_ip));
     // printf("kcp_recv_data_cb src_ip: %s dest_ip: %s\n", src_ip, dest_ip);
+    LOG_D("client on_recv msg_type: %d", msg_type);
+    if (msg_type == SKCP_MSG_TYPE_CID_ACK) {
+        LOG_D("skcp_on_recv cid: %u", cid);
+        g_ctx->cid = cid;
+        return;
+    }
 
     int w_len = skt_tuntap_write(g_ctx->tun_fd, buf, len);
     if (w_len < 0) {
         LOG_E("skt_tuntap_write error tun_fd: %d", g_ctx->tun_fd);
-        return SKT_ERROR;
+        return;
     }
 
     // LOG_D(">>>>> kcp_recv_data_cb len: %d src_ip: %s dest_ip: %s", w_len, src_ip, dest_ip);
 
-    return SKT_OK;
-}
-
-static int kcp_recv_ctrl_cb(skcp_conn_t *kcp_conn, char *buf, int len) { return SKT_OK; }
-
-static void kcp_close_cb(skt_kcp_conn_t *kcp_conn) {
-    LOG_D("kcp_close_cb");
-    if (kcp_conn->tag == 0) {
-        // reconnect
-        g_ctx->data_conn = skt_kcp_new_conn(g_ctx->skt_kcp, 0, NULL);
-        LOG_I("new data conn by reconnect");
-    }
-
     return;
 }
 
-static char *kcp_encrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
-    int padding_size = in_len;
-    char *after_padding_buf = (char *)in;
-    if (in_len % 16 != 0) {
-        after_padding_buf = skt_cipher_padding(in, in_len, &padding_size);
-    }
-    *out_len = padding_size;
+static void skcp_on_close(uint32_t cid) {
+    LOG_D("skcp_on_close cid: %u", cid);
+    g_ctx->cid = 0;
+    // if (kcp_conn->tag == 0) {
+    //     // reconnect
+    //     g_ctx->data_conn = skt_kcp_new_conn(g_ctx->skt_kcp, 0, NULL);
+    //     LOG_I("new data conn by reconnect");
+    // }
 
-    char *out_buf = malloc(padding_size);
-    memset(out_buf, 0, padding_size);
-    skt_aes_cbc_encrpyt(after_padding_buf, &out_buf, padding_size, skt_kcp->conf->key, iv);
-    if (in_len % 16 != 0) {
-        FREE_IF(after_padding_buf);
-    }
-    return out_buf;
-}
-
-static char *kcp_decrypt_cb(skt_kcp_t *skt_kcp, const char *in, int in_len, int *out_len) {
-    int padding_size = in_len;
-    char *after_padding_buf = (char *)in;
-    if (in_len % 16 != 0) {
-        after_padding_buf = skt_cipher_padding(in, in_len, &padding_size);
-    }
-    *out_len = padding_size;
-
-    char *out_buf = malloc(padding_size);
-    memset(out_buf, 0, padding_size);
-    skt_aes_cbc_decrpyt(after_padding_buf, &out_buf, padding_size, skt_kcp->conf->key, iv);
-    if (in_len % 16 != 0) {
-        FREE_IF(after_padding_buf);
-    }
-    return out_buf;
+    return;
 }
 
 //////////////////////
@@ -148,13 +131,21 @@ static void beat_cb(struct ev_loop *loop, struct ev_timer *watcher, int revents)
         return;
     }
 
-    skt_kcp_t *skt_kcp = (skt_kcp_t *)watcher->data;
+    skcp_t *skcp = (skcp_t *)watcher->data;
 
-    if (!g_ctx->data_conn) {
-        g_ctx->data_conn = skt_kcp_new_conn(skt_kcp, 0, NULL);
-        LOG_I("new data conn by beat_cb");
+    if (g_ctx->cid <= 0) {
+        skcp_req_cid(skcp, skcp->conf->ticket, strlen(skcp->conf->ticket));
+        LOG_I("skcp_req_cid by beat_cb");
         return;
     }
+
+    // TODO: ping
+
+    // if (!g_ctx->data_conn) {
+    //     g_ctx->data_conn = skt_kcp_new_conn(skt_kcp, 0, NULL);
+    //     LOG_I("new data conn by beat_cb");
+    //     return;
+    // }
 }
 
 static int init_vpn_cli() {
@@ -191,13 +182,13 @@ void skt_client_free() {
         g_ctx->tun_fd = -1;
     }
 
-    if (g_ctx->data_conn) {
-        skt_kcp_close_conn(g_ctx->skt_kcp, g_ctx->data_conn->htkey);
+    if (g_ctx->cid > 0) {
+        skcp_close_conn(g_ctx->skcp, g_ctx->cid);
     }
 
-    if (g_ctx->skt_kcp) {
-        skt_kcp_free(g_ctx->skt_kcp);
-        g_ctx->skt_kcp = NULL;
+    if (g_ctx->skcp) {
+        skcp_free(g_ctx->skcp);
+        g_ctx->skcp = NULL;
     }
 
     FREE_IF(g_ctx);
@@ -214,35 +205,40 @@ int skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
         return -1;
     }
 
-    skt_kcp_t *skt_kcp = skt_kcp_init(conf->kcp_conf, loop, g_ctx, SKCP_MODE_CLI);
-    if (NULL == skt_kcp) {
+    g_ctx->skcp = skcp_init(conf->skcp_conf, loop, g_ctx, SKCP_MODE_CLI);
+    if (NULL == g_ctx->skcp) {
         skt_client_free();
         return -1;
     };
+
+    conf->skcp_conf->on_close = skcp_on_close;
+    conf->skcp_conf->on_recv = skcp_on_recv;
+
     // skt_kcp->conn_timeout_cb = NULL;
-    skt_kcp->new_conn_cb = NULL;
-    skt_kcp->conn_close_cb = kcp_close_cb;
-    skt_kcp->kcp_recv_data_cb = kcp_recv_data_cb;
-    skt_kcp->kcp_recv_ctrl_cb = kcp_recv_ctrl_cb;
-    if (conf->kcp_conf->key != NULL) {
-        skt_kcp->encrypt_cb = kcp_encrypt_cb;
-        skt_kcp->decrypt_cb = kcp_decrypt_cb;
-    } else {
-        skt_kcp->encrypt_cb = NULL;
-        skt_kcp->decrypt_cb = NULL;
-    }
+    // skt_kcp->new_conn_cb = NULL;
+    // skt_kcp->conn_close_cb = kcp_close_cb;
+    // skt_kcp->kcp_recv_data_cb = kcp_recv_data_cb;
+    // skt_kcp->kcp_recv_ctrl_cb = kcp_recv_ctrl_cb;
+    // if (conf->kcp_conf->key != NULL) {
+    //     skt_kcp->encrypt_cb = kcp_encrypt_cb;
+    //     skt_kcp->decrypt_cb = kcp_decrypt_cb;
+    // } else {
+    //     skt_kcp->encrypt_cb = NULL;
+    //     skt_kcp->decrypt_cb = NULL;
+    // }
+
+    g_ctx->cid = 0;
 
     // 定时
-    g_ctx->data_conn = NULL;
     g_ctx->bt_watcher = malloc(sizeof(ev_timer));
-    g_ctx->bt_watcher->data = skt_kcp;
+    g_ctx->bt_watcher->data = g_ctx->skcp;
     ev_init(g_ctx->bt_watcher, beat_cb);
     ev_timer_set(g_ctx->bt_watcher, 0, 1);
-    ev_timer_start(skt_kcp->loop, g_ctx->bt_watcher);
+    ev_timer_start(g_ctx->loop, g_ctx->bt_watcher);
 
     // 设置tun读事件循环
     g_ctx->r_watcher = malloc(sizeof(struct ev_io));
-    g_ctx->r_watcher->data = skt_kcp;
+    g_ctx->r_watcher->data = g_ctx->skcp;
     ev_io_init(g_ctx->r_watcher, tun_read_cb, g_ctx->tun_fd, EV_READ);
     ev_io_start(g_ctx->loop, g_ctx->r_watcher);
 
@@ -251,8 +247,6 @@ int skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
     // g_ctx->w_watcher->data = skt_kcp;
     // ev_io_init(g_ctx->w_watcher, tun_write_cb, g_ctx->tun_fd, EV_WRITE);
     // ev_io_start(g_ctx->loop, g_ctx->w_watcher);
-
-    g_ctx->skt_kcp = skt_kcp;
 
     return 0;
 }

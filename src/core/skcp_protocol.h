@@ -56,7 +56,7 @@ typedef struct {
         *((vbuf) + 2) = (vheader).type;                      \
         *((vbuf) + 3) = (vheader).flg;                       \
         uint32_t payload_len = htonl((vheader).payload_len); \
-        memcpy(buf + 4, &payload_len, 4);                    \
+        memcpy(vbuf + 4, &payload_len, 4);                   \
     } while (0)
 
 #define SKCP_DECODE_CMD_HEADER(vheader, vbuf)                     \

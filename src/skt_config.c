@@ -13,7 +13,9 @@
 #define SKT_CONF_R_BUF_SIZE 1024
 #define SKT_CONF_MAX_JSTR_LEN SKT_CONF_R_BUF_SIZE * 5
 
-/**********  common **********/
+/* -------------------------------------------------------------------------- */
+/*                                   common                                   */
+/* -------------------------------------------------------------------------- */
 
 static inline void get_str(cJSON *m_json, char *name, char **value) {
     cJSON *local_addr_js = cJSON_GetObjectItemCaseSensitive(m_json, name);
@@ -32,37 +34,15 @@ static inline void get_int(cJSON *m_json, char *name, int *value) {
     }
 }
 
-static skt_kcp_conf_t *init_def_kcp_conf() {
-    skt_kcp_conf_t *kcp_conf = malloc(sizeof(skt_kcp_conf_t));
-    skcp_conf_t *skcp_conf = malloc(sizeof(skcp_conf_t));
-    skcp_conf->interval = 10;
-    skcp_conf->mtu = 1400;
-    skcp_conf->rcvwnd = 128;
-    skcp_conf->sndwnd = 128;
-    skcp_conf->nodelay = 1;
-    skcp_conf->resend = 2;
-    skcp_conf->nc = 1;
-    skcp_conf->r_keepalive = 600;
-    skcp_conf->w_keepalive = 600;
-    skcp_conf->estab_timeout = 100;
-
-    kcp_conf->skcp_conf = skcp_conf;
-    kcp_conf->addr = NULL;  //"127.0.0.1";
-    kcp_conf->port = 1111;
-    kcp_conf->key = NULL;
-    kcp_conf->r_buf_size = 1500;
-    kcp_conf->kcp_buf_size = 2048;
-    kcp_conf->timeout_interval = 1;
-
-    return kcp_conf;
-}
-
-/**********  client config **********/
+/* -------------------------------------------------------------------------- */
+/*                                client config                               */
+/* -------------------------------------------------------------------------- */
 
 static skt_cli_conf_t *init_def_cli_conf() {
     skt_cli_conf_t *cli_conf = malloc(sizeof(skt_cli_conf_t));
 
-    cli_conf->kcp_conf = init_def_kcp_conf();
+    cli_conf->skcp_conf = (skcp_conf_t *)malloc(sizeof(skcp_conf_t));
+    SKCP_DEF_CONF(cli_conf->skcp_conf);
     cli_conf->tun_ip = NULL;
     cli_conf->tun_mask = NULL;
 
@@ -71,11 +51,8 @@ static skt_cli_conf_t *init_def_cli_conf() {
 
 void skt_free_client_conf(skt_cli_conf_t *cli_conf) {
     if (cli_conf) {
-        if (cli_conf->kcp_conf) {
-            FREE_IF(cli_conf->kcp_conf->skcp_conf);
-            FREE_IF(cli_conf->kcp_conf->key);
-            FREE_IF(cli_conf->kcp_conf->addr);
-            FREE_IF(cli_conf->kcp_conf);
+        if (cli_conf->skcp_conf) {
+            FREE_IF(cli_conf->skcp_conf);
         }
 
         FREE_IF(cli_conf->tun_ip);
@@ -140,30 +117,42 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
         return NULL;
     }
 
-    get_str(m_json, "remote_addr", &conf->kcp_conf->addr);
-    if (NULL == conf->kcp_conf->addr) {
+    get_str(m_json, "remote_addr", &conf->skcp_conf->addr);
+    if (NULL == conf->skcp_conf->addr) {
         LOG_E("invalid remote_addr in %s", conf_file);
         skt_free_client_conf(conf);
         cJSON_Delete(m_json);
         return NULL;
     }
 
-    get_int(m_json, "remote_port", (int *)&conf->kcp_conf->port);
+    get_int(m_json, "remote_port", (int *)&conf->skcp_conf->port);
 
     int speed_mode = 0;
     get_int(m_json, "speed_mode", &speed_mode);
     if (1 != speed_mode) {
-        conf->kcp_conf->skcp_conf->nodelay = 0;
-        conf->kcp_conf->skcp_conf->resend = 0;
-        conf->kcp_conf->skcp_conf->nc = 0;
+        conf->skcp_conf->nodelay = 0;
+        conf->skcp_conf->resend = 0;
+        conf->skcp_conf->nc = 0;
     }
 
     int keepalive = 0;
     get_int(m_json, "keepalive", &keepalive);
     if (keepalive > 0) {
-        conf->kcp_conf->skcp_conf->r_keepalive = keepalive;
-        conf->kcp_conf->skcp_conf->w_keepalive = keepalive;
+        conf->skcp_conf->r_keepalive = keepalive;
+        conf->skcp_conf->w_keepalive = keepalive;
     }
+
+    char *ticket = NULL;
+    get_str(m_json, "ticket", &ticket);
+    if (NULL == ticket) {
+        LOG_E("invalid ticket in %s", conf_file);
+        skt_free_client_conf(conf);
+        cJSON_Delete(m_json);
+        return NULL;
+    }
+    int ticket_len = strlen(ticket);
+    ticket_len = ticket_len < SKCP_TICKET_LEN ? ticket_len : SKCP_TICKET_LEN;
+    memcpy(conf->skcp_conf->ticket, ticket, ticket_len);
 
     char *password = NULL;
     get_str(m_json, "password", &password);
@@ -179,10 +168,10 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
         }
         FREE_IF(password);
 
-        int k_len = 33;
-        conf->kcp_conf->key = malloc(k_len);
-        memset(conf->kcp_conf->key, 0, k_len);
-        char_to_hex(padding, pw_len, conf->kcp_conf->key);
+        // int k_len = 33;
+        // conf->kcp_conf->key = malloc(k_len);
+        // memset(conf->kcp_conf->key, 0, k_len);
+        char_to_hex(padding, pw_len, conf->skcp_conf->key);
     }
 
     cJSON_Delete(m_json);
@@ -190,25 +179,25 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
     return conf;
 }
 
-/********** server config **********/
+/* -------------------------------------------------------------------------- */
+/*                                server config                               */
+/* -------------------------------------------------------------------------- */
 
 static skt_serv_conf_t *init_def_serv_conf() {
     skt_serv_conf_t *serv_conf = malloc(sizeof(skt_serv_conf_t));
     serv_conf->tun_ip = NULL;
     serv_conf->tun_mask = NULL;
 
-    serv_conf->kcp_conf = init_def_kcp_conf();
+    serv_conf->skcp_conf = (skcp_conf_t *)malloc(sizeof(skcp_conf_t));
+    SKCP_DEF_CONF(serv_conf->skcp_conf);
 
     return serv_conf;
 }
 
 void skt_free_server_conf(skt_serv_conf_t *serv_conf) {
     if (serv_conf) {
-        if (serv_conf->kcp_conf) {
-            FREE_IF(serv_conf->kcp_conf->skcp_conf);
-            FREE_IF(serv_conf->kcp_conf->key);
-            FREE_IF(serv_conf->kcp_conf->addr);
-            FREE_IF(serv_conf->kcp_conf);
+        if (serv_conf->skcp_conf) {
+            FREE_IF(serv_conf->skcp_conf);
         }
 
         FREE_IF(serv_conf->tun_ip);
@@ -274,28 +263,34 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
         return NULL;
     }
 
-    get_str(m_json, "listen_addr", &conf->kcp_conf->addr);
-    if (NULL == conf->kcp_conf->addr) {
+    get_str(m_json, "listen_addr", &conf->skcp_conf->addr);
+    if (NULL == conf->skcp_conf->addr) {
         LOG_E("invalid listen_addr in %s", conf_file);
         skt_free_server_conf(conf);
         cJSON_Delete(m_json);
         return NULL;
     }
-    get_int(m_json, "listen_port", (int *)&conf->kcp_conf->port);
+    get_int(m_json, "listen_port", (int *)&conf->skcp_conf->port);
 
     int speed_mode = 0;
     get_int(m_json, "speed_mode", &speed_mode);
     if (1 != speed_mode) {
-        conf->kcp_conf->skcp_conf->nodelay = 0;
-        conf->kcp_conf->skcp_conf->resend = 0;
-        conf->kcp_conf->skcp_conf->nc = 0;
+        conf->skcp_conf->nodelay = 0;
+        conf->skcp_conf->resend = 0;
+        conf->skcp_conf->nc = 0;
     }
 
     int keepalive = 0;
     get_int(m_json, "keepalive", &keepalive);
     if (keepalive > 0) {
-        conf->kcp_conf->skcp_conf->r_keepalive = keepalive;
-        conf->kcp_conf->skcp_conf->w_keepalive = keepalive;
+        conf->skcp_conf->r_keepalive = keepalive;
+        conf->skcp_conf->w_keepalive = keepalive;
+    }
+
+    int max_conn_cnt = 0;
+    get_int(m_json, "max_conn_cnt", &max_conn_cnt);
+    if (max_conn_cnt > 0) {
+        conf->skcp_conf->max_conn_cnt = max_conn_cnt;
     }
 
     char *password = NULL;
@@ -312,10 +307,10 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
         }
         FREE_IF(password);
 
-        int k_len = 33;
-        conf->kcp_conf->key = malloc(k_len);
-        memset(conf->kcp_conf->key, 0, k_len);
-        char_to_hex(padding, pw_len, conf->kcp_conf->key);
+        // int k_len = 33;
+        // conf->kcp_conf->key = malloc(k_len);
+        // memset(conf->kcp_conf->key, 0, k_len);
+        char_to_hex(padding, pw_len, conf->skcp_conf->key);
     }
 
     cJSON_Delete(m_json);
