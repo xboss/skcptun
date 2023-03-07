@@ -189,7 +189,7 @@ static skcp_conn_slots_t *init_conn_slots(uint32_t max_conns) {
 }
 
 static void free_conn_slots(skcp_conn_slots_t *slots) {
-    if (slots) {
+    if (!slots) {
         return;
     }
     _FREEIF(slots->conns);
@@ -364,6 +364,7 @@ inline static int udp_send(skcp_t *skcp, const char *buf, int len, struct sockad
     }
 
     int rt = sendto(skcp->fd, cipher_buf, cipher_buf_len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    _FREEIF(cipher_buf);
     if (rt < 0) {
         perror("udp send error");
     }

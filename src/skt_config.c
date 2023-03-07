@@ -52,6 +52,9 @@ static skt_cli_conf_t *init_def_cli_conf() {
 void skt_free_client_conf(skt_cli_conf_t *cli_conf) {
     if (cli_conf) {
         if (cli_conf->skcp_conf) {
+            if (cli_conf->skcp_conf->addr) {
+                FREE_IF(cli_conf->skcp_conf->addr);
+            }
             FREE_IF(cli_conf->skcp_conf);
         }
 
@@ -197,6 +200,9 @@ static skt_serv_conf_t *init_def_serv_conf() {
 void skt_free_server_conf(skt_serv_conf_t *serv_conf) {
     if (serv_conf) {
         if (serv_conf->skcp_conf) {
+            if (serv_conf->skcp_conf->addr) {
+                FREE_IF(serv_conf->skcp_conf->addr);
+            }
             FREE_IF(serv_conf->skcp_conf);
         }
 
