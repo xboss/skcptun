@@ -29,7 +29,7 @@ make
 
 ### 服务端
 * 开启ip转发，将“net.ipv4.ip_forward=1” 添加到 "/etc/sysctl.conf" 文件，执行“sysctl -p”生效。
-* 打开ip转发,修改默认转发策略 “iptables -P FORWARD ACCEPT”
+* 打开ip转发，修改默认转发策略 “iptables -P FORWARD ACCEPT”
 * 修改nat的源地址改成出口网卡的地址 “iptables -t nat -A POSTROUTING -s 192.168.2.1/24 -o enp1s0 -j MASQUERADE”
 
 ### 客户端
