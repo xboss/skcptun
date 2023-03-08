@@ -31,23 +31,6 @@ target_link_libraries(skcptun ev)
 # target_link_libraries(skcptun_static ev -static)
 
 # ############# test #############
-# SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_kcp_serv.c ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
-# add_executable(test_kcp_serv ${TEST_SRC_FILES})
-# target_link_libraries(test_kcp_serv ssl)
-# target_link_libraries(test_kcp_serv crypto)
-# target_link_libraries(test_kcp_serv ev)
-
-# SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_kcp_cli.c ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
-# add_executable(test_kcp_cli ${TEST_SRC_FILES})
-# target_link_libraries(test_kcp_cli ssl)
-# target_link_libraries(test_kcp_cli crypto)
-# target_link_libraries(test_kcp_cli ev)
-
-# SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_skcp_protocol.c ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
-# add_executable(test_skcp_protocol  ${TEST_SRC_FILES})
-# target_link_libraries(test_skcp_protocol ssl)
-# target_link_libraries(test_skcp_protocol crypto)
-# target_link_libraries(test_skcp_protocol ev)
 
 # SET(TEST_SRC_FILES ${PROJECT_SOURCE_DIR}/test/test_tuntap_cli.c  ${PROJECT_SOURCE_DIR}/src/skt_client.c  ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_BITSET})
 # add_executable(test_tuntap_cli ${TEST_SRC_FILES})
