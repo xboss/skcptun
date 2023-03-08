@@ -596,7 +596,7 @@ static void on_req_cid_ack_cmd(skcp_t *skcp, skcp_cmd_t *cmd) {
 
     _LOG("on_req_cid_ack_cmd cid: %d iv: %s", conn->id, conn->iv);
 
-    skcp->conf->on_recv(conn->id, NULL, 0, SKCP_MSG_TYPE_CID_ACK);
+    skcp->conf->on_recv_cid(conn->id);
 }
 
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
@@ -708,7 +708,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     // }
 
     conn->last_r_tm = getmillisecond();
-    skcp->conf->on_recv(conn->id, kcp_recv_buf, recv_len, SKCP_MSG_TYPE_DATA);
+    skcp->conf->on_recv_data(conn->id, kcp_recv_buf, recv_len);
     _FREEIF(kcp_recv_buf);
 }
 

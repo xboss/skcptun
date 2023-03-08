@@ -23,10 +23,10 @@ typedef enum {
     SKCP_MODE_CLI,
 } SKCP_MODE;
 
-typedef enum {
-    SKCP_MSG_TYPE_DATA = 1,
-    SKCP_MSG_TYPE_CID_ACK,
-} SKCP_MSG_TYPE;
+// typedef enum {
+//     SKCP_MSG_TYPE_DATA = 1,
+//     SKCP_MSG_TYPE_CID_ACK,
+// } SKCP_MSG_TYPE;
 
 typedef struct skcp_s skcp_t;
 typedef struct {
@@ -68,7 +68,9 @@ typedef struct {
     char ticket[SKCP_TICKET_LEN + 1];
 
     void (*on_accept)(uint32_t cid);
-    void (*on_recv)(uint32_t cid, char *buf, int len, SKCP_MSG_TYPE msg_type);
+    // void (*on_recv)(uint32_t cid, char *buf, int len, SKCP_MSG_TYPE msg_type);
+    void (*on_recv_cid)(uint32_t cid);
+    void (*on_recv_data)(uint32_t cid, char *buf, int len);
     void (*on_close)(uint32_t cid);
     int (*on_check_ticket)(char *ticket, int len);
 } skcp_conf_t;

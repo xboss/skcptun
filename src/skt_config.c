@@ -171,9 +171,6 @@ skt_cli_conf_t *skt_init_client_conf(const char *conf_file) {
         }
         FREE_IF(password);
 
-        // int k_len = 33;
-        // conf->kcp_conf->key = malloc(k_len);
-        // memset(conf->kcp_conf->key, 0, k_len);
         char_to_hex(padding, pw_len, conf->skcp_conf->key);
     }
 
@@ -313,9 +310,6 @@ skt_serv_conf_t *skt_init_server_conf(const char *conf_file) {
         }
         FREE_IF(password);
 
-        // int k_len = 33;
-        // conf->kcp_conf->key = malloc(k_len);
-        // memset(conf->kcp_conf->key, 0, k_len);
         char_to_hex(padding, pw_len, conf->skcp_conf->key);
     }
 
