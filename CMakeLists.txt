@@ -9,23 +9,23 @@ message("project dir: ${PROJECT_SOURCE_DIR}")
 link_directories("/usr/local/lib")
 
 include_directories(${PROJECT_SOURCE_DIR}/src/)
-include_directories(${PROJECT_SOURCE_DIR}/src/core)
+include_directories(${PROJECT_SOURCE_DIR}/src/3rd/skcp)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/cJSON)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/uthash)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/src DIR_SRCS)
-aux_source_directory(${PROJECT_SOURCE_DIR}/src/core DIR_SRCS_CORE)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/skcp DIR_SRCS_SKCP)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/cJSON DIR_SRCS_CJSON)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/uthash DIR_SRCS_UTHASH)
 
 # ############# main #############
-add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH})
+add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH})
 target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun ev)
 
 # ############# static #############
-# add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_CORE} ${DIR_SRCS_CJSON} ${DIR_SRCS_KCP} ${DIR_SRCS_UTHASH})
+# add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH})
 # target_link_libraries(skcptun_static ssl -static)
 # target_link_libraries(skcptun_static crypto -static)
 # target_link_libraries(skcptun_static ev -static)
