@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#define _DEBUG_LOG
+// #define _DEBUG_LOG
 #define _INFO_LOG
 #define _WARN_LOG
 

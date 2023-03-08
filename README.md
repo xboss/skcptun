@@ -51,6 +51,7 @@ sudo skcptun \<mode\> \<configfile\>
     "keepalive":15,
     "tun_ip":"192.168.2.2",
     "tun_mask":"255.255.255.0",
+    "ticket":"12345678901234567890123456789012",
     "remote_addr":"1.1.1.1",
     "remote_port":1111
 }
@@ -60,6 +61,7 @@ sudo skcptun \<mode\> \<configfile\>
 * keepalive 单位是秒
 * tun_ip 是虚拟网卡的ip，需要和服务端设置保持一致
 * tun_mask 是虚拟网卡的子网掩码，需要和服务端设置保持一致
+* ticket 必须是32个字节，是和服务端约定的访问票据，用来请求“conneciton id”，服务端需要验证票的真伪
 * remote_addr和remote_port 是需要连接的服务端的ip和端口（UDP）
 
 运行:
@@ -75,11 +77,13 @@ sudo ./sckptun c skcptun_client.conf
     "speed_mode":1,
     "keepalive":15,
     "tun_ip":"192.168.2.2",
-    "tun_mask":"255.255.255.0"
+    "tun_mask":"255.255.255.0",
+    "max_conn_cnt": 1024,
     "listen_addr":"1.1.1.1",
     "listen_port":1111
 }
 ```
+* max_conn_cnt 是最大连接数，默认是1024
 * listen_addr和listen_port 是服务端监听的ip和端口（UDP）
 
 运行:
