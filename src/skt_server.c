@@ -82,16 +82,7 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     // char dest_ip[64] = {0};
     // inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
     // inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
-    // LOG_D("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
-
-    // if (g_ctx->data_conn) {
-    //     int rt = skt_kcp_send_data(skt_kcp, g_ctx->data_conn->htkey, buf, len);
-    //     if (rt < 0) {
-    //         LOG_E("skt_kcp_send_data error htkey: %s", g_ctx->data_conn->htkey);
-    //         return;
-    //     }
-    //     // LOG_D("<<<<<< tun_read_cb send ok len: %d", len);
-    // }
+    // LOG_I("tun_read_cb src_ip: %s dest_ip: %s", src_ip, dest_ip);
 
     skt_ip_cid_ht_t *ic = find_ip_cid_ht(ip->ip_dst.s_addr);
     if (!ic) {
@@ -165,10 +156,20 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
         // char dest_ip[64] = {0};
         // inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
         // inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
+        // LOG_I("skcp_on_recv_data src_ip: %s dest_ip: %s", src_ip, dest_ip);
 
-        skt_ip_cid_ht_t *ic = add_ip_cid_ht(ip->ip_src.s_addr, cid);
-        skcp_conn_t *conn = skcp_get_conn(g_ctx->skcp, ic->cid);
-        if (conn) {
+        skcp_conn_t *conn = skcp_get_conn(g_ctx->skcp, cid);
+        if (conn && conn->user_data == NULL) {
+            skt_ip_cid_ht_t *ic = find_ip_cid_ht(ip->ip_src.s_addr);
+            if (ic) {
+                // 有多个客户端使用同一个虚拟IP
+                char src_ip[64] = {0};
+                inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
+                LOG_E("multiple clients use the same virtual ip. ip: %s", src_ip);
+                FREE_IF(seg);
+                return;
+            }
+            ic = add_ip_cid_ht(ip->ip_src.s_addr, cid);
             conn->user_data = ic;
         }
 
