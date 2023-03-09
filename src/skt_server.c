@@ -46,7 +46,7 @@ inline static skt_ip_cid_ht_t *find_ip_cid_ht(uint32_t ip) {
 }
 
 inline static void del_ip_cid_ht(skt_ip_cid_ht_t *ic) {
-    if (!ic) {
+    if (!g_ctx->ip_cid_ht || !ic) {
         return;
     }
     HASH_DEL(g_ctx->ip_cid_ht, ic);
