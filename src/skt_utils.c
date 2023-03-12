@@ -96,3 +96,31 @@ void set_send_timeout(int fd, time_t sec) {
 uint64_t oi_ntohll(uint64_t val) { return (((uint64_t)ntohl(val)) << 32) + ntohl(val >> 32); }
 
 uint64_t oi_htonll(uint64_t val) { return (((uint64_t)htonl(val)) << 32) + htonl(val >> 32); }
+
+// parse msg, format: "cmd(1B)\nfd\ndata"
+inline int parse_skt_msg(char* buf, int len, char* cmd, int* fd, char** pdata, int* pdata_len) {
+    if (len < SKT_MSG_HEADER_MAX) {
+        return -1;
+    }
+
+    char* pb = buf;
+    *cmd = *pb;
+
+    size_t i = 2;
+    for (; i < SKT_MSG_HEADER_MAX - 2; i++) {
+        if (*pb == SKT_MSG_SEPARATOR) {
+            break;
+        }
+        pb++;
+    }
+    if (SKT_MSG_HEADER_MAX - 2 == i) {
+        return -1;
+    }
+
+    char sfd[SKT_MSG_HEADER_MAX - 2] = {0};
+    memcpy(sfd, buf + 2, pb - buf - 2);
+    *fd = atoi(sfd);
+    *pdata = pb + 1;
+    *pdata_len = len - (*pdata - buf);
+    return 0;
+}

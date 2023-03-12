@@ -184,6 +184,11 @@ void skt_client_free() {
         FREE_IF(g_ctx->r_watcher);
     }
 
+    if (g_ctx->bt_watcher) {
+        ev_timer_stop(g_ctx->loop, g_ctx->bt_watcher);
+        FREE_IF(g_ctx->bt_watcher);
+    }
+
     if (g_ctx->tun_fd >= 0) {
         close(g_ctx->tun_fd);
         g_ctx->tun_fd = -1;
