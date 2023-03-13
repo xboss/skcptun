@@ -729,7 +729,9 @@ int skcp_req_cid(skcp_t *skcp, const char *ticket, int len) {
 
     int out_len = 0;
     char *buf = encode_cmd(0, SKCP_CMD_REQ_CID, ticket, len, &out_len);
-    return udp_send(skcp, buf, out_len, skcp->servaddr);
+    int rt = udp_send(skcp, buf, out_len, skcp->servaddr);
+    _FREEIF(buf);
+    return rt;
 }
 
 int skcp_send(skcp_t *skcp, uint32_t cid, const char *buf, int len) {

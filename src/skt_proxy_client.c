@@ -42,7 +42,7 @@ static int on_tcp_accept(int fd) {
         LOG_E("skcp_send error cid: %u", g_ctx->cid);
         return 1;
     }
-    LOG_I("on_tcp_accept msg: %s", msg);
+    // LOG_I("on_tcp_accept msg: %s", msg);
 
     return 0;
 }
@@ -60,6 +60,7 @@ static void on_tcp_recv(int fd, char *buf, int len) {
     char *seg_raw = NULL;
     int seg_raw_len = 0;
     SKT_ENCODE_SEG(seg_raw, 0, SKT_SEG_DATA, msg, msg_len, seg_raw_len);
+    FREE_IF(msg);
     int rt = skcp_send(g_ctx->skcp, g_ctx->cid, seg_raw, seg_raw_len);
     FREE_IF(seg_raw);
     if (rt < 0) {
@@ -85,7 +86,7 @@ static void on_tcp_close(int fd) {
         LOG_E("skcp_send error cid: %u", g_ctx->cid);
         return;
     }
-    LOG_I("on_tcp_close msg: %s", msg);
+    // LOG_I("on_tcp_close msg: %s", msg);
 }
 
 /* ------------------------------ skcp callback ----------------------------- */

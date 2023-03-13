@@ -221,6 +221,7 @@ skt_config_t *skt_init_conf(const char *conf_file) {
         int ticket_len = strlen(ticket);
         ticket_len = ticket_len < SKCP_TICKET_LEN ? ticket_len : SKCP_TICKET_LEN;
         memcpy(conf->skcp_conf->ticket, ticket, ticket_len);
+        FREE_IF(ticket);
     }
 
     int speed_mode = 0;

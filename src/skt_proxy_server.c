@@ -100,7 +100,7 @@ static void on_recv_seg_data(uint32_t cid, skt_seg_t *seg) {
         }
 
         add_cp_ht(sfd, cid, cfd);
-        LOG_I("proxy server etcp_client_create_conn ok fd: %d cid: %u type: %x cmd: %c", sfd, cid, seg->type, cmd);
+        // LOG_I("proxy server etcp_client_create_conn ok fd: %d cid: %u type: %x cmd: %c", sfd, cid, seg->type, cmd);
         return;
     }
 
@@ -157,6 +157,7 @@ static void on_tcp_recv(int fd, char *buf, int len) {
     char *seg_raw = NULL;
     int seg_raw_len = 0;
     SKT_ENCODE_SEG(seg_raw, 0, SKT_SEG_DATA, msg, msg_len, seg_raw_len);
+    FREE_IF(msg);
     int rt = skcp_send(g_ctx->skcp, cp->cid, seg_raw, seg_raw_len);
     FREE_IF(seg_raw);
     if (rt < 0) {
@@ -186,7 +187,7 @@ static void on_tcp_close(int fd) {
         LOG_E("skcp_send error cid: %u", cp->cid);
         return;
     }
-    LOG_I("on_tcp_close msg: %s", msg);
+    // LOG_I("on_tcp_close msg: %s", msg);
 
     del_cp_ht(fd, 0);
 }
