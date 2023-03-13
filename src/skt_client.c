@@ -8,7 +8,8 @@
 #include "skt_utils.h"
 
 struct skt_cli_s {
-    skt_cli_conf_t *conf;
+    char *tun_ip;
+    char *tun_mask;
     struct ev_loop *loop;
     skcp_t *skcp;
     uint32_t cid;
@@ -167,7 +168,7 @@ static int init_vpn_cli() {
     // 设置为非阻塞
     setnonblock(utunfd);
 
-    skt_tuntap_setup(dev_name, g_ctx->conf->tun_ip, g_ctx->conf->tun_mask);
+    skt_tuntap_setup(dev_name, g_ctx->tun_ip, g_ctx->tun_mask);
 
     return utunfd;
 }
@@ -206,9 +207,10 @@ void skt_client_free() {
     FREE_IF(g_ctx);
 }
 
-int skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
+int skt_client_init(skcp_conf_t *skcp_conf, struct ev_loop *loop, char *tun_ip, char *tun_mask) {
     g_ctx = malloc(sizeof(skt_cli_t));
-    g_ctx->conf = conf;
+    g_ctx->tun_ip = tun_ip;
+    g_ctx->tun_mask = tun_mask;
     g_ctx->loop = loop;
 
     g_ctx->tun_fd = init_vpn_cli();
@@ -217,15 +219,15 @@ int skt_client_init(skt_cli_conf_t *conf, struct ev_loop *loop) {
         return -1;
     }
 
-    g_ctx->skcp = skcp_init(conf->skcp_conf, loop, g_ctx, SKCP_MODE_CLI);
+    g_ctx->skcp = skcp_init(skcp_conf, loop, g_ctx, SKCP_MODE_CLI);
     if (NULL == g_ctx->skcp) {
         skt_client_free();
         return -1;
     };
 
-    conf->skcp_conf->on_close = skcp_on_close;
-    conf->skcp_conf->on_recv_cid = skcp_on_recv_cid;
-    conf->skcp_conf->on_recv_data = skcp_on_recv_data;
+    g_ctx->skcp->conf->on_close = skcp_on_close;
+    g_ctx->skcp->conf->on_recv_cid = skcp_on_recv_cid;
+    g_ctx->skcp->conf->on_recv_data = skcp_on_recv_data;
 
     g_ctx->cid = 0;
 

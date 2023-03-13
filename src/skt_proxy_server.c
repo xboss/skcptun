@@ -18,8 +18,8 @@ typedef struct {
     skcp_t *skcp;
     etcp_cli_t *etcp;
     skt_fd_cid_ht_t *fd_cid_ht;
-    char *proxy_addr;
-    uint16_t proxy_port;
+    char *target_addr;
+    uint16_t target_port;
 } skt_serv_t;
 // typedef struct skt_serv_s skt_serv_t;
 
@@ -88,7 +88,7 @@ static void on_recv_seg_data(uint32_t cid, skt_seg_t *seg) {
     skt_fd_cid_ht_t *fc = NULL;
     if (cmd == SKT_MSG_CMD_ACCEPT) {
         if (conn && conn->user_data == NULL) {
-            int fd = etcp_client_create_conn(g_ctx->etcp, g_ctx->proxy_addr, g_ctx->proxy_port, NULL);
+            int fd = etcp_client_create_conn(g_ctx->etcp, g_ctx->target_addr, g_ctx->target_port, NULL);
             if (fd <= 0) {
                 LOG_E("proxy server etcp_client_create_conn error cid: %u type: %x cmd: %c", cid, seg->type, cmd);
                 return;
@@ -103,6 +103,10 @@ static void on_recv_seg_data(uint32_t cid, skt_seg_t *seg) {
     if (cmd == SKT_MSG_CMD_DATA) {
         if (!conn || !conn->user_data) {
             LOG_E("proxy server skcp_get_conn error cid: %u type: %x cmd: %c", cid, seg->type, cmd);
+            return;
+        }
+        if (!pdata || pdata_len <= 0) {
+            LOG_E("proxy server pdata error cid: %u type: %x cmd: %c", cid, seg->type, cmd);
             return;
         }
 
@@ -127,11 +131,12 @@ static void on_tcp_recv(int fd, char *buf, int len) {
     }
 
     char header[SKT_MSG_HEADER_MAX] = {};
-    snprintf(header, SKT_MSG_HEADER_MAX, "%c\n%d\n", SKT_MSG_CMD_DATA, fd);
+    snprintf(header, SKT_MSG_HEADER_MAX, "%c\n%d\n", SKT_MSG_CMD_DATA, fc->tr_fd);
     int header_len = strlen(header);
     int msg_len = header_len + len;
     char *msg = (char *)calloc(1, msg_len);  // format: "cmd(1B)\nfd\ndata"
-    memcpy(msg, buf + header_len, len);
+    memcpy(msg, header, header_len);
+    memcpy(msg + header_len, buf, len);
 
     char *seg_raw = NULL;
     int seg_raw_len = 0;
@@ -151,10 +156,10 @@ static void on_tcp_close(int fd) {
 
 /* ------------------------------ skcp callback ----------------------------- */
 
-static void skcp_on_accept(uint32_t cid) {
-    LOG_I("skcp_on_accept cid: %u", cid);
-    return;
-}
+// static void skcp_on_accept(uint32_t cid) {
+//     LOG_I("skcp_on_accept cid: %u", cid);
+//     return;
+// }
 
 static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
     LOG_D("server on_recv cid: %u len: %d", cid, len);
@@ -221,13 +226,13 @@ static int skcp_on_check_ticket(char *ticket, int len) {
 /*                                 Public API                                 */
 /* -------------------------------------------------------------------------- */
 
-int skt_proxy_server_init(skcp_conf_t *skcp_conf, etcp_cli_conf_t *etcp_conf, struct ev_loop *loop, char *proxy_addr,
-                          uint16_t proxy_port) {
+int skt_proxy_server_init(skcp_conf_t *skcp_conf, etcp_cli_conf_t *etcp_conf, struct ev_loop *loop, char *target_addr,
+                          uint16_t target_port) {
     // TODO:
     g_ctx = (skt_serv_t *)calloc(1, sizeof(skt_serv_t));
     g_ctx->loop = loop;
-    g_ctx->proxy_addr = proxy_addr;
-    g_ctx->proxy_port = proxy_port;
+    g_ctx->target_addr = target_addr;
+    g_ctx->target_port = target_port;
 
     // g_ctx->ip_cid_ht = NULL;
 
@@ -237,7 +242,7 @@ int skt_proxy_server_init(skcp_conf_t *skcp_conf, etcp_cli_conf_t *etcp_conf, st
         return -1;
     };
 
-    g_ctx->skcp->conf->on_accept = skcp_on_accept;
+    // g_ctx->skcp->conf->on_accept = skcp_on_accept;
     g_ctx->skcp->conf->on_check_ticket = skcp_on_check_ticket;
     g_ctx->skcp->conf->on_close = skcp_on_close;
     g_ctx->skcp->conf->on_recv_data = skcp_on_recv_data;

@@ -16,7 +16,7 @@
 
 typedef struct etcp_serv_s etcp_serv_t;
 
-typedef struct {
+typedef struct etcp_serv_conf_s {
     char *serv_addr;
     uint16_t serv_port;
     int backlog;
@@ -82,7 +82,7 @@ etcp_serv_conn_t *etcp_server_get_conn(etcp_serv_t *serv, int fd);
 typedef struct etcp_send_buf_s etcp_send_buf_t;
 typedef struct etcp_cli_s etcp_cli_t;
 
-typedef struct {
+typedef struct etcp_cli_conf_s {
     size_t r_buf_size;
     int r_keepalive;    // 单位：秒
     int w_keepalive;    // 单位：秒

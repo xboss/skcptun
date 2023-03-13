@@ -1,9 +1,3 @@
-// #define _DEBUG
-
-#if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
-#include <mcheck.h>
-#endif
-
 #include "skt_client.h"
 #include "skt_config.h"
 #include "skt_proxy_client.h"
@@ -18,36 +12,29 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     }
 
     ev_break(loop, EVBREAK_ALL);
-    LOG_D("sig_cb loop break all event ok");
+    LOG_I("sig_cb loop break all event ok");
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                proxy server                                */
 /* -------------------------------------------------------------------------- */
 
-static int start_proxy_server(struct ev_loop *loop, const char *conf_file) {
+static int start_proxy_server(struct ev_loop *loop, skt_config_t *conf) {
     if (NULL == loop) {
         LOG_E("loop create failed");
         return -1;
     }
 
-    // skt_serv_conf_t *conf = skt_init_server_conf(conf_file);
-    // if (NULL == conf) {
-    //     return -1;
-    // }
-
-    // TODO: config
-
-    if (skt_proxy_server_init(skcp_conf, etcp_conf, loop, proxy_addr, proxy_port) != 0) {
+    if (skt_proxy_server_init(conf->skcp_conf, conf->etcp_cli_conf, loop, conf->tcp_target_addr,
+                              conf->tcp_target_port) != 0) {
         return -1;
     }
 
-    LOG_D("server loop run");
+    LOG_D("proxy server loop run");
     ev_run(loop, 0);
     LOG_D("loop end");
 
     skt_proxy_server_free();
-    // skt_free_server_conf(conf);
     return 0;
 }
 
@@ -55,29 +42,21 @@ static int start_proxy_server(struct ev_loop *loop, const char *conf_file) {
 /*                                proxy client                                */
 /* -------------------------------------------------------------------------- */
 
-static int start_proxy_client(struct ev_loop *loop, const char *conf_file) {
+static int start_proxy_client(struct ev_loop *loop, skt_config_t *conf) {
     if (NULL == loop) {
         LOG_E("loop create failed");
         return -1;
     }
 
-    // skt_cli_conf_t *conf = skt_init_client_conf(conf_file);
-    // if (NULL == conf) {
-    //     return -1;
-    // }
-
-    // TODO: config
-
-    if (skt_proxy_client_init(skcp_conf, etcp_conf, loop)) {
+    if (skt_proxy_client_init(conf->skcp_conf, conf->etcp_serv_conf, loop) != 0) {
         return -1;
     }
 
-    LOG_D("client loop run");
+    LOG_D("proxy client loop run");
     ev_run(loop, 0);
     LOG_D("loop end");
 
-    skt_client_free();
-    // skt_free_client_conf(conf);
+    skt_proxy_client_free();
     return 0;
 }
 
@@ -85,60 +64,44 @@ static int start_proxy_client(struct ev_loop *loop, const char *conf_file) {
 /*                                tunnel server                               */
 /* -------------------------------------------------------------------------- */
 
-static int start_server(struct ev_loop *loop, const char *conf_file) {
+static int start_tun_server(struct ev_loop *loop, skt_config_t *conf) {
     if (NULL == loop) {
         LOG_E("loop create failed");
         return -1;
     }
 
-    skt_serv_conf_t *conf = skt_init_server_conf(conf_file);
-    if (NULL == conf) {
+    if (skt_server_init(conf->skcp_conf, loop, conf->tun_ip, conf->tun_mask) != 0) {
         return -1;
     }
 
-    int rt = skt_server_init(conf, loop);
-    if (-1 == rt) {
-        skt_free_server_conf(conf);
-        return rt;
-    }
-
-    LOG_D("server loop run");
+    LOG_D("tun server loop run");
     ev_run(loop, 0);
     LOG_D("loop end");
 
     skt_server_free();
-    skt_free_server_conf(conf);
-    return rt;
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                tunnel client                               */
 /* -------------------------------------------------------------------------- */
 
-static int start_client(struct ev_loop *loop, const char *conf_file) {
+static int start_tun_client(struct ev_loop *loop, skt_config_t *conf) {
     if (NULL == loop) {
         LOG_E("loop create failed");
         return -1;
     }
 
-    skt_cli_conf_t *conf = skt_init_client_conf(conf_file);
-    if (NULL == conf) {
+    if (skt_client_init(conf->skcp_conf, loop, conf->tun_ip, conf->tun_mask) != 0) {
         return -1;
     }
 
-    int rt = skt_client_init(conf, loop);
-    if (-1 == rt) {
-        skt_free_client_conf(conf);
-        return rt;
-    }
-
-    LOG_D("client loop run");
+    LOG_D("tun client loop run");
     ev_run(loop, 0);
     LOG_D("loop end");
 
     skt_client_free();
-    skt_free_client_conf(conf);
-    return rt;
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -146,18 +109,19 @@ static int start_client(struct ev_loop *loop, const char *conf_file) {
 /* -------------------------------------------------------------------------- */
 
 int main(int argc, char *argv[]) {
-#if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
-    setenv("MALLOC_TRACE", "/tmp/mtrace_skcptun.log", 1);
-    mtrace();
-#endif
-
-    if (argc < 3) {
-        printf("param error!\n kcptun param \n s:server\n c:client configfile\n");
+    if (argc < 2) {
+        printf("param error!\n kcptun configfile\n");
         return -1;
     }
 
-    const char *conf_file = argv[2];
-    LOG_D("mode:%s config file:%s", argv[1], conf_file);
+    const char *conf_file = argv[1];
+    LOG_D("config file:%s", conf_file);
+
+    // TODO: read config file
+    skt_config_t *conf = skt_init_conf(conf_file);
+    if (!conf) {
+        return -1;
+    }
 
 #if (defined(__linux__) || defined(__linux))
     struct ev_loop *loop = ev_loop_new(EVBACKEND_EPOLL);
@@ -178,32 +142,24 @@ int main(int argc, char *argv[]) {
     ev_signal_init(&sig_stop_watcher, sig_cb, SIGSTOP);
     ev_signal_start(loop, &sig_stop_watcher);
 
-    if (strcmp(argv[1], "tunserver") == 0) {
-        if (0 != start_server(loop, conf_file)) {
-            return -1;
-        }
-
-    } else if (strcmp(argv[1], "tunclient") == 0) {
-        if (0 != start_client(loop, conf_file)) {
-            return -1;
-        }
-    } else if (strcmp(argv[1], "proxyserver") == 0) {
-        if (0 != start_proxy_server(loop, conf_file)) {
-            return -1;
-        }
-    } else if (strcmp(argv[1], "proxyclient") == 0) {
-        if (0 != start_proxy_client(loop, conf_file)) {
-            return -1;
-        }
-    } else {
-        printf("param error!\n kcptn param \n s:server\n c:client\n");
-        return -1;
+    int rt = 0;
+    if (conf->mode == SKT_TUN_SERV_MODE) {
+        rt = start_tun_server(loop, conf);
     }
 
-#if (defined(__linux__) || defined(__linux)) && defined(_DEBUG)
-    muntrace();
-#endif
+    if (conf->mode == SKT_TUN_CLI_MODE) {
+        rt = start_tun_client(loop, conf);
+    }
 
+    if (conf->mode == SKT_PROXY_SERV_MODE) {
+        rt = start_proxy_server(loop, conf);
+    }
+
+    if (conf->mode == SKT_PROXY_CLI_MODE) {
+        rt = start_proxy_client(loop, conf);
+    }
+
+    skt_free_conf(conf);
     LOG_I("bye");
-    return 0;
+    return rt;
 }

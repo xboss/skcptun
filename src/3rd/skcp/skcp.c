@@ -166,7 +166,7 @@ inline static skcp_cmd_t *decode_cmd(const char *buf, int len) {
     if (len > SKCP_CMD_HEADER_LEN) {
         memcpy(cmd->payload, buf + SKCP_CMD_HEADER_LEN, cmd->payload_len);
     }
-    _LOG("decode_cmd len: %d %lu", len, sizeof(*cmd));
+    // _LOG("decode_cmd len: %d %lu", len, sizeof(*cmd));
 
     return cmd;
 }
@@ -525,14 +525,14 @@ static void on_req_cid_cmd(skcp_t *skcp, skcp_cmd_t *cmd, struct sockaddr_in des
 
     int rt = skcp->conf->on_check_ticket(cmd->payload, cmd->payload_len);
     if (rt != 0) {
-        // send result fail
+        // fail
         snprintf(ack, ack_len, "%d", 1);
         goto send_req_cid_ack;
     }
     // create connection
     skcp_conn_t *conn = init_conn(skcp, 0);
     if (!conn) {
-        // send result fail
+        // fail
         snprintf(ack, ack_len, "%d", 1);
         goto send_req_cid_ack;
     }
@@ -592,7 +592,6 @@ static void on_req_cid_ack_cmd(skcp_t *skcp, skcp_cmd_t *cmd) {
     memcpy(conn->iv, p + 1, cmd->payload_len - i - 2);
     conn->status = SKCP_CONN_ST_ON;
     // TODO: set ticket, to the user to resolv
-    // memcpy(conn->ticket, , SKCP_TICKET_LEN);
 
     _LOG("on_req_cid_ack_cmd cid: %d iv: %s", conn->id, conn->iv);
 

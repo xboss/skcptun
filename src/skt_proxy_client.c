@@ -96,7 +96,8 @@ static void on_tcp_recv(int fd, char *buf, int len) {
     int header_len = strlen(header);
     int msg_len = header_len + len;
     char *msg = (char *)calloc(1, msg_len);  // format: "cmd(1B)\nfd\ndata"
-    memcpy(msg, buf + header_len, len);
+    memcpy(msg, header, header_len);
+    memcpy(msg + header_len, buf, len);
 
     char *seg_raw = NULL;
     int seg_raw_len = 0;
@@ -159,8 +160,8 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
             return;
         }
 
-        if (cmd != SKT_MSG_CMD_DATA) {
-            LOG_E("client on_recv cmd error cid: %u len: %d, type: %x cmd: %c", cid, len, seg->type, cmd);
+        if (cmd != SKT_MSG_CMD_DATA || !pdata || pdata_len <= 0) {
+            LOG_E("client on_recv cmd or data error cid: %u len: %d, type: %x cmd: %c", cid, len, seg->type, cmd);
             FREE_IF(seg);
             return;
         }
@@ -168,7 +169,7 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
         int w_len = etcp_server_send(g_ctx->etcp, tr_fd, pdata, pdata_len);
         FREE_IF(seg);
         if (w_len <= 0) {
-            LOG_E("client on_recv etcp_server_send error cid: %u len: %d, type: %x cmd: %c", cid, len, seg->type, cmd);
+            LOG_E("client on_recv etcp_server_send error cid: %u len: %d cmd: %c", cid, len, cmd);
             return;
         }
         return;

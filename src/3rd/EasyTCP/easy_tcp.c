@@ -367,6 +367,10 @@ void etcp_free_server(etcp_serv_t *serv) {
 }
 
 int etcp_server_send(etcp_serv_t *serv, int fd, char *buf, size_t len) {
+    if (!buf || len <= 0) {
+        return 0;
+    }
+
     etcp_serv_conn_t *conn = etcp_server_get_conn(serv, fd);
     if (!conn) {
         return 0;
