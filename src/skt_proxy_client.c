@@ -4,12 +4,6 @@
 #include "skt_utils.h"
 #include "uthash.h"
 
-// typedef struct {
-//     int fd;  // key
-//     uint32_t cid;
-//     UT_hash_handle hh;
-// } skt_fd_cid_ht_t;
-
 typedef struct {
     struct ev_loop *loop;
     uint32_t cid;
@@ -53,6 +47,7 @@ static int on_tcp_accept(int fd) {
         LOG_E("skcp_send error cid: %u", g_ctx->cid);
         return 1;
     }
+    LOG_I("on_tcp_accept msg: %s", msg);
 
     return 0;
 }
@@ -64,6 +59,8 @@ static void on_tcp_recv(int fd, char *buf, int len) {
     char *msg = (char *)calloc(1, msg_len);  // format: "cmd(1B)\nfd\ndata"
     memcpy(msg, header, header_len);
     memcpy(msg + header_len, buf, len);
+
+    LOG_D("on_tcp_recv header: %s len: %d", header, len);
 
     char *seg_raw = NULL;
     int seg_raw_len = 0;
