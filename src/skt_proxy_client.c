@@ -31,40 +31,6 @@ static skt_serv_t *g_ctx = NULL;
 /*                                 Private API                                */
 /* -------------------------------------------------------------------------- */
 
-// inline static skt_fd_cid_ht_t *add_fd_cid_ht(int fd, uint32_t cid) {
-//     skt_fd_cid_ht_t *fc = NULL;
-//     HASH_FIND_INT(g_ctx->fd_cid_ht, &fd, fc);
-//     if (fc == NULL) {
-//         fc = (skt_fd_cid_ht_t *)malloc(sizeof(skt_fd_cid_ht_t));
-//         fc->fd = fd;
-//         HASH_ADD_INT(g_ctx->fd_cid_ht, fd, fc);
-//     }
-//     fc->cid = cid;
-//     return fc;
-// }
-
-// inline static skt_fd_cid_ht_t *find_fd_cid_ht(uint32_t fd) {
-//     skt_fd_cid_ht_t *fc = NULL;
-//     HASH_FIND_INT(g_ctx->fd_cid_ht, &fd, fc);
-//     return fc;
-// }
-
-// inline static void del_fd_cid_ht(skt_fd_cid_ht_t *fc) {
-//     if (!g_ctx->fd_cid_ht || !fc) {
-//         return;
-//     }
-//     HASH_DEL(g_ctx->fd_cid_ht, fc);
-//     FREE_IF(fc);
-// }
-
-// inline static void del_all_fd_cid_ht() {
-//     skt_fd_cid_ht_t *fc, *tmp;
-//     HASH_ITER(hh, g_ctx->fd_cid_ht, fc, tmp) {
-//         HASH_DEL(g_ctx->fd_cid_ht, fc);
-//         FREE_IF(fc);
-//     }
-// }
-
 /* ---------------------------- EasyTCP callback ---------------------------- */
 
 static int on_tcp_accept(int fd) {
