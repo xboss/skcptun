@@ -85,7 +85,7 @@ static void on_recv_seg_data(uint32_t cid, skt_seg_t *seg) {
         return;
     }
 
-    if (cmd != SKT_MSG_CMD_DATA && cmd != SKT_MSG_CMD_ACCEPT) {
+    if (cmd != SKT_MSG_CMD_DATA && cmd != SKT_MSG_CMD_ACCEPT && cmd != SKT_MSG_CMD_CLOSE) {
         LOG_E("proxy server msg cmd error cid: %u type: %x cmd: %c", cid, seg->type, cmd);
         return;
     }
@@ -104,13 +104,23 @@ static void on_recv_seg_data(uint32_t cid, skt_seg_t *seg) {
         return;
     }
 
+    if (cmd == SKT_MSG_CMD_CLOSE) {
+        HASH_FIND_INT(g_ctx->c2s_ht, &cfd, cp);
+        if (!cp) {
+            LOG_E("proxy server find c2s_ht error cfd: %d cid: %u type: %x cmd: %c", cfd, cid, seg->type, cmd);
+            return;
+        }
+
+        etcp_client_close_conn(g_ctx->etcp, cp->sfd, 1);
+        del_cp_ht(cp->sfd, 0);
+    }
+
     if (cmd == SKT_MSG_CMD_DATA) {
         if (!pdata || pdata_len <= 0) {
             LOG_E("proxy server pdata error cid: %u type: %x cmd: %c", cid, seg->type, cmd);
             return;
         }
 
-        skt_cp_ht_t *cp = NULL;
         HASH_FIND_INT(g_ctx->c2s_ht, &cfd, cp);
         if (!cp) {
             LOG_E("proxy server find c2s_ht error cfd: %d cid: %u type: %x cmd: %c", cfd, cid, seg->type, cmd);
@@ -157,8 +167,28 @@ static void on_tcp_recv(int fd, char *buf, int len) {
 
 static void on_tcp_close(int fd) {
     LOG_D("tcp client on_close fd: %d", fd);
+
+    skt_cp_ht_t *cp = NULL;
+    HASH_FIND_INT(g_ctx->s2c_ht, &fd, cp);
+    if (!cp) {
+        LOG_E("on_tcp_close find s2c error sfd: %d", fd);
+        return;
+    }
+
+    char msg[SKT_MSG_HEADER_MAX] = {};  // format: "cmd(1B)\nfd"
+    snprintf(msg, SKT_MSG_HEADER_MAX, "%c\n%d", SKT_MSG_CMD_CLOSE, fd);
+    char *seg_raw = NULL;
+    int seg_raw_len = 0;
+    SKT_ENCODE_SEG(seg_raw, 0, SKT_SEG_DATA, msg, strlen(msg), seg_raw_len);
+    int rt = skcp_send(g_ctx->skcp, cp->cid, seg_raw, seg_raw_len);
+    FREE_IF(seg_raw);
+    if (rt < 0) {
+        LOG_E("skcp_send error cid: %u", cp->cid);
+        return;
+    }
+    LOG_I("on_tcp_close msg: %s", msg);
+
     del_cp_ht(fd, 0);
-    // TODO: 向客户端发送close消息
 }
 
 /* ------------------------------ skcp callback ----------------------------- */

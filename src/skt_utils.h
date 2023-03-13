@@ -77,6 +77,7 @@
 #define SKT_MSG_HEADER_MAX 16
 #define SKT_MSG_CMD_ACCEPT 'A'
 #define SKT_MSG_CMD_DATA 'D'
+#define SKT_MSG_CMD_CLOSE 'C'
 #define SKT_MSG_SEPARATOR '\n'
 
 unsigned short ip_checksum(unsigned short* buf, int nword);

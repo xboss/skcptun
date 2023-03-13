@@ -16,11 +16,6 @@ typedef struct {
 
 static skt_serv_t *g_ctx = NULL;
 
-#define SKT_MSG_HEADER_MAX 16
-#define SKT_MSG_CMD_ACCEPT 'A'
-#define SKT_MSG_CMD_DATA 'D'
-#define SKT_MSG_SEPARATOR '\n'
-
 /* -------------------------------------------------------------------------- */
 /*                                 Private API                                */
 /* -------------------------------------------------------------------------- */
@@ -31,7 +26,7 @@ static int on_tcp_accept(int fd) {
     LOG_D("tcp server accept fd: %d", fd);
 
     if (g_ctx->cid <= 0) {
-        LOG_E("tun_read_cb g_ctx->cid error : %u", g_ctx->cid);
+        LOG_E("on_tcp_accept g_ctx->cid error : %u", g_ctx->cid);
         return 1;
     }
 
@@ -72,7 +67,26 @@ static void on_tcp_recv(int fd, char *buf, int len) {
         return;
     }
 }
-static void on_tcp_close(int fd) { LOG_D("tcp server on_close fd: %d", fd); }
+static void on_tcp_close(int fd) {
+    LOG_D("tcp server on_close fd: %d", fd);
+    if (g_ctx->cid <= 0) {
+        LOG_E("on_tcp_close g_ctx->cid error : %u", g_ctx->cid);
+        return;
+    }
+
+    char msg[SKT_MSG_HEADER_MAX] = {};  // format: "cmd(1B)\nfd"
+    snprintf(msg, SKT_MSG_HEADER_MAX, "%c\n%d", SKT_MSG_CMD_CLOSE, fd);
+    char *seg_raw = NULL;
+    int seg_raw_len = 0;
+    SKT_ENCODE_SEG(seg_raw, 0, SKT_SEG_DATA, msg, strlen(msg), seg_raw_len);
+    int rt = skcp_send(g_ctx->skcp, g_ctx->cid, seg_raw, seg_raw_len);
+    FREE_IF(seg_raw);
+    if (rt < 0) {
+        LOG_E("skcp_send error cid: %u", g_ctx->cid);
+        return;
+    }
+    LOG_I("on_tcp_close msg: %s", msg);
+}
 
 /* ------------------------------ skcp callback ----------------------------- */
 
@@ -114,11 +128,17 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
         }
 
         char cmd = '\0';
-        int tr_fd = 0;
+        int cfd = 0;
         char *pdata = NULL;
         int pdata_len = 0;
-        if (parse_skt_msg(seg->payload, seg->payload_len, &cmd, &tr_fd, &pdata, &pdata_len) != 0) {
+        if (parse_skt_msg(seg->payload, seg->payload_len, &cmd, &cfd, &pdata, &pdata_len) != 0) {
             LOG_E("client on_recv parse_skt_msg error cid: %u len: %d, type: %x cmd: %c", cid, len, seg->type, cmd);
+            FREE_IF(seg);
+            return;
+        }
+
+        if (cmd == SKT_MSG_CMD_CLOSE) {
+            etcp_server_close_conn(g_ctx->etcp, cfd, 1);
             FREE_IF(seg);
             return;
         }
@@ -129,7 +149,7 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
             return;
         }
 
-        int w_len = etcp_server_send(g_ctx->etcp, tr_fd, pdata, pdata_len);
+        int w_len = etcp_server_send(g_ctx->etcp, cfd, pdata, pdata_len);
         FREE_IF(seg);
         if (w_len <= 0) {
             LOG_E("client on_recv etcp_server_send error cid: %u len: %d cmd: %c", cid, len, cmd);

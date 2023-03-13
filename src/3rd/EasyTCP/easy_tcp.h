@@ -72,7 +72,7 @@ struct etcp_serv_s {
 etcp_serv_t *etcp_init_server(etcp_serv_conf_t *conf, struct ev_loop *loop, void *user_data);
 void etcp_free_server(etcp_serv_t *serv);
 int etcp_server_send(etcp_serv_t *serv, int fd, char *buf, size_t len);
-void etcp_server_close_conn(etcp_serv_t *serv, int fd);
+void etcp_server_close_conn(etcp_serv_t *serv, int fd, int silent);
 etcp_serv_conn_t *etcp_server_get_conn(etcp_serv_t *serv, int fd);
 
 /* -------------------------------------------------------------------------- */
@@ -131,7 +131,7 @@ etcp_cli_t *etcp_init_client(etcp_cli_conf_t *conf, struct ev_loop *loop, void *
 void etcp_free_client(etcp_cli_t *cli);
 int etcp_client_send(etcp_cli_t *cli, int fd, char *buf, size_t len);
 int etcp_client_create_conn(etcp_cli_t *cli, char *addr, uint16_t port, void *user_data);
-void etcp_client_close_conn(etcp_cli_t *cli, int fd);
+void etcp_client_close_conn(etcp_cli_t *cli, int fd, int silent);
 etcp_cli_conn_t *etcp_client_get_conn(etcp_cli_t *cli, int fd);
 
 #endif  // EASY_TCP_H
