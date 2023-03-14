@@ -256,7 +256,7 @@ static void skcp_on_close(uint32_t cid) {
 }
 
 static int skcp_on_check_ticket(char *ticket, int len) {
-    // TODO:
+    // TODO: auth ticket
     return 0;
 }
 
@@ -266,7 +266,6 @@ static int skcp_on_check_ticket(char *ticket, int len) {
 
 int skt_proxy_server_init(skcp_conf_t *skcp_conf, etcp_cli_conf_t *etcp_conf, struct ev_loop *loop, char *target_addr,
                           uint16_t target_port) {
-    // TODO:
     g_ctx = (skt_serv_t *)calloc(1, sizeof(skt_serv_t));
     g_ctx->loop = loop;
     g_ctx->target_addr = target_addr;

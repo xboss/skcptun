@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
     const char *conf_file = argv[1];
     LOG_D("config file:%s", conf_file);
 
-    // TODO: read config file
+    // read config file
     skt_config_t *conf = skt_init_conf(conf_file);
     if (!conf) {
         return -1;

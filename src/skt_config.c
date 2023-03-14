@@ -263,7 +263,6 @@ skt_config_t *skt_init_conf(const char *conf_file) {
 }
 
 void skt_free_conf(skt_config_t *conf) {
-    // TODO:
     if (!conf) {
         return;
     }
