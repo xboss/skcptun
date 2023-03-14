@@ -103,11 +103,11 @@ skcptun <configfile>
 * skcp_remote_addr
   * 全局
   * string
-  * 客户端需要连接的服务端的ip（UDP）
+  * 客户端需要连接的服务端的ip（UDP），与服务端的“skcp_listen_addr”对应
 * skcp_remote_port
   * 全局
   * int
-  * 客户端需要连接的服务端的端口（UDP）
+  * 客户端需要连接的服务端的端口（UDP），与服务端的“skcp_listen_port”对应
 * tcp_read_buf_size
   * TCP模式的服务端; TCP模式的客户端;
   * int
