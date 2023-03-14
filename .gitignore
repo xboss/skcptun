@@ -6,6 +6,7 @@
 out
 !skcptun_client_sample.conf
 !skcptun_server_sample.conf
+!skcptun_sample.conf
 !test/*.sh
 !test/*.conf
 

@@ -45,7 +45,7 @@ typedef struct {
     struct ev_timer *timeout_watcher;
 } skcp_conn_t;
 
-typedef struct {
+typedef struct skcp_conf_s {
     int mtu;
     int interval;
     int nodelay;
@@ -67,7 +67,7 @@ typedef struct {
     char key[SKCP_KEY_LEN + 1];
     char ticket[SKCP_TICKET_LEN + 1];
 
-    void (*on_accept)(uint32_t cid);
+    // void (*on_accept)(uint32_t cid);
     // void (*on_recv)(uint32_t cid, char *buf, int len, SKCP_MSG_TYPE msg_type);
     void (*on_recv_cid)(uint32_t cid);
     void (*on_recv_data)(uint32_t cid, char *buf, int len);

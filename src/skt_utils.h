@@ -74,6 +74,12 @@
     } while (0)
 #endif
 
+#define SKT_MSG_HEADER_MAX 16
+#define SKT_MSG_CMD_ACCEPT 'A'
+#define SKT_MSG_CMD_DATA 'D'
+#define SKT_MSG_CMD_CLOSE 'C'
+#define SKT_MSG_SEPARATOR '\n'
+
 unsigned short ip_checksum(unsigned short* buf, int nword);
 void char_to_hex(char* src, int len, char* des);
 void* skt_mem_clone(void* src, size_t len);
@@ -86,5 +92,6 @@ void setreuseaddr(int fd);
 void setnonblock(int fd);
 uint64_t oi_ntohll(uint64_t val);
 uint64_t oi_htonll(uint64_t val);
+int parse_skt_msg(char* buf, int len, char* cmd, int* fd, char** pdata, int* pdata_len);
 
 #endif

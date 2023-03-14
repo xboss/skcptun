@@ -15,10 +15,10 @@ typedef struct {
 } skt_ip_cid_ht_t;
 
 struct skt_serv_s {
-    skt_serv_conf_t *conf;
+    char *tun_ip;
+    char *tun_mask;
     struct ev_loop *loop;
     skcp_t *skcp;
-    // skcp_conn_t *data_conn;
     skt_ip_cid_ht_t *ip_cid_ht;
     struct ev_io *tun_r_watcher;
     int tun_fd;
@@ -103,10 +103,10 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
 //////////////////////
 
-static void skcp_on_accept(uint32_t cid) {
-    LOG_I("skcp_on_accept cid: %u", cid);
-    return;
-}
+// static void skcp_on_accept(uint32_t cid) {
+//     LOG_I("skcp_on_accept cid: %u", cid);
+//     return;
+// }
 
 static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
     LOG_D("server on_recv cid: %u len: %d", cid, len);
@@ -210,31 +210,32 @@ static int init_vpn_serv() {
         return -1;
     }
 
-    skt_tuntap_setup(dev_name, g_ctx->conf->tun_ip, g_ctx->conf->tun_mask);
+    skt_tuntap_setup(dev_name, g_ctx->tun_ip, g_ctx->tun_mask);
 
     return utunfd;
 }
 
 //////////////////////
 
-int skt_server_init(skt_serv_conf_t *conf, struct ev_loop *loop) {
+int skt_server_init(skcp_conf_t *skcp_conf, struct ev_loop *loop, char *tun_ip, char *tun_mask) {
     g_ctx = malloc(sizeof(skt_serv_t));
-    g_ctx->conf = conf;
     g_ctx->loop = loop;
     g_ctx->ip_cid_ht = NULL;
+    g_ctx->tun_ip = tun_ip;
+    g_ctx->tun_mask = tun_mask;
 
     g_ctx->tun_fd = init_vpn_serv();
     if (g_ctx->tun_fd < 0) {
         return -1;
     }
 
-    g_ctx->skcp = skcp_init(conf->skcp_conf, loop, g_ctx, SKCP_MODE_SERV);
+    g_ctx->skcp = skcp_init(skcp_conf, loop, g_ctx, SKCP_MODE_SERV);
     if (NULL == g_ctx->skcp) {
         FREE_IF(g_ctx);
         return -1;
     };
 
-    g_ctx->skcp->conf->on_accept = skcp_on_accept;
+    // g_ctx->skcp->conf->on_accept = skcp_on_accept;
     g_ctx->skcp->conf->on_check_ticket = skcp_on_check_ticket;
     g_ctx->skcp->conf->on_close = skcp_on_close;
     g_ctx->skcp->conf->on_recv_data = skcp_on_recv_data;
