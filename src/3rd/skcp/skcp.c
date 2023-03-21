@@ -179,7 +179,8 @@ static skcp_conn_slots_t *init_conn_slots(uint32_t max_conns) {
     skcp_conn_slots_t *slots = (skcp_conn_slots_t *)_ALLOC(sizeof(skcp_conn_slots_t));
     slots->max_cnt = max_conns > 0 ? max_conns : SKCP_MAX_CONNS;
     slots->remain_cnt = slots->max_cnt;
-    slots->conns = (skcp_conn_t **)_ALLOC(slots->max_cnt * sizeof(skcp_conn_t));
+    // slots->conns = (skcp_conn_t **)_ALLOC(slots->max_cnt * sizeof(skcp_conn_t));
+    slots->conns = (skcp_conn_t **)_ALLOC(slots->max_cnt * sizeof(skcp_conn_t *));
     slots->remain_id_stack = (uint32_t *)_ALLOC(slots->max_cnt * sizeof(uint32_t));
     for (uint32_t i = 0; i < slots->max_cnt; i++) {
         slots->remain_id_stack[i] = i + 1;
