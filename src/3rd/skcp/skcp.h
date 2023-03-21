@@ -68,7 +68,6 @@ typedef struct skcp_conf_s {
     char ticket[SKCP_TICKET_LEN + 1];
 
     // void (*on_accept)(uint32_t cid);
-    // void (*on_recv)(uint32_t cid, char *buf, int len, SKCP_MSG_TYPE msg_type);
     void (*on_recv_cid)(uint32_t cid);
     void (*on_recv_data)(uint32_t cid, char *buf, int len);
     void (*on_close)(uint32_t cid);
