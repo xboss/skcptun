@@ -112,7 +112,8 @@ static void on_recv_seg_data(uint32_t cid, skt_seg_t *seg) {
         }
 
         etcp_client_close_conn(g_ctx->etcp, cp->sfd, 1);
-        del_cp_ht(cp->sfd, 0);
+        // del_cp_ht(cp->sfd, 0);
+        del_cp_ht(cp->sfd, cp->cfd);
     }
 
     if (cmd == SKT_MSG_CMD_DATA) {
@@ -189,7 +190,8 @@ static void on_tcp_close(int fd) {
     }
     // LOG_I("on_tcp_close msg: %s", msg);
 
-    del_cp_ht(fd, 0);
+    // del_cp_ht(fd, 0);
+    del_cp_ht(fd, cp->cfd);
 }
 
 /* ------------------------------ skcp callback ----------------------------- */
