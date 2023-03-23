@@ -54,9 +54,8 @@ typedef struct skcp_conf_s {
     int sndwnd;
     int rcvwnd;
 
-    int estab_timeout;  // 单位：秒
-    int r_keepalive;    // 单位：秒
-    int w_keepalive;    // 单位：秒
+    int r_keepalive;  // 单位：秒
+    int w_keepalive;  // 单位：秒
 
     char *addr;
     uint16_t port;
@@ -67,7 +66,7 @@ typedef struct skcp_conf_s {
     char key[SKCP_KEY_LEN + 1];
     char ticket[SKCP_TICKET_LEN + 1];
 
-    // void (*on_accept)(uint32_t cid);
+    void (*on_accept)(uint32_t cid);
     void (*on_recv_cid)(uint32_t cid);
     void (*on_recv_data)(uint32_t cid, char *buf, int len);
     void (*on_close)(uint32_t cid);
@@ -86,7 +85,6 @@ typedef struct skcp_conf_s {
         (vconf)->nc = 1;                         \
         (vconf)->r_keepalive = 600;              \
         (vconf)->w_keepalive = 600;              \
-        (vconf)->estab_timeout = 100;            \
         (vconf)->addr = NULL;                    \
         (vconf)->port = 1111;                    \
         (vconf)->r_buf_size = 1500;              \

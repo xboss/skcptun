@@ -329,10 +329,10 @@ static void on_tcp_close(int fd) {
 
 /* ------------------------------ skcp callback ----------------------------- */
 
-// static void skcp_on_accept(uint32_t cid) {
-//     LOG_I("skcp_on_accept cid: %u", cid);
-//     return;
-// }
+static void skcp_on_accept(uint32_t cid) {
+    LOG_I("skcp_on_accept cid: %u", cid);
+    return;
+}
 
 static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
     LOG_D("server on_recv cid: %u len: %d", cid, len);
@@ -416,7 +416,7 @@ int skt_proxy_server_init(skcp_conf_t *skcp_conf, etcp_cli_conf_t *etcp_conf, st
         return -1;
     };
 
-    // g_ctx->skcp->conf->on_accept = skcp_on_accept;
+    g_ctx->skcp->conf->on_accept = skcp_on_accept;
     g_ctx->skcp->conf->on_check_ticket = skcp_on_check_ticket;
     g_ctx->skcp->conf->on_close = skcp_on_close;
     g_ctx->skcp->conf->on_recv_data = skcp_on_recv_data;

@@ -449,7 +449,7 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
 static skcp_conn_t *init_conn(skcp_t *skcp, int32_t cid) {
     assert(skcp);
     skcp_conn_t *conn = (skcp_conn_t *)_ALLOC(sizeof(skcp_conn_t));
-    conn->last_r_tm = conn->last_w_tm = conn->estab_tm = getmillisecond();
+    conn->last_r_tm = conn->last_w_tm = getmillisecond();
     conn->status = SKCP_CONN_ST_ON;  // SKCP_CONN_ST_READY;
     conn->skcp = skcp;
     conn->user_data = NULL;  // 在accept阶段初始化
@@ -540,9 +540,11 @@ static void on_req_cid_cmd(skcp_t *skcp, skcp_cmd_t *cmd, struct sockaddr_in des
 
     conn->dest_addr = dest_addr;
     memcpy(conn->ticket, cmd->payload, SKCP_TICKET_LEN);
-
     // reset iv
     rand_iv(conn->iv);
+
+    skcp->conf->on_accept(conn->id);
+
     // send result ok
     snprintf(ack, ack_len, "%d\n%u\n%s", 0, conn->id, conn->iv);
     _LOG("on_req_cid_cmd ack: %s", ack);

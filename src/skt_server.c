@@ -103,10 +103,10 @@ static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
 //////////////////////
 
-// static void skcp_on_accept(uint32_t cid) {
-//     LOG_I("skcp_on_accept cid: %u", cid);
-//     return;
-// }
+static void skcp_on_accept(uint32_t cid) {
+    LOG_I("skcp_on_accept cid: %u", cid);
+    return;
+}
 
 static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
     LOG_D("server on_recv cid: %u len: %d", cid, len);
@@ -235,7 +235,7 @@ int skt_server_init(skcp_conf_t *skcp_conf, struct ev_loop *loop, char *tun_ip, 
         return -1;
     };
 
-    // g_ctx->skcp->conf->on_accept = skcp_on_accept;
+    g_ctx->skcp->conf->on_accept = skcp_on_accept;
     g_ctx->skcp->conf->on_check_ticket = skcp_on_check_ticket;
     g_ctx->skcp->conf->on_close = skcp_on_close;
     g_ctx->skcp->conf->on_recv_data = skcp_on_recv_data;
