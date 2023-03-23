@@ -172,6 +172,9 @@ static void fd_map_free(skt_fd_map_t *fd_map) {
             fd_map_free_entry(tmp);
         }
     }
+
+    free(fd_map->buckets);
+    free(fd_map);
 }
 /* ------------------------------- fd map end ------------------------------- */
 
@@ -440,6 +443,7 @@ void skt_proxy_server_free() {
 
     if (g_ctx->sfd_map) {
         fd_map_free(g_ctx->sfd_map);
+        g_ctx->sfd_map = NULL;
     }
 
     FREE_IF(g_ctx);

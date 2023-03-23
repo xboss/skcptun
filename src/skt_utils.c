@@ -108,8 +108,8 @@ inline int parse_skt_msg(char* buf, int len, char* cmd, int* fd, char** pdata, i
 
     int i = 2;
     int l = len > SKT_MSG_HEADER_MAX ? SKT_MSG_HEADER_MAX : len;
-    for (; i < l + 2; i++) {
-        if (*pb == SKT_MSG_SEPARATOR) {
+    for (; i < l; i++) {
+        if (pb[0] == SKT_MSG_SEPARATOR) {
             break;
         }
         pb++;
