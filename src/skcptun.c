@@ -25,7 +25,7 @@ static int start_proxy_server(struct ev_loop *loop, skt_config_t *conf) {
         return -1;
     }
 
-    if (skt_proxy_server_init(conf->skcp_conf, conf->etcp_cli_conf, loop, conf->tcp_target_addr,
+    if (skt_proxy_server_init(conf->skcp_conf[0], conf->etcp_cli_conf, loop, conf->tcp_target_addr,
                               conf->tcp_target_port) != 0) {
         return -1;
     }
@@ -48,7 +48,7 @@ static int start_proxy_client(struct ev_loop *loop, skt_config_t *conf) {
         return -1;
     }
 
-    if (skt_proxy_client_init(conf->skcp_conf, conf->etcp_serv_conf, loop) != 0) {
+    if (skt_proxy_client_init(conf->skcp_conf, conf->skcp_conf_cnt, conf->etcp_serv_conf, loop) != 0) {
         return -1;
     }
 
@@ -64,45 +64,45 @@ static int start_proxy_client(struct ev_loop *loop, skt_config_t *conf) {
 /*                                tunnel server                               */
 /* -------------------------------------------------------------------------- */
 
-static int start_tun_server(struct ev_loop *loop, skt_config_t *conf) {
-    if (NULL == loop) {
-        LOG_E("loop create failed");
-        return -1;
-    }
+// static int start_tun_server(struct ev_loop *loop, skt_config_t *conf) {
+//     if (NULL == loop) {
+//         LOG_E("loop create failed");
+//         return -1;
+//     }
 
-    if (skt_server_init(conf->skcp_conf, loop, conf->tun_ip, conf->tun_mask) != 0) {
-        return -1;
-    }
+//     if (skt_server_init(conf->skcp_conf, loop, conf->tun_ip, conf->tun_mask) != 0) {
+//         return -1;
+//     }
 
-    LOG_D("tun server loop run");
-    ev_run(loop, 0);
-    LOG_D("loop end");
+//     LOG_D("tun server loop run");
+//     ev_run(loop, 0);
+//     LOG_D("loop end");
 
-    skt_server_free();
-    return 0;
-}
+//     skt_server_free();
+//     return 0;
+// }
 
 /* -------------------------------------------------------------------------- */
 /*                                tunnel client                               */
 /* -------------------------------------------------------------------------- */
 
-static int start_tun_client(struct ev_loop *loop, skt_config_t *conf) {
-    if (NULL == loop) {
-        LOG_E("loop create failed");
-        return -1;
-    }
+// static int start_tun_client(struct ev_loop *loop, skt_config_t *conf) {
+//     if (NULL == loop) {
+//         LOG_E("loop create failed");
+//         return -1;
+//     }
 
-    if (skt_client_init(conf->skcp_conf, loop, conf->tun_ip, conf->tun_mask) != 0) {
-        return -1;
-    }
+//     if (skt_client_init(conf->skcp_conf, loop, conf->tun_ip, conf->tun_mask) != 0) {
+//         return -1;
+//     }
 
-    LOG_D("tun client loop run");
-    ev_run(loop, 0);
-    LOG_D("loop end");
+//     LOG_D("tun client loop run");
+//     ev_run(loop, 0);
+//     LOG_D("loop end");
 
-    skt_client_free();
-    return 0;
-}
+//     skt_client_free();
+//     return 0;
+// }
 
 /* -------------------------------------------------------------------------- */
 /*                                    main                                    */
@@ -143,21 +143,18 @@ int main(int argc, char *argv[]) {
     ev_signal_start(loop, &sig_stop_watcher);
 
     int rt = 0;
-    if (conf->mode == SKT_TUN_SERV_MODE) {
-        rt = start_tun_server(loop, conf);
-    }
+    // TODO: for test
+    // if (conf->mode == SKT_TUN_SERV_MODE) {
+    //     rt = start_tun_server(loop, conf);
+    // }
 
-    if (conf->mode == SKT_TUN_CLI_MODE) {
-        rt = start_tun_client(loop, conf);
-    }
+    // if (conf->mode == SKT_TUN_CLI_MODE) {
+    //     rt = start_tun_client(loop, conf);
+    // }
 
-    if (conf->mode == SKT_PROXY_SERV_MODE) {
-        rt = start_proxy_server(loop, conf);
-    }
+    SKT_IF_PROXY_SERV_MODE(conf->mode) { rt = start_proxy_server(loop, conf); }
 
-    if (conf->mode == SKT_PROXY_CLI_MODE) {
-        rt = start_proxy_client(loop, conf);
-    }
+    SKT_IF_PROXY_CLI_MODE(conf->mode) { rt = start_proxy_client(loop, conf); }
 
     skt_free_conf(conf);
     LOG_I("bye");

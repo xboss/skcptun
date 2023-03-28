@@ -93,9 +93,9 @@ void set_send_timeout(int fd, time_t sec) {
     }
 }
 
-uint64_t oi_ntohll(uint64_t val) { return (((uint64_t)ntohl(val)) << 32) + ntohl(val >> 32); }
+uint64_t skt_ntohll(uint64_t val) { return (((uint64_t)ntohl(val)) << 32) + ntohl(val >> 32); }
 
-uint64_t oi_htonll(uint64_t val) { return (((uint64_t)htonl(val)) << 32) + htonl(val >> 32); }
+uint64_t skt_htonll(uint64_t val) { return (((uint64_t)htonl(val)) << 32) + htonl(val >> 32); }
 
 // parse msg, format: "cmd(1B)\nfd\ndata"
 inline int parse_skt_msg(char* buf, int len, char* cmd, int* fd, char** pdata, int* pdata_len) {

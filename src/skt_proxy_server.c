@@ -222,12 +222,12 @@ static void on_tcp_close(int fd) {
 
 /* ------------------------------ skcp callback ----------------------------- */
 
-static void skcp_on_accept(uint32_t cid) {
+static void skcp_on_accept(skcp_t *skcp, uint32_t cid) {
     LOG_I("skcp_on_accept cid: %u", cid);
     return;
 }
 
-static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
+static void skcp_on_recv_data(skcp_t *skcp, uint32_t cid, char *buf, int len) {
     LOG_D("server on_recv cid: %u len: %d", cid, len);
 
     if (!buf || len < SKT_SEG_HEADER_LEN) {
@@ -252,7 +252,7 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
     if (seg->type == SKT_SEG_PING) {
         char *pong_seg_raw = NULL;
         int pong_seg_raw_len = 0;
-        SKT_ENCODE_SEG(pong_seg_raw, 0, SKT_SEG_PONG, NULL, 0, pong_seg_raw_len);
+        SKT_ENCODE_SEG(pong_seg_raw, 0, SKT_SEG_PONG, seg->payload, seg->payload_len, pong_seg_raw_len);
         int rt = skcp_send(g_ctx->skcp, cid, pong_seg_raw, pong_seg_raw_len);
         FREE_IF(seg);
         FREE_IF(pong_seg_raw);
@@ -273,7 +273,7 @@ static void skcp_on_recv_data(uint32_t cid, char *buf, int len) {
     return;
 }
 
-static void skcp_on_close(uint32_t cid) {
+static void skcp_on_close(skcp_t *skcp, uint32_t cid) {
     LOG_D("skcp_on_close cid: %u", cid);
     skcp_conn_t *conn = skcp_get_conn(g_ctx->skcp, cid);
     if (conn && conn->user_data) {
@@ -288,7 +288,7 @@ static void skcp_on_close(uint32_t cid) {
     return;
 }
 
-static int skcp_on_check_ticket(char *ticket, int len) {
+static int skcp_on_check_ticket(skcp_t *skcp, char *ticket, int len) {
     // TODO: auth ticket
     return 0;
 }

@@ -32,4 +32,13 @@ target_link_libraries(skcptun ev)
 # target_link_libraries(skcptun_static crypto -static)
 # target_link_libraries(skcptun_static ev -static)
 
+# ############# test #############
+# add_executable(test_switch ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
+# target_link_libraries(test_switch ssl)
+# target_link_libraries(test_switch crypto)
+# target_link_libraries(test_switch ev)
 
+# add_executable(test_config ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
+# target_link_libraries(test_config ssl)
+# target_link_libraries(test_config crypto)
+# target_link_libraries(test_config ev)

@@ -90,8 +90,8 @@ void set_recv_timeout(int fd, time_t sec);
 void set_send_timeout(int fd, time_t sec);
 void setreuseaddr(int fd);
 void setnonblock(int fd);
-uint64_t oi_ntohll(uint64_t val);
-uint64_t oi_htonll(uint64_t val);
+uint64_t skt_ntohll(uint64_t val);
+uint64_t skt_htonll(uint64_t val);
 int parse_skt_msg(char* buf, int len, char* cmd, int* fd, char** pdata, int* pdata_len);
 
 #endif
