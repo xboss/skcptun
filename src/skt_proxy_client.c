@@ -262,9 +262,8 @@ int skt_proxy_client_init(skcp_conf_t **skcp_conf_arr, size_t skcp_conf_sz, etcp
         skt_switcher_add(skcp);
     }
 
-    skt_channel_t *chan = skt_switch();
+    g_ctx->chan = skt_switch();
     // g_ctx->skcp = chan->skcp;
-    g_ctx->chan = chan;
 
     // g_ctx->skcp = skcp_init(skcp_conf, loop, g_ctx, SKCP_MODE_CLI);
     // if (NULL == g_ctx->skcp) {

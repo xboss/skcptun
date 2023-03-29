@@ -49,6 +49,33 @@ void skt_switcher_update(int fd, int type, uint32_t cid, size_t rtt) {
 
     if (type == SKT_SW_UP_T_SND) {
         chan->pkt_snd++;
+
+        skt_channel_t *item, *tmp;
+        HASH_ITER(hh, g_ctx->chans_ht, item, tmp) {
+            // LOG_I("------ skt_switch fd: %d cid: %u avg_rtt: %lu diff: %lld pkt_snd: %lu pkt_recv: %lu", item->fd,
+            //       item->cid, item->avg_rtt, item->up_time - g_ctx->best_chan->up_time, item->pkt_snd,
+            //       item->pkt_recv);
+            if (item->fd != g_ctx->best_chan->fd && item->cid > 0) {
+                // 不是自己，进行比较
+                if (g_ctx->best_chan->cid <= 0) {
+                    LOG_I("skt_switch chg000 fd: %d cid: %u avg_rtt: %lu diff: %lld snd: %lu recv: %lu", item->fd,
+                          item->cid, item->avg_rtt, item->up_time - g_ctx->best_chan->up_time, item->pkt_snd,
+                          item->pkt_recv);
+                    g_ctx->best_chan = item;
+                    // LOG_I("chg 000000");
+                }
+
+                if (item->avg_rtt + 10 < g_ctx->best_chan->avg_rtt) {
+                    // rtt更小
+                    LOG_I(
+                        "skt_switch chg111 fd: %d cid: %u old_avg_rtt: %lu avg_rtt: %lu diff: %lld snd: %lu recv: %lu",
+                        item->fd, item->cid, g_ctx->best_chan->avg_rtt, item->avg_rtt,
+                        item->up_time - g_ctx->best_chan->up_time, item->pkt_snd, item->pkt_recv);
+                    g_ctx->best_chan = item;
+                    // LOG_I("chg 111111");
+                }
+            }
+        }
     }
 
     if (type == SKT_SW_UP_T_RTT) {
@@ -76,24 +103,6 @@ void skt_switcher_update(int fd, int type, uint32_t cid, size_t rtt) {
             chan->pkt_recv = 0;
         }
     }
-
-    uint64_t now = getmillisecond();
-    skt_channel_t *item, *tmp;
-    HASH_ITER(hh, g_ctx->chans_ht, item, tmp) {
-        LOG_I("------ skt_switch fd: %d cid: %u avg_rtt: %lu pkt_snd: %lu pkt_recv: %lu", item->fd, item->cid,
-              item->avg_rtt, item->pkt_snd, item->pkt_recv);
-        int best_time_diff = now - g_ctx->best_chan->up_time;
-        int item_time_diff = now - item->up_time;
-        // skt_channel_t *oldchan = g_ctx->best_chan;
-        if (item->avg_rtt < g_ctx->best_chan->avg_rtt) {
-            g_ctx->best_chan = item;
-            LOG_I("chg 1111111");
-        }
-        if (item_time_diff < best_time_diff) {
-            g_ctx->best_chan = item;
-            LOG_I("chg 2222222");
-        }
-    }
 }
 
 void skt_switcher_iter(void (*iter_fn)(skt_channel_t *chan)) {
@@ -102,8 +111,8 @@ void skt_switcher_iter(void (*iter_fn)(skt_channel_t *chan)) {
 }
 
 skt_channel_t *skt_switch() {
-    LOG_I("++++++ skt_switch fd: %d cid: %u avg_rtt: %lu", g_ctx->best_chan->fd, g_ctx->best_chan->cid,
-          g_ctx->best_chan->avg_rtt);
+    // LOG_I("++++++ skt_switch fd: %d cid: %u avg_rtt: %lu", g_ctx->best_chan->fd, g_ctx->best_chan->cid,
+    //       g_ctx->best_chan->avg_rtt);
     return g_ctx->best_chan;
 }
 
