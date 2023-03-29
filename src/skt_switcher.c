@@ -2,6 +2,8 @@
 
 #include "skt_utils.h"
 
+#define RTT_TOLERANCE 500
+
 typedef struct {
     skt_channel_t *chans_ht;
     skt_channel_t *best_chan;
@@ -65,7 +67,7 @@ void skt_switcher_update(int fd, int type, uint32_t cid, size_t rtt) {
                     // LOG_I("chg 000000");
                 }
 
-                if (item->avg_rtt + 10 < g_ctx->best_chan->avg_rtt) {
+                if (item->avg_rtt + RTT_TOLERANCE < g_ctx->best_chan->avg_rtt) {
                     // rtt更小
                     LOG_I(
                         "skt_switch chg111 fd: %d cid: %u old_avg_rtt: %lu avg_rtt: %lu diff: %lld snd: %lu recv: %lu",
@@ -80,6 +82,9 @@ void skt_switcher_update(int fd, int type, uint32_t cid, size_t rtt) {
 
     if (type == SKT_SW_UP_T_RTT) {
         chan->up_time = getmillisecond();
+        // LOG_I("------ skt_switch fd: %d cid: %u avg_rtt: %lu snd: %lu recv: %lu uptime: %llu", chan->fd, chan->cid,
+        //       chan->avg_rtt, chan->pkt_snd, chan->pkt_recv, chan->up_time);
+
         chan->rtt[chan->rtt_idx] = rtt;
         chan->rtt_idx++;
         chan->rtt_idx = chan->rtt_idx % SKT_SW_RTT_MAX_CNT;
@@ -106,13 +111,19 @@ void skt_switcher_update(int fd, int type, uint32_t cid, size_t rtt) {
 }
 
 void skt_switcher_iter(void (*iter_fn)(skt_channel_t *chan)) {
+    if (!g_ctx) {
+        return;
+    }
+
     skt_channel_t *item, *tmp;
     HASH_ITER(hh, g_ctx->chans_ht, item, tmp) { iter_fn(item); }
 }
 
 skt_channel_t *skt_switch() {
-    // LOG_I("++++++ skt_switch fd: %d cid: %u avg_rtt: %lu", g_ctx->best_chan->fd, g_ctx->best_chan->cid,
-    //       g_ctx->best_chan->avg_rtt);
+    uint64_t now = getmillisecond();
+    // LOG_I("++++++ skt_switch fd: %d cid: %u avg_rtt: %lu snd: %lu recv: %lu updiff: %lld", g_ctx->best_chan->fd,
+    //       g_ctx->best_chan->cid, g_ctx->best_chan->avg_rtt, g_ctx->best_chan->pkt_snd, g_ctx->best_chan->pkt_recv,
+    //       now - g_ctx->best_chan->up_time);
     return g_ctx->best_chan;
 }
 

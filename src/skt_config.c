@@ -210,6 +210,7 @@ static int init_proxy_serv(cJSON *m_json, skt_config_t *conf) {
 
     conf->skcp_conf = (skcp_conf_t **)calloc(1, sizeof(skcp_conf_t *));
     conf->skcp_conf[0] = (skcp_conf_t *)calloc(1, sizeof(skcp_conf_t));
+    conf->skcp_conf_cnt = 1;
     cJSON *obj = get_obj(m_json, "skcp_server");
     return init_skcp_conf(obj, conf->skcp_conf[0]);
 }
@@ -243,6 +244,7 @@ static int init_tun_serv(cJSON *m_json, skt_config_t *conf) {
     }
     conf->skcp_conf = (skcp_conf_t **)calloc(1, sizeof(skcp_conf_t *));
     conf->skcp_conf[0] = (skcp_conf_t *)calloc(1, sizeof(skcp_conf_t));
+    conf->skcp_conf_cnt = 1;
     cJSON *obj = get_obj(m_json, "skcp_server");
     return init_skcp_conf(obj, conf->skcp_conf[0]);
 }

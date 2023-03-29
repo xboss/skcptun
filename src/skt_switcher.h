@@ -11,7 +11,7 @@
 #define SKT_SW_UP_T_SND 1
 #define SKT_SW_UP_T_RTT 2
 
-struct skt_channel_s {
+typedef struct {
     int fd;
     uint32_t cid;
     skcp_t *skcp;
@@ -24,8 +24,7 @@ struct skt_channel_s {
     size_t pkt_recv;
     uint64_t up_time;
     UT_hash_handle hh;
-};
-typedef struct skt_channel_s skt_channel_t;
+} skt_channel_t;
 
 void skt_switcher_init();
 void skt_switcher_add(skcp_t *skcp);

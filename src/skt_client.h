@@ -9,7 +9,8 @@
 //     char *tun_mask;
 // } skt_cli_conf_t;
 
-int skt_client_init(skcp_conf_t *skcp_conf, struct ev_loop *loop, char *tun_ip, char *tun_mask);
+int skt_client_init(skcp_conf_t **skcp_conf_arr, size_t skcp_conf_sz, struct ev_loop *loop, char *tun_ip,
+                    char *tun_mask);
 void skt_client_free();
 
 #endif
