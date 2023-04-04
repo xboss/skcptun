@@ -66,11 +66,11 @@ typedef struct skcp_conf_s {
     char key[SKCP_KEY_LEN + 1];
     char ticket[SKCP_TICKET_LEN + 1];
 
-    void (*on_accept)(uint32_t cid);
-    void (*on_recv_cid)(uint32_t cid);
-    void (*on_recv_data)(uint32_t cid, char *buf, int len);
-    void (*on_close)(uint32_t cid);
-    int (*on_check_ticket)(char *ticket, int len);
+    void (*on_accept)(skcp_t *skcp, uint32_t cid);
+    void (*on_recv_cid)(skcp_t *skcp, uint32_t cid);
+    void (*on_recv_data)(skcp_t *skcp, uint32_t cid, char *buf, int len);
+    void (*on_close)(skcp_t *skcp, uint32_t cid);
+    int (*on_check_ticket)(skcp_t *skcp, char *ticket, int len);
 } skcp_conf_t;
 
 #define SKCP_DEF_CONF(vconf)                     \

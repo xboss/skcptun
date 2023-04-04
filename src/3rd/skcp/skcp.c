@@ -524,7 +524,7 @@ static void on_req_cid_cmd(skcp_t *skcp, skcp_cmd_t *cmd, struct sockaddr_in des
         goto send_req_cid_ack;
     }
 
-    int rt = skcp->conf->on_check_ticket(cmd->payload, cmd->payload_len);
+    int rt = skcp->conf->on_check_ticket(skcp, cmd->payload, cmd->payload_len);
     if (rt != 0) {
         // fail
         snprintf(ack, ack_len, "%d", 1);
@@ -543,7 +543,7 @@ static void on_req_cid_cmd(skcp_t *skcp, skcp_cmd_t *cmd, struct sockaddr_in des
     // reset iv
     rand_iv(conn->iv);
 
-    skcp->conf->on_accept(conn->id);
+    skcp->conf->on_accept(skcp, conn->id);
 
     // send result ok
     snprintf(ack, ack_len, "%d\n%u\n%s", 0, conn->id, conn->iv);
@@ -598,7 +598,7 @@ static void on_req_cid_ack_cmd(skcp_t *skcp, skcp_cmd_t *cmd) {
 
     _LOG("on_req_cid_ack_cmd cid: %d iv: %s", conn->id, conn->iv);
 
-    skcp->conf->on_recv_cid(conn->id);
+    skcp->conf->on_recv_cid(skcp, conn->id);
 }
 
 static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
@@ -710,7 +710,7 @@ static void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
     // }
 
     conn->last_r_tm = getmillisecond();
-    skcp->conf->on_recv_data(conn->id, kcp_recv_buf, recv_len);
+    skcp->conf->on_recv_data(skcp, conn->id, kcp_recv_buf, recv_len);
     _FREEIF(kcp_recv_buf);
 }
 
@@ -759,7 +759,7 @@ void skcp_close_conn(skcp_t *skcp, uint32_t cid) {
         return;
     }
     // _LOG("skcp_close_conn cid: %u", cid);
-    skcp->conf->on_close(cid);
+    skcp->conf->on_close(skcp, cid);
 
     free_conn(skcp, conn);
 }

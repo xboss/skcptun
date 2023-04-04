@@ -55,7 +55,7 @@ struct etcp_serv_s {
     void *user_data;
 };
 
-#define ETCP_SER_DEF_CONF(vconf)                      \
+#define ETCP_SERV_DEF_CONF(vconf)                     \
     do {                                              \
         memset((vconf), 0, sizeof(etcp_serv_conf_t)); \
         (vconf)->serv_addr = NULL;                    \
