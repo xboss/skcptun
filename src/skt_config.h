@@ -27,8 +27,8 @@ typedef struct {
     uint16_t tcp_target_port;
     etcp_serv_conf_t *etcp_serv_conf;
     etcp_cli_conf_t *etcp_cli_conf;
-    skcp_conf_t **skcp_conf;
-    size_t skcp_conf_cnt;
+    skcp_conf_t **skcp_conf_list;
+    size_t skcp_conf_list_cnt;
 } skt_config_t;
 
 skt_config_t *skt_init_conf(const char *conf_file);

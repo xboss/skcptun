@@ -33,26 +33,26 @@
         strcpy((_v_dest_str), (_v_tmp_str));                                \
     }
 
-#define SKT_INIT_REMOTE_SERVERS_CONF                                                          \
-    do {                                                                                      \
-        lua_pop(L, 1);                                                                        \
-        lua_getfield(L, -1, "skcp_remote_servers");                                           \
-        if (!lua_istable(L, -1)) {                                                            \
-            SKT_CONF_ERROR("skcp_remote_servers");                                            \
-        }                                                                                     \
-        conf->skcp_conf_cnt = lua_objlen(L, -1);                                              \
-        if (conf->skcp_conf_cnt <= 0) {                                                       \
-            SKT_CONF_ERROR("skcp_remote_servers");                                            \
-        }                                                                                     \
-        conf->skcp_conf = (skcp_conf_t **)calloc(conf->skcp_conf_cnt, sizeof(skcp_conf_t *)); \
-        for (size_t i = 0; i < conf->skcp_conf_cnt; i++) {                                    \
-            lua_pushinteger(L, i + 1);                                                        \
-            lua_gettable(L, -2);                                                              \
-            if (init_skcp_conf(L, conf, i) != 0) {                                            \
-                SKT_CONF_ERROR(NULL);                                                         \
-            }                                                                                 \
-            lua_pop(L, 2);                                                                    \
-        }                                                                                     \
+#define SKT_INIT_REMOTE_SERVERS_CONF                                                                    \
+    do {                                                                                                \
+        lua_pop(L, 1);                                                                                  \
+        lua_getfield(L, -1, "skcp_remote_servers");                                                     \
+        if (!lua_istable(L, -1)) {                                                                      \
+            SKT_CONF_ERROR("skcp_remote_servers");                                                      \
+        }                                                                                               \
+        conf->skcp_conf_list_cnt = lua_objlen(L, -1);                                                   \
+        if (conf->skcp_conf_list_cnt <= 0) {                                                            \
+            SKT_CONF_ERROR("skcp_remote_servers");                                                      \
+        }                                                                                               \
+        conf->skcp_conf_list = (skcp_conf_t **)calloc(conf->skcp_conf_list_cnt, sizeof(skcp_conf_t *)); \
+        for (size_t i = 0; i < conf->skcp_conf_list_cnt; i++) {                                         \
+            lua_pushinteger(L, i + 1);                                                                  \
+            lua_gettable(L, -2);                                                                        \
+            if (init_skcp_conf(L, conf, i) != 0) {                                                      \
+                SKT_CONF_ERROR(NULL);                                                                   \
+            }                                                                                           \
+            lua_pop(L, 2);                                                                              \
+        }                                                                                               \
     } while (0)
 
 static int init_etcp_serv_conf(lua_State *L, skt_config_t *conf) {
@@ -131,34 +131,34 @@ static int init_etcp_cli_conf(lua_State *L, skt_config_t *conf) {
 }
 
 static int init_skcp_conf(lua_State *L, skt_config_t *conf, size_t i) {
-    conf->skcp_conf[i] = (skcp_conf_t *)malloc(sizeof(skcp_conf_t));
-    SKCP_DEF_CONF(conf->skcp_conf[i]);
+    conf->skcp_conf_list[i] = (skcp_conf_t *)malloc(sizeof(skcp_conf_t));
+    SKCP_DEF_CONF(conf->skcp_conf_list[i]);
 
     int ivalue = 0;
 
     SKT_LUA_GET_INT(ivalue, "skcp_speed_mode") {
         if (1 != ivalue) {
-            conf->skcp_conf[i]->nodelay = 0;
-            conf->skcp_conf[i]->resend = 0;
-            conf->skcp_conf[i]->nc = 0;
+            conf->skcp_conf_list[i]->nodelay = 0;
+            conf->skcp_conf_list[i]->resend = 0;
+            conf->skcp_conf_list[i]->nc = 0;
         }
     }
 
     lua_pop(L, 1);
     SKT_LUA_GET_INT(ivalue, "skcp_keepalive") {
-        conf->skcp_conf[i]->w_keepalive = conf->skcp_conf[i]->r_keepalive = ivalue;
+        conf->skcp_conf_list[i]->w_keepalive = conf->skcp_conf_list[i]->r_keepalive = ivalue;
     }
 
     lua_pop(L, 1);
-    SKT_LUA_GET_INT(ivalue, "skcp_max_conn_cnt") { conf->skcp_conf[i]->max_conn_cnt = ivalue; }
+    SKT_LUA_GET_INT(ivalue, "skcp_max_conn_cnt") { conf->skcp_conf_list[i]->max_conn_cnt = ivalue; }
 
     lua_pop(L, 1);
-    SKT_LUA_GET_INT(ivalue, "port") { conf->skcp_conf[i]->port = ivalue; }
+    SKT_LUA_GET_INT(ivalue, "port") { conf->skcp_conf_list[i]->port = ivalue; }
 
     size_t len = 0;
     const char *str = NULL;
     lua_pop(L, 1);
-    SKT_LUA_GET_STR(conf->skcp_conf[i]->addr, "address", str, len) else {
+    SKT_LUA_GET_STR(conf->skcp_conf_list[i]->addr, "address", str, len) else {
         LOG_E("invalid 'address' in config file");
         return -1;
     }
@@ -168,7 +168,7 @@ static int init_skcp_conf(lua_State *L, skt_config_t *conf, size_t i) {
     str = lua_tolstring(L, -1, &len);
     if (str) {
         len = len < SKCP_TICKET_LEN ? len : SKCP_TICKET_LEN;
-        memcpy(conf->skcp_conf[i]->ticket, str, len);
+        memcpy(conf->skcp_conf_list[i]->ticket, str, len);
     }
 
     lua_pop(L, 1);
@@ -178,7 +178,7 @@ static int init_skcp_conf(lua_State *L, skt_config_t *conf, size_t i) {
         char padding[16] = {0};
         len = len > 16 ? 16 : len;
         memcpy(padding, str, len);
-        char_to_hex(padding, len, conf->skcp_conf[i]->key);
+        char_to_hex(padding, len, conf->skcp_conf_list[i]->key);
     }
 
     return 0;
@@ -251,8 +251,8 @@ skt_config_t *skt_init_conf(const char *conf_file) {
             SKT_CONF_ERROR("skcp_server");
         }
 
-        conf->skcp_conf_cnt = 1;
-        conf->skcp_conf = (skcp_conf_t **)calloc(conf->skcp_conf_cnt, sizeof(skcp_conf_t *));
+        conf->skcp_conf_list_cnt = 1;
+        conf->skcp_conf_list = (skcp_conf_t **)calloc(conf->skcp_conf_list_cnt, sizeof(skcp_conf_t *));
         if (init_skcp_conf(L, conf, 0) != 0) {
             SKT_CONF_ERROR(NULL);
         }
@@ -277,8 +277,8 @@ skt_config_t *skt_init_conf(const char *conf_file) {
             SKT_CONF_ERROR("skcp_server");
         }
 
-        conf->skcp_conf_cnt = 1;
-        conf->skcp_conf = (skcp_conf_t **)calloc(conf->skcp_conf_cnt, sizeof(skcp_conf_t *));
+        conf->skcp_conf_list_cnt = 1;
+        conf->skcp_conf_list = (skcp_conf_t **)calloc(conf->skcp_conf_list_cnt, sizeof(skcp_conf_t *));
         if (init_skcp_conf(L, conf, 0) != 0) {
             SKT_CONF_ERROR(NULL);
         }
@@ -312,17 +312,17 @@ void skt_free_conf(skt_config_t *conf) {
         FREE_IF(conf->tcp_target_addr);
     }
 
-    if (conf->skcp_conf && conf->skcp_conf_cnt > 0) {
-        for (size_t i = 0; i < conf->skcp_conf_cnt; i++) {
-            if (conf->skcp_conf[i]) {
-                if (conf->skcp_conf[i]->addr) {
-                    FREE_IF(conf->skcp_conf[i]->addr);
+    if (conf->skcp_conf_list && conf->skcp_conf_list_cnt > 0) {
+        for (size_t i = 0; i < conf->skcp_conf_list_cnt; i++) {
+            if (conf->skcp_conf_list[i]) {
+                if (conf->skcp_conf_list[i]->addr) {
+                    FREE_IF(conf->skcp_conf_list[i]->addr);
                 }
-                FREE_IF(conf->skcp_conf[i]);
+                FREE_IF(conf->skcp_conf_list[i]);
             }
         }
-        FREE_IF(conf->skcp_conf);
-        conf->skcp_conf_cnt = 0;
+        FREE_IF(conf->skcp_conf_list);
+        conf->skcp_conf_list_cnt = 0;
     }
 
     if (conf->etcp_serv_conf) {

@@ -19,10 +19,11 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/uthash DIR_SRCS_UTHASH)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP DIR_SRCS_EASYTCP)
 
 # ############# main #############
-# add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
-# target_link_libraries(skcptun ssl)
-# target_link_libraries(skcptun crypto)
-# target_link_libraries(skcptun ev)
+add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
+target_link_libraries(skcptun ssl)
+target_link_libraries(skcptun crypto)
+target_link_libraries(skcptun ev)
+target_link_libraries(skcptun luajit)
 
 # ############# static #############
 # add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH})
