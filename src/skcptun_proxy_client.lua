@@ -3,8 +3,12 @@ print(SKCPTUN)
 print(SKCPTUN.CB)
 local skcp = nil
 
-SKCPTUN.CB.on_init = function (ctx)
-    print(ctx)
+SKCPTUN.CB.on_init = function (conf)
+    print("lua mode: "..SKCPTUN.CONFIG.mode)
+    print("lua skcp_conf_list len: ".. #SKCPTUN.CONFIG.skcp_conf_list)
+    print("lua skcp_conf_list[1].addr: "..SKCPTUN.CONFIG.skcp_conf_list[1].addr)
+    print("lua skcp_conf_list[2].addr: "..SKCPTUN.CONFIG.skcp_conf_list[2].addr)
+    -- print("lua skcp_conf_list[0].addr: "..SKCPTUN.CONFIG.skcp_conf_list[0].addr)
 end
 
 SKCPTUN.CB.on_skcp_recv_cid = function(skcp, cid)
