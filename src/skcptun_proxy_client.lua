@@ -1,27 +1,40 @@
-SCKP_TUN.proxy_client.on_skcp_accept = function(skcp, cid)
+print("hello")
+print(SKCPTUN)
+print(SKCPTUN.CB)
+local skcp = nil
+
+SKCPTUN.CB.on_init = function (ctx)
+    print(ctx)
+end
+
+SKCPTUN.CB.on_skcp_recv_cid = function(skcp, cid)
 
 end
 
-SCKP_TUN.proxy_client.on_skcp_recv_cid = function(skcp, cid)
+SKCPTUN.CB.on_skcp_recv_data = function(skcp, cid, buf)
 
 end
 
-SCKP_TUN.proxy_client.on_skcp_recv_data = function(skcp, cid, buf)
+SKCPTUN.CB.on_skcp_close = function(skcp, cid)
 
 end
 
-SCKP_TUN.proxy_client.on_skcp_close = function(skcp, cid)
+SKCPTUN.CB.on_tcp_accept = function(fd)
+    print("accept tcp conn in lua")
+    
+end
+
+SKCPTUN.CB.on_tcp_recv = function(fd, buf)
 
 end
 
-SCKP_TUN.proxy_client.on_tcp_accept = function(fd)
+SKCPTUN.CB.on_tcp_close = function(fd)
 
 end
 
-SCKP_TUN.proxy_client.on_tcp_recv = function(fd, buf)
-
-end
-
-SCKP_TUN.proxy_client.on_tcp_close = function(fd)
-
+SKCPTUN.CB.on_beat = function()
+    print("beat in lua file")
+    if skcp == nil then
+        SKCPTUN.API.skcp_req_cid()
+    end
 end

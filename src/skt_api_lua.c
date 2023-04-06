@@ -83,10 +83,10 @@ static int lua_etcp_client_get_conn(lua_State *L) {
 }
 
 int skt_reg_api_to_lua(lua_State *L) {
-    lua_getglobal(L, "SCKPTUN");
+    lua_getglobal(L, "SKCPTUN");
     // 判断是否是table类型
     if (!lua_istable(L, -1)) {
-        luaL_error(L, "SCKPTUN is not a table");
+        luaL_error(L, "SKCPTUN is not a table");
         return -1;
     }
 
@@ -133,7 +133,9 @@ int skt_reg_api_to_lua(lua_State *L) {
     // lua_pushcfunction(L, lua_etcp_client_get_conn);  // value
     // lua_settable(L, -3);
 
-    lua_pop(L, 1);  // API table 出栈
+    // TODO: add get item from userdata
+
+    lua_pop(L, 2);  // SKCPTUN & API table 出栈
 
     return 0;
 }

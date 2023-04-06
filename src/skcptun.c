@@ -9,6 +9,24 @@
 #include "skt_config.h"
 #include "skt_utils.h"
 
+#define SKT_LUA_PUSH_CALLBACK_FUN(_v_fn_name)                     \
+    int _m_rt_value = 0;                                          \
+    do {                                                          \
+        lua_getfield(g_ctx->L, -1, "CB");                         \
+        if (!lua_istable(g_ctx->L, -1)) {                         \
+            LOG_E("SKCPTUN.CB is not table");                     \
+            _m_rt_value = 1;                                      \
+            break;                                                \
+        }                                                         \
+        lua_getfield(g_ctx->L, -1, (_v_fn_name));                 \
+        if (!lua_isfunction(g_ctx->L, -1)) {                      \
+            LOG_E("SKCPTUN.CB.%s is not function", (_v_fn_name)); \
+            _m_rt_value = 1;                                      \
+            break;                                                \
+        }                                                         \
+    } while (0);                                                  \
+    if (_m_rt_value != 0)
+
 typedef struct {
     lua_State *L;
     struct ev_loop *loop;
@@ -37,13 +55,6 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 
 static void usage(const char *msg) { printf("%s\n kcptun config_file\n", msg); }
 
-// static void close_lua() {
-//     if (L) {
-//         lua_settop(L, 0);
-//         lua_close(L);
-//     }
-// }
-
 static void finish() {
     if (!g_ctx) {
         return;
@@ -55,6 +66,7 @@ static void finish() {
     }
 
     if (g_ctx->L) {
+        lua_settop(g_ctx->L, 0);
         lua_close(g_ctx->L);
         g_ctx->L = NULL;
     }
@@ -99,6 +111,16 @@ static lua_State *init_lua(char *file_path) {
         return NULL;
     }
 
+    lua_newtable(L);
+    lua_setglobal(L, "SKCPTUN");
+    lua_getglobal(L, "SKCPTUN");  // SKCPTUN table 压栈
+    lua_pushstring(L, "CB");      // key
+    lua_newtable(L);              // value
+    lua_settable(L, -3);
+    lua_pushstring(L, "CB");  // key
+    lua_gettable(L, -2);      // SKCPTUN.CB table 压栈
+    lua_pop(L, 2);
+
     int ret = lua_pcall(L, 0, 0, 0);
     if (ret != LUA_OK) {
         LOG_E("%s, when init lua vm", lua_tostring(L, -1));
@@ -106,57 +128,116 @@ static lua_State *init_lua(char *file_path) {
         return NULL;
     }
 
-    lua_newtable(L);
-    lua_setglobal(L, "SKCPTUN");
-
     return L;
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                proxy client                                */
+/*                                  callbacks                                 */
 /* -------------------------------------------------------------------------- */
 
 static int on_tcp_accept(int fd) {
-    // TODO:
+    SKT_LUA_PUSH_CALLBACK_FUN("on_tcp_accept") return 1;
+
+    lua_pushinteger(g_ctx->L, fd);          // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 1, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("call on_tcp_accept in lua error");
+        lua_pop(g_ctx->L, 1);
+        return 1;
+    }
+    lua_pop(g_ctx->L, 1);
     return 0;
 }
 static void on_tcp_recv(int fd, char *buf, int len) {
     // TODO:
 }
 static void on_tcp_close(int fd) {
-    // TODO:
-}
-static void on_skcp_recv_cid(skcp_t *skcp, uint32_t cid) {
-    // TODO: SCKP_TUN.proxy_client.on_skcp_recv_cid
-    lua_getglobal(g_ctx->L, "SCKPTUN");
-    lua_getfield(g_ctx->L, -1, "proxy_client");      // SCKPTUN.proxy_client table 压栈
-    lua_getfield(g_ctx->L, -1, "on_skcp_recv_cid");  // SCKPTUN.proxy_client.on_skcp_recv_cid function 压栈
-    lua_pushlightuserdata(g_ctx->L, skcp);           // 自动弹出
-    lua_pushinteger(g_ctx->L, cid);                  // 自动弹出
-    int rt = lua_pcall(g_ctx->L, 2, 0, 0);           // 调用函数，调用完成以后，会将返回值压入栈中
+    SKT_LUA_PUSH_CALLBACK_FUN("on_tcp_close") return;
+
+    lua_pushinteger(g_ctx->L, fd);          // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 1, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
     if (rt) {
-        LOG_E("call on_skcp_recv_cid in lua error");
+        LOG_E("call on_tcp_close in lua error");
+        lua_pop(g_ctx->L, 1);
         return;
     }
-    lua_pop(g_ctx->L, 2);
+    lua_pop(g_ctx->L, 1);
+    return;
+}
+static void on_skcp_recv_cid(skcp_t *skcp, uint32_t cid) {
+    SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_recv_cid") return;
+
+    lua_pushlightuserdata(g_ctx->L, skcp);  // 自动弹出
+    lua_pushinteger(g_ctx->L, cid);         // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 2, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("call on_skcp_recv_cid in lua error");
+        lua_pop(g_ctx->L, 1);
+        return;
+    }
+    lua_pop(g_ctx->L, 1);
 }
 static void on_skcp_recv_data(skcp_t *skcp, uint32_t cid, char *buf, int len) {
     // TODO:
 }
 static void on_skcp_close(skcp_t *skcp, uint32_t cid) {
-    // TODO:
+    SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_close") return;
+
+    lua_pushlightuserdata(g_ctx->L, skcp);  // 自动弹出
+    lua_pushinteger(g_ctx->L, cid);         // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 2, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("call on_skcp_close in lua error");
+        lua_pop(g_ctx->L, 1);
+        return;
+    }
+    lua_pop(g_ctx->L, 1);
 }
 static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
-    // TODO:
+    LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+    SKT_LUA_PUSH_CALLBACK_FUN("on_beat") return;
+    // lua_getfield(g_ctx->L, -1, "CB");  // SKCPTUN.CB table 压栈
+    // if (!lua_istable(g_ctx->L, -1)) {
+    //     LOG_E("SKCPTUN.CB is not table");
+    //     return;
+    // }
+
+    // lua_getfield(g_ctx->L, -1, "on_beat");  // SKCPTUN.CB.on_beat function 压栈， 会被lua_pcall自动弹出
+    // if (!lua_isfunction(g_ctx->L, -1)) {
+    //     LOG_E("SKCPTUN.CB.on_beat is not function");
+    //     return;
+    // }
+
+    int rt = lua_pcall(g_ctx->L, 0, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("call on_beat in lua error");
+        lua_pop(g_ctx->L, 1);
+        return;
+    }
+    LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+    lua_pop(g_ctx->L, 1);
+    LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
 }
 
-static int start_proxy_client() {
-    // 注册 etcp 和 skcp 的方法
-    if (skt_reg_api_to_lua(g_ctx->L) != 0) {
-        return -1;
+static void on_init() {
+    SKT_LUA_PUSH_CALLBACK_FUN("on_init") return;
+    lua_pushlightuserdata(g_ctx->L, g_ctx);  // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 1, 0, 0);   // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("call on_init in lua error");
+        lua_pop(g_ctx->L, 1);
+        return;
     }
+    lua_pop(g_ctx->L, 1);
+}
 
+/* -------------------------------------------------------------------------- */
+/*                                proxy client                                */
+/* -------------------------------------------------------------------------- */
+
+static int start_proxy_client() {
     g_ctx->skcp_list_cnt = g_ctx->conf->skcp_conf_list_cnt;
+    g_ctx->skcp_list = (skcp_t **)calloc(g_ctx->skcp_list_cnt, sizeof(skcp_t *));
     for (size_t i = 0; i < g_ctx->skcp_list_cnt; i++) {
         g_ctx->skcp_list[i] = skcp_init(g_ctx->conf->skcp_conf_list[i], g_ctx->loop, NULL, SKCP_MODE_CLI);
         if (!g_ctx->skcp_list[i]) {
@@ -171,6 +252,8 @@ static int start_proxy_client() {
     if (!g_ctx->etcp_serv) {
         return -1;
     }
+
+    on_init();
 
     g_ctx->conf->etcp_serv_conf->on_accept = on_tcp_accept;
     g_ctx->conf->etcp_serv_conf->on_recv = on_tcp_recv;
@@ -241,6 +324,18 @@ int main(int argc, char *argv[]) {
     // init lua vm
     g_ctx->L = init_lua(conf->script_file);
     if (!g_ctx->L) {
+        finish();
+        return -1;
+    }
+    // 注册 etcp 和 skcp 的方法
+    if (skt_reg_api_to_lua(g_ctx->L) != 0) {
+        finish();
+        return -1;
+    }
+
+    lua_getglobal(g_ctx->L, "SKCPTUN");
+    if (!lua_istable(g_ctx->L, -1)) {
+        LOG_E("SKCPTUN is not table");
         finish();
         return -1;
     }
