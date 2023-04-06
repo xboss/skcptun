@@ -292,7 +292,7 @@ static void on_skcp_close(skcp_t *skcp, uint32_t cid) {
     lua_pop(g_ctx->L, 1);
 }
 static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
-    LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+    // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
     SKT_LUA_PUSH_CALLBACK_FUN("on_beat") return;
     // lua_getfield(g_ctx->L, -1, "CB");  // SKCPTUN.CB table 压栈
     // if (!lua_istable(g_ctx->L, -1)) {
@@ -312,9 +312,9 @@ static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents)
         lua_pop(g_ctx->L, 2);
         return;
     }
-    LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+    // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
     lua_pop(g_ctx->L, 1);
-    LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+    // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
 }
 
 static int on_init() {
@@ -423,25 +423,6 @@ int main(int argc, char *argv[]) {
     g_ctx = (skt_t *)calloc(1, sizeof(skt_t));
     g_ctx->conf = conf;
 
-    // init lua vm
-    g_ctx->L = init_lua(conf->script_file);
-    if (!g_ctx->L) {
-        finish();
-        return -1;
-    }
-    // 注册 etcp 和 skcp 的方法
-    if (skt_reg_api_to_lua(g_ctx->L) != 0) {
-        finish();
-        return -1;
-    }
-
-    lua_getglobal(g_ctx->L, "SKCPTUN");
-    if (!lua_istable(g_ctx->L, -1)) {
-        LOG_E("SKCPTUN is not table");
-        finish();
-        return -1;
-    }
-
     // init libev
 #if (defined(__linux__) || defined(__linux))
     g_ctx->loop = ev_loop_new(EVBACKEND_EPOLL);
@@ -468,6 +449,25 @@ int main(int argc, char *argv[]) {
     ev_signal sig_stop_watcher;
     ev_signal_init(&sig_stop_watcher, sig_cb, SIGSTOP);
     ev_signal_start(g_ctx->loop, &sig_stop_watcher);
+
+    // init lua vm
+    g_ctx->L = init_lua(conf->script_file);
+    if (!g_ctx->L) {
+        finish();
+        return -1;
+    }
+    // 注册 etcp 和 skcp 的方法
+    if (skt_reg_api_to_lua(g_ctx->L) != 0) {
+        finish();
+        return -1;
+    }
+
+    lua_getglobal(g_ctx->L, "SKCPTUN");
+    if (!lua_istable(g_ctx->L, -1)) {
+        LOG_E("SKCPTUN is not table");
+        finish();
+        return -1;
+    }
 
     // start
     int rt = start_fn();

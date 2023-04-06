@@ -18,7 +18,7 @@ typedef struct skcp_conf_s skcp_conf_t;
 #define SKT_IF_PROXY_SERV_MODE(_v_mode) if (strcmp((_v_mode), SKT_PROXY_SERV_MODE) == 0)
 #define SKT_IF_PROXY_CLI_MODE(_v_mode) if (strcmp((_v_mode), SKT_PROXY_CLI_MODE) == 0)
 
-typedef struct {
+struct skt_config_s {
     char *mode;
     char *script_file;
     char *tun_ip;
@@ -29,7 +29,8 @@ typedef struct {
     etcp_cli_conf_t *etcp_cli_conf;
     skcp_conf_t **skcp_conf_list;
     size_t skcp_conf_list_cnt;
-} skt_config_t;
+};
+typedef struct skt_config_s skt_config_t;
 
 skt_config_t *skt_init_conf(const char *conf_file);
 void skt_free_conf(skt_config_t *conf);
