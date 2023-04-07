@@ -149,6 +149,10 @@ slt.update = function(type, udp_fd, cid, rtt)
 end
 
 slt.select = function(key)
+    if not key then
+        return slt.best_chan
+    end
+
     local hold_chan = slt.hold_map[key]
     if hold_chan and hold_chan.cid > 0 then
         return hold_chan
