@@ -9,22 +9,22 @@
 #include "skt_config.h"
 #include "skt_utils.h"
 
-#define SKT_LUA_PUSH_CALLBACK_FUN(_v_fn_name)                     \
-    int _m_rt_value = 0;                                          \
-    do {                                                          \
-        lua_getfield(g_ctx->L, -1, "CB");                         \
-        if (!lua_istable(g_ctx->L, -1)) {                         \
-            LOG_E("SKCPTUN.CB is not table");                     \
-            _m_rt_value = 1;                                      \
-            break;                                                \
-        }                                                         \
-        lua_getfield(g_ctx->L, -1, (_v_fn_name));                 \
-        if (!lua_isfunction(g_ctx->L, -1)) {                      \
-            LOG_E("SKCPTUN.CB.%s is not function", (_v_fn_name)); \
-            _m_rt_value = 1;                                      \
-            break;                                                \
-        }                                                         \
-    } while (0);                                                  \
+#define SKT_LUA_PUSH_CALLBACK_FUN(_v_fn_name)                 \
+    int _m_rt_value = 0;                                      \
+    do {                                                      \
+        lua_getfield(g_ctx->L, -1, "cb");                     \
+        if (!lua_istable(g_ctx->L, -1)) {                     \
+            LOG_E("skt.cb is not table");                     \
+            _m_rt_value = 1;                                  \
+            break;                                            \
+        }                                                     \
+        lua_getfield(g_ctx->L, -1, (_v_fn_name));             \
+        if (!lua_isfunction(g_ctx->L, -1)) {                  \
+            LOG_E("skt.cb.%s is not function", (_v_fn_name)); \
+            _m_rt_value = 1;                                  \
+            break;                                            \
+        }                                                     \
+    } while (0);                                              \
     if (_m_rt_value != 0)
 
 struct skt_s {
@@ -101,8 +101,8 @@ static int lua_reg_config(lua_State *L) {
     if (!g_ctx->conf) {
         return -1;
     }
-    lua_pushstring(L, "CONFIG");  // key
-    lua_gettable(L, -2);          // SKCPTUN.CONFIG table 压栈
+    lua_pushstring(L, "conf");  // key
+    lua_gettable(L, -2);        // skt.conf table 压栈
     if (g_ctx->conf->mode) {
         lua_pushstring(L, g_ctx->conf->mode);  // value
         lua_setfield(L, -2, "mode");
@@ -133,14 +133,17 @@ static int lua_reg_config(lua_State *L) {
     lua_newtable(L);  // value
     lua_setfield(L, -2, "skcp_conf_list");
     lua_pushstring(L, "skcp_conf_list");  // key
-    lua_gettable(L, -2);                  // SKCPTUN.CONFIG.skcp_conf_list table 压栈
+    lua_gettable(L, -2);                  // skt.conf.skcp_conf_list table 压栈
     for (size_t i = 0; i < g_ctx->conf->skcp_conf_list_cnt; i++) {
         if (g_ctx->conf->skcp_conf_list[i]) {
             lua_pushinteger(L, i + 1);  // key
             lua_newtable(L);            // value
             lua_settable(L, -3);
             lua_pushinteger(L, i + 1);  // key
-            lua_gettable(L, -2);        // SKCPTUN.CONFIG.skcp_conf_list[i] table 压栈
+            lua_gettable(L, -2);        // skt.conf.skcp_conf_list[i] table 压栈
+
+            lua_pushlightuserdata(L, g_ctx->conf->skcp_conf_list[i]);
+            lua_setfield(L, -2, "raw");
 
             if (g_ctx->conf->skcp_conf_list[i]->addr) {
                 lua_pushstring(L, g_ctx->conf->skcp_conf_list[i]->addr);  // value
@@ -168,7 +171,9 @@ static int lua_reg_config(lua_State *L) {
     lua_newtable(L);  // value
     lua_setfield(L, -2, "etcp_serv_conf");
     lua_pushstring(L, "etcp_serv_conf");  // key
-    lua_gettable(L, -2);                  // SKCPTUN.CONFIG.etcp_serv_conf table 压栈
+    lua_gettable(L, -2);                  // skt.conf.etcp_serv_conf table 压栈
+    lua_pushlightuserdata(L, g_ctx->conf->etcp_serv_conf);
+    lua_setfield(L, -2, "raw");
     if (g_ctx->conf->etcp_serv_conf->serv_addr) {
         lua_pushstring(L, g_ctx->conf->etcp_serv_conf->serv_addr);  // value
         lua_setfield(L, -2, "serv_addr");
@@ -181,10 +186,10 @@ static int lua_reg_config(lua_State *L) {
     // lua_newtable(L);  // value
     // lua_setfield(L, -2, "etcp_cli_conf");
     // lua_pushstring(L, "etcp_cli_conf");  // key
-    // lua_gettable(L, -2);                 // SKCPTUN.CONFIG.etcp_cli_conf table 压栈
+    // lua_gettable(L, -2);                 // skt.conf.etcp_cli_conf table 压栈
     // lua_pop(L, 1);                       // pop etcp_cli_conf
 
-    lua_pop(L, 1);  // pop CONFIG
+    lua_pop(L, 1);  // pop conf
     return 0;
 }
 
@@ -206,17 +211,17 @@ static lua_State *init_lua(char *file_path) {
     }
 
     lua_newtable(L);
-    lua_setglobal(L, "SKCPTUN");
-    lua_getglobal(L, "SKCPTUN");  // SKCPTUN table 压栈
-    lua_pushstring(L, "CB");      // key
-    lua_newtable(L);              // value
+    lua_setglobal(L, "skt");
+    lua_getglobal(L, "skt");  // skt table 压栈
+    lua_pushstring(L, "cb");  // key
+    lua_newtable(L);          // value
     lua_settable(L, -3);
-    lua_pushstring(L, "CONFIG");  // key
-    lua_newtable(L);              // value
+    lua_pushstring(L, "conf");  // key
+    lua_newtable(L);            // value
     lua_settable(L, -3);
     lua_reg_config(L);
-    // lua_pushstring(L, "CB");  // key
-    // lua_gettable(L, -2);      // SKCPTUN.CB table 压栈
+    // lua_pushstring(L, "cb");  // key
+    // lua_gettable(L, -2);      // skt.cb table 压栈
     lua_pop(L, 1);
 
     int ret = lua_pcall(L, 0, 0, 0);
@@ -263,6 +268,8 @@ static void on_tcp_close(int fd) {
     return;
 }
 static void on_skcp_recv_cid(skcp_t *skcp, uint32_t cid) {
+    LOG_I("on_skcp_recv_cid cid: %u", cid);
+
     SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_recv_cid") return;
 
     lua_pushlightuserdata(g_ctx->L, skcp);  // 自动弹出
@@ -294,15 +301,15 @@ static void on_skcp_close(skcp_t *skcp, uint32_t cid) {
 static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
     // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
     SKT_LUA_PUSH_CALLBACK_FUN("on_beat") return;
-    // lua_getfield(g_ctx->L, -1, "CB");  // SKCPTUN.CB table 压栈
+    // lua_getfield(g_ctx->L, -1, "cb");  // skt.cb table 压栈
     // if (!lua_istable(g_ctx->L, -1)) {
-    //     LOG_E("SKCPTUN.CB is not table");
+    //     LOG_E("skt.cb is not table");
     //     return;
     // }
 
-    // lua_getfield(g_ctx->L, -1, "on_beat");  // SKCPTUN.CB.on_beat function 压栈， 会被lua_pcall自动弹出
+    // lua_getfield(g_ctx->L, -1, "on_beat");  // skt.cb.on_beat function 压栈， 会被lua_pcall自动弹出
     // if (!lua_isfunction(g_ctx->L, -1)) {
-    //     LOG_E("SKCPTUN.CB.on_beat is not function");
+    //     LOG_E("skt.cb.on_beat is not function");
     //     return;
     // }
 
@@ -319,7 +326,7 @@ static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents)
 
 static int on_init() {
     SKT_LUA_PUSH_CALLBACK_FUN("on_init") return -1;
-    lua_pushlightuserdata(g_ctx->L, g_ctx->conf);  // 自动弹出
+    lua_pushlightuserdata(g_ctx->L, g_ctx->loop);  // 自动弹出
     int rt = lua_pcall(g_ctx->L, 1, 0, 0);         // 调用函数，调用完成以后，会将返回值压入栈中
     if (rt) {
         LOG_E("%s, when call on_init in lua", lua_tostring(g_ctx->L, -1));
@@ -352,6 +359,12 @@ static int start_proxy_client() {
     // if (!g_ctx->etcp_serv) {
     //     return -1;
     // }
+
+    for (size_t i = 0; i < g_ctx->conf->skcp_conf_list_cnt; i++) {
+        g_ctx->conf->skcp_conf_list[i]->on_close = on_skcp_close;
+        g_ctx->conf->skcp_conf_list[i]->on_recv_cid = on_skcp_recv_cid;
+        g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
+    }
 
     if (on_init() != 0) {
         return -1;
@@ -462,9 +475,9 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    lua_getglobal(g_ctx->L, "SKCPTUN");
+    lua_getglobal(g_ctx->L, "skt");
     if (!lua_istable(g_ctx->L, -1)) {
-        LOG_E("SKCPTUN is not table");
+        LOG_E("skt is not table");
         finish();
         return -1;
     }

@@ -12,13 +12,14 @@
     lua_setfield(L, -2, (_V_FUN_NAME))
 
 /* -------------------------------------------------------------------------- */
-/*                                   API                                   */
+/*                                   api                                   */
 /* -------------------------------------------------------------------------- */
 
-/* ---------------------------------- skcp API ---------------------------------- */
+/* ---------------------------------- skcp api ---------------------------------- */
 
 // 共3个参数： conf, loop, skcp_mode
 static int lua_skcp_init(lua_State *L) {
+    LOG_I("stack top: %d, type: %d", lua_gettop(L), lua_type(L, -3));
     skcp_conf_t *conf = (skcp_conf_t *)lua_touserdata(L, -3);  // 取栈第一个参数
     if (!conf) {
         SKT_LUA_RET_ERROR(L, "conf is nil");
@@ -68,7 +69,7 @@ static int lua_skcp_req_cid(lua_State *L) {
     int len = strlen(ticket);
 
     int rt = skcp_req_cid(skcp, ticket, len);
-    if (rt != 0) {
+    if (rt < 0) {
         SKT_LUA_RET_ERROR(L, "error");
     }
 
@@ -130,7 +131,7 @@ static int lua_skcp_close_conn(lua_State *L) {
     return 0;
 }
 
-/* ----------------------------- etcp server API ---------------------------- */
+/* ----------------------------- etcp server api ---------------------------- */
 
 static int lua_etcp_server_init(lua_State *L) {
     // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
@@ -156,7 +157,7 @@ static int lua_etcp_server_get_conn(lua_State *L) {
     return 1;
 }
 
-/* ----------------------------- etcp client API ---------------------------- */
+/* ----------------------------- etcp client api ---------------------------- */
 
 static int lua_etcp_client_init(lua_State *L) {
     // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
@@ -214,23 +215,23 @@ static int lua_etcp_client_get_conn(lua_State *L) {
 // }
 
 int skt_reg_api_to_lua(lua_State *L) {
-    lua_getglobal(L, "SKCPTUN");
+    lua_getglobal(L, "skt");
     // 判断是否是table类型
     if (!lua_istable(L, -1)) {
-        luaL_error(L, "SKCPTUN is not a table");
+        luaL_error(L, "skt is not a table");
         return -1;
     }
 
     lua_newtable(L);  // value
-    lua_setfield(L, -2, "API");
+    lua_setfield(L, -2, "api");
 
-    lua_pushstring(L, "API");  // key
-    lua_gettable(L, -2);       // API table 压栈
+    lua_pushstring(L, "api");  // key
+    lua_gettable(L, -2);       // api table 压栈
 
     char l_fn_nm[128] = {0};
     int l_fn_nm_len = 0;
 
-    // skcp API
+    // skcp api
     // lua_pushcfunction(L, lua_skcp_init);  // value
     // lua_setfield(L, -2, "skcp_init");
     SKT_LUA_REG_FUN("skcp_init", lua_skcp_init);
@@ -274,7 +275,7 @@ int skt_reg_api_to_lua(lua_State *L) {
 
     // TODO: add get item from userdata
 
-    lua_pop(L, 2);  // SKCPTUN & API table 出栈
+    lua_pop(L, 2);  // skt & api table 出栈
 
     return 0;
 }

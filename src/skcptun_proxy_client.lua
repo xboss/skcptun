@@ -1,44 +1,64 @@
-print("hello")
-print(SKCPTUN)
-print(SKCPTUN.CB)
-local skcp = nil
+local g_skcp = nil
+local g_cid = 0
 
-SKCPTUN.CB.on_init = function (conf)
-    print("lua mode: "..SKCPTUN.CONFIG.mode)
-    print("lua skcp_conf_list len: ".. #SKCPTUN.CONFIG.skcp_conf_list)
-    print("lua skcp_conf_list[1].addr: "..SKCPTUN.CONFIG.skcp_conf_list[1].addr)
-    print("lua skcp_conf_list[2].addr: "..SKCPTUN.CONFIG.skcp_conf_list[2].addr)
-    -- print("lua skcp_conf_list[0].addr: "..SKCPTUN.CONFIG.skcp_conf_list[0].addr)
+skt.cb.on_init = function(loop)
+    print("lua mode: " .. skt.conf.mode)
+    print("lua skcp_conf_list len: " .. #skt.conf.skcp_conf_list)
+    print("lua skcp_conf_list[1].addr: " .. skt.conf.skcp_conf_list[1].addr)
+
+    local err = nil
+    g_skcp, err = skt.api.skcp_init(skt.conf.skcp_conf_list[1].raw, loop, 2)
+    if not g_skcp then
+        print("skcp_init " .. err);
+        return
+    end
+
+    -- local ok = nil
+    -- ok, err = skt.api.skcp_req_cid(g_skcp, skt.conf.skcp_conf_list[1].ticket)
+    -- if not ok then
+    --     print("skcp_req_cid " .. err);
+    --     return
+    -- end
+
+    -- skt.api.skcp_free(g_skcp)
 end
 
-SKCPTUN.CB.on_skcp_recv_cid = function(skcp, cid)
+skt.cb.on_skcp_recv_cid = function(skcp, cid)
+    print("recv cid: " .. cid)
+    g_cid = cid
+end
+
+skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
 
 end
 
-SKCPTUN.CB.on_skcp_recv_data = function(skcp, cid, buf)
+skt.cb.on_skcp_close = function(skcp, cid)
 
 end
 
-SKCPTUN.CB.on_skcp_close = function(skcp, cid)
-
-end
-
-SKCPTUN.CB.on_tcp_accept = function(fd)
+skt.cb.on_tcp_accept = function(fd)
     print("accept tcp conn in lua")
-    
 end
 
-SKCPTUN.CB.on_tcp_recv = function(fd, buf)
-
-end
-
-SKCPTUN.CB.on_tcp_close = function(fd)
+skt.cb.on_tcp_recv = function(fd, buf)
 
 end
 
-SKCPTUN.CB.on_beat = function()
-    print("beat in lua file")
-    if skcp == nil then
-        SKCPTUN.API.skcp_req_cid()
+skt.cb.on_tcp_close = function(fd)
+
+end
+
+skt.cb.on_beat = function()
+    print("beat in lua file cid: " .. g_cid)
+    -- if not g_skcp then
+    --     print("waiting init ...")
+    --     return
+    -- end
+    if g_cid == 0 then
+        local ok, err = skt.api.skcp_req_cid(g_skcp, skt.conf.skcp_conf_list[1].ticket)
+        if not ok then
+            print("skcp_req_cid " .. err);
+            return
+        end
     end
 end
