@@ -2,11 +2,13 @@
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+#include <unistd.h>
 
 #include "easy_tcp.h"
 #include "skcp.h"
 #include "skt_api_lua.h"
 #include "skt_config.h"
+#include "skt_tuntap.h"
 #include "skt_utils.h"
 
 #define SKT_LUA_PUSH_CALLBACK_FUN(_v_fn_name)                 \
@@ -30,6 +32,7 @@
 struct skt_s {
     lua_State *L;
     struct ev_loop *loop;
+    int tun_fd;
     ///////////
     // skcp_t **skcp_list;
     // size_t skcp_list_cnt;
@@ -72,6 +75,11 @@ static void finish() {
         lua_settop(g_ctx->L, 0);
         lua_close(g_ctx->L);
         g_ctx->L = NULL;
+    }
+
+    if (g_ctx->tun_fd >= 0) {
+        close(g_ctx->tun_fd);
+        g_ctx->tun_fd = -1;
     }
 
     // if (g_ctx->etcp_cli) {
@@ -246,6 +254,23 @@ static lua_State *init_lua(char *file_path) {
     return L;
 }
 
+static int init_vpn_cli() {
+    char dev_name[32] = {0};
+    int utunfd = skt_tuntap_open(dev_name, 32);
+
+    if (utunfd == -1) {
+        LOG_E("open tuntap error");
+        return -1;
+    }
+
+    // 设置为非阻塞
+    setnonblock(utunfd);
+
+    skt_tuntap_setup(dev_name, g_ctx->conf->tun_ip, g_ctx->conf->tun_mask);
+
+    return utunfd;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  callbacks                                 */
 /* -------------------------------------------------------------------------- */
@@ -368,7 +393,11 @@ static int on_skcp_check_ticket(skcp_t *skcp, char *ticket, int len) {
 }
 
 static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
-    // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+    if (EV_ERROR & revents) {
+        LOG_E("on_beat got invalid event");
+        return;
+    }
+
     SKT_LUA_PUSH_CALLBACK_FUN("on_beat") return;
     // lua_getfield(g_ctx->L, -1, "cb");  // skt.cb table 压栈
     // if (!lua_istable(g_ctx->L, -1)) {
@@ -391,6 +420,31 @@ static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
     lua_pop(g_ctx->L, 1);
     // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
+}
+
+static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents) {
+    if (EV_ERROR & revents) {
+        LOG_E("on_tun_read got invalid event");
+        return;
+    }
+
+    char buf[1500];
+    int len = skt_tuntap_read(g_ctx->tun_fd, buf, 1500);
+    if (len <= 0) {
+        LOG_E("skt_tuntap_read error tun_fd: %d", g_ctx->tun_fd);
+        return;
+    }
+
+    SKT_LUA_PUSH_CALLBACK_FUN("on_tun_read") return;
+
+    lua_pushlstring(g_ctx->L, buf, len);    // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 1, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("%s, when call skt_tuntap_read in lua", lua_tostring(g_ctx->L, -1));
+        lua_pop(g_ctx->L, 2);
+        return;
+    }
+    lua_pop(g_ctx->L, 1);
 }
 
 static int on_init() {
@@ -444,11 +498,10 @@ static int start_proxy_client() {
     }
 
     // 定时
-    struct ev_timer *bt_watcher = malloc(sizeof(ev_timer));
-    // bt_watcher->data = skcp;
-    ev_init(bt_watcher, on_beat);
-    ev_timer_set(bt_watcher, 0, 1);
-    ev_timer_start(g_ctx->loop, bt_watcher);
+    struct ev_timer bt_watcher;
+    ev_init(&bt_watcher, on_beat);
+    ev_timer_set(&bt_watcher, 0, 1);
+    ev_timer_start(g_ctx->loop, &bt_watcher);
 
     LOG_D("proxy client loop run");
     ev_run(g_ctx->loop, 0);
@@ -483,6 +536,63 @@ static int start_proxy_server() {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                 tun client                                 */
+/* -------------------------------------------------------------------------- */
+static int start_tun_client() {
+    for (size_t i = 0; i < g_ctx->conf->skcp_conf_list_cnt; i++) {
+        g_ctx->conf->skcp_conf_list[i]->on_close = on_skcp_close;
+        g_ctx->conf->skcp_conf_list[i]->on_recv_cid = on_skcp_recv_cid;
+        g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
+    }
+
+    g_ctx->tun_fd = init_vpn_cli();
+    if (g_ctx->tun_fd < 0) {
+        return -1;
+    }
+
+    // 定时
+    struct ev_timer bt_watcher;
+    ev_init(&bt_watcher, on_beat);
+    ev_timer_set(&bt_watcher, 0, 1);
+    ev_timer_start(g_ctx->loop, &bt_watcher);
+
+    // 设置tun读事件循环
+    struct ev_io r_watcher;
+    ev_io_init(&r_watcher, on_tun_read, g_ctx->tun_fd, EV_READ);
+    ev_io_start(g_ctx->loop, &r_watcher);
+
+    LOG_D("tun client loop run");
+    ev_run(g_ctx->loop, 0);
+    LOG_D("loop end");
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                 tun server                                 */
+/* -------------------------------------------------------------------------- */
+static int start_tun_server() {
+    for (size_t i = 0; i < g_ctx->conf->skcp_conf_list_cnt; i++) {
+        g_ctx->conf->skcp_conf_list[i]->on_accept = on_skcp_accept;
+        g_ctx->conf->skcp_conf_list[i]->on_check_ticket = on_skcp_check_ticket;
+        g_ctx->conf->skcp_conf_list[i]->on_close = on_skcp_close;
+        g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
+    }
+
+    g_ctx->tun_fd = init_vpn_cli();
+    if (g_ctx->tun_fd < 0) {
+        return -1;
+    }
+
+    // 设置tun读事件循环
+    struct ev_io r_watcher;
+    ev_io_init(&r_watcher, on_tun_read, g_ctx->tun_fd, EV_READ);
+    ev_io_start(g_ctx->loop, &r_watcher);
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                    main                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -504,20 +614,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    SKT_IF_TUN_SERV_MODE(conf->mode) {
-        // TODO:
-        start_fn = NULL;
-    }
+    SKT_IF_TUN_SERV_MODE(conf->mode) { start_fn = start_tun_server; }
     else SKT_IF_TUN_CLI_MODE(conf->mode) {
-        // TODO:
-        start_fn = NULL;
+        start_fn = start_tun_client;
     }
     else SKT_IF_PROXY_SERV_MODE(conf->mode) {
-        // TODO:
         start_fn = start_proxy_server;
     }
     else SKT_IF_PROXY_CLI_MODE(conf->mode) {
-        // TODO:
         start_fn = start_proxy_client;
     }
     else {
