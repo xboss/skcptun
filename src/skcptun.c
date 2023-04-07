@@ -252,7 +252,16 @@ static int on_tcp_accept(int fd) {
     return 0;
 }
 static void on_tcp_recv(int fd, char *buf, int len) {
-    // TODO:
+    SKT_LUA_PUSH_CALLBACK_FUN("on_tcp_recv") return;
+    lua_pushinteger(g_ctx->L, fd);          // 自动弹出
+    lua_pushlstring(g_ctx->L, buf, len);    // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 2, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("%s, when call on_tcp_recv in lua", lua_tostring(g_ctx->L, -1));
+        lua_pop(g_ctx->L, 2);
+        return;
+    }
+    lua_pop(g_ctx->L, 1);
 }
 static void on_tcp_close(int fd) {
     SKT_LUA_PUSH_CALLBACK_FUN("on_tcp_close") return;
@@ -283,7 +292,17 @@ static void on_skcp_recv_cid(skcp_t *skcp, uint32_t cid) {
     lua_pop(g_ctx->L, 1);
 }
 static void on_skcp_recv_data(skcp_t *skcp, uint32_t cid, char *buf, int len) {
-    // TODO:
+    SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_recv_data") return;
+    lua_pushlightuserdata(g_ctx->L, skcp);  // 自动弹出
+    lua_pushinteger(g_ctx->L, cid);         // 自动弹出
+    lua_pushlstring(g_ctx->L, buf, len);    // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 3, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("%s, when call on_skcp_recv_data in lua", lua_tostring(g_ctx->L, -1));
+        lua_pop(g_ctx->L, 2);
+        return;
+    }
+    lua_pop(g_ctx->L, 1);
 }
 static void on_skcp_close(skcp_t *skcp, uint32_t cid) {
     SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_close") return;

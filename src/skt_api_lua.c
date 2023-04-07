@@ -19,7 +19,7 @@
 
 // 共3个参数： conf, loop, skcp_mode
 static int lua_skcp_init(lua_State *L) {
-    LOG_I("stack top: %d, type: %d", lua_gettop(L), lua_type(L, -3));
+    // LOG_I("stack top: %d, type: %d", lua_gettop(L), lua_type(L, -3));
     skcp_conf_t *conf = (skcp_conf_t *)lua_touserdata(L, -3);  // 取栈第一个参数
     if (!conf) {
         SKT_LUA_RET_ERROR(L, "conf is nil");
@@ -95,7 +95,7 @@ static int lua_skcp_send(lua_State *L) {
     // memcpy(buf, str, len);
     int rt = skcp_send(skcp, cid, buf, len);
     if (rt < 0) {
-        SKT_LUA_RET_ERROR(L, "send error");
+        SKT_LUA_RET_ERROR(L, "skcp send error");
     }
 
     lua_pushinteger(L, rt);  // 返回值入栈
@@ -134,64 +134,164 @@ static int lua_skcp_close_conn(lua_State *L) {
 /* ----------------------------- etcp server api ---------------------------- */
 
 static int lua_etcp_server_init(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    // LOG_I("stack top: %d, type: %d", lua_gettop(L), lua_type(L, -2));
+    etcp_serv_conf_t *conf = (etcp_serv_conf_t *)lua_touserdata(L, -2);  // 取栈第一个参数
+    if (!conf) {
+        SKT_LUA_RET_ERROR(L, "conf is nil");
+    }
+
+    struct ev_loop *loop = (struct ev_loop *)lua_touserdata(L, -1);
+    if (!loop) {
+        SKT_LUA_RET_ERROR(L, "loop is nil");
+    }
+
+    etcp_serv_t *etcp = etcp_init_server(conf, loop, NULL);
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "error");
+    }
+
+    lua_pushlightuserdata(L, etcp);
     return 1;
 }
 
 static int lua_etcp_server_free(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
-    return 1;
+    etcp_serv_t *etcp = (etcp_serv_t *)lua_touserdata(L, -1);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    etcp_free_server(etcp);
+    return 0;
 }
 
 static int lua_etcp_server_send(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    etcp_serv_t *etcp = (etcp_serv_t *)lua_touserdata(L, -3);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+
+    int fd = luaL_checkinteger(L, 2);
+
+    size_t len = 0;
+    const char *buf = lua_tolstring(L, -1, &len);
+    if (!buf || len == 0) {
+        SKT_LUA_RET_ERROR(L, "buf is nil");
+    }
+    int rt = etcp_server_send(etcp, fd, (char *)buf, len);
+    if (rt <= 0) {
+        SKT_LUA_RET_ERROR(L, "tcp send error");
+    }
+
+    lua_pushinteger(L, rt);  // 返回值入栈
     return 1;
 }
 
 static int lua_etcp_server_get_conn(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    etcp_serv_t *etcp = (etcp_serv_t *)lua_touserdata(L, -2);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+
+    int fd = luaL_checkinteger(L, 2);
+
+    etcp_serv_conn_t *conn = etcp_server_get_conn(etcp, fd);
+    if (!conn) {
+        SKT_LUA_RET_ERROR(L, "conn is nil");
+    }
+    lua_pushlightuserdata(L, conn);
     return 1;
 }
 
 /* ----------------------------- etcp client api ---------------------------- */
 
 static int lua_etcp_client_init(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    etcp_cli_conf_t *conf = (etcp_cli_conf_t *)lua_touserdata(L, -2);  // 取栈第一个参数
+    if (!conf) {
+        SKT_LUA_RET_ERROR(L, "conf is nil");
+    }
+
+    struct ev_loop *loop = (struct ev_loop *)lua_touserdata(L, -1);
+    if (!loop) {
+        SKT_LUA_RET_ERROR(L, "loop is nil");
+    }
+
+    etcp_cli_t *etcp = etcp_init_client(conf, loop, NULL);
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "error");
+    }
+
+    lua_pushlightuserdata(L, etcp);
     return 1;
 }
 
 static int lua_etcp_client_free(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
-    return 1;
+    etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -1);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    etcp_free_client(etcp);
+    return 0;
 }
 
 static int lua_etcp_client_send(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -3);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    int fd = luaL_checkinteger(L, 2);
+
+    size_t len = 0;
+    const char *buf = lua_tolstring(L, -1, &len);
+    if (!buf || len == 0) {
+        SKT_LUA_RET_ERROR(L, "buf is nil");
+    }
+    int rt = etcp_client_send(etcp, fd, (char *)buf, len);
+    if (rt <= 0) {
+        SKT_LUA_RET_ERROR(L, "tcp send error");
+    }
+
+    lua_pushinteger(L, rt);  // 返回值入栈
     return 1;
 }
 
 static int lua_etcp_client_create_conn(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -3);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    const char *addr = luaL_checkstring(L, 2);
+    int port = luaL_checkinteger(L, 3);
+    int fd = etcp_client_create_conn(etcp, (char *)addr, port, NULL);
+    if (fd <= 0) {
+        SKT_LUA_RET_ERROR(L, "conn is nil");
+    }
+    lua_pushinteger(L, fd);
     return 1;
 }
 
 static int lua_etcp_client_close_conn(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
-    return 1;
+    etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -3);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    int fd = luaL_checkinteger(L, 2);
+    int silent = luaL_checkinteger(L, 3);
+    etcp_client_close_conn(etcp, fd, silent);
+    return 0;
 }
 
 static int lua_etcp_client_get_conn(lua_State *L) {
-    // const char *a = luaL_checkstring(L, 1);  // 取栈第一个参数
-    // lua_pushstring(L, (const char *)a);      // 返回值入栈
+    etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -2);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+
+    int fd = luaL_checkinteger(L, 2);
+
+    etcp_cli_conn_t *conn = etcp_client_get_conn(etcp, fd);
+    if (!conn) {
+        SKT_LUA_RET_ERROR(L, "conn is nil");
+    }
+    lua_pushlightuserdata(L, conn);
     return 1;
 }
 
@@ -241,37 +341,19 @@ int skt_reg_api_to_lua(lua_State *L) {
     SKT_LUA_REG_FUN("skcp_close_conn", lua_skcp_close_conn);
     SKT_LUA_REG_FUN("skcp_get_conn", lua_skcp_get_conn);
 
-    // lua_pushstring(L, "skcp_send");       // key
-    // lua_pushcfunction(L, lua_skcp_send);  // value
-    // lua_settable(L, -3);
+    // etcp server api
+    SKT_LUA_REG_FUN("etcp_server_init", lua_etcp_server_init);
+    SKT_LUA_REG_FUN("etcp_server_free", lua_etcp_server_free);
+    SKT_LUA_REG_FUN("etcp_server_send", lua_etcp_server_send);
+    SKT_LUA_REG_FUN("etcp_server_get_conn", lua_etcp_server_get_conn);
 
-    // lua_pushstring(L, "skcp_get_conn");       // key
-    // lua_pushcfunction(L, lua_skcp_get_conn);  // value
-    // lua_settable(L, -3);
-
-    // lua_pushstring(L, "etcp_server_send");       // key
-    // lua_pushcfunction(L, lua_etcp_server_send);  // value
-    // lua_settable(L, -3);
-
-    // lua_pushstring(L, "etcp_server_get_conn");       // key
-    // lua_pushcfunction(L, lua_etcp_server_get_conn);  // value
-    // lua_settable(L, -3);
-
-    // lua_pushstring(L, "etcp_client_send");       // key
-    // lua_pushcfunction(L, lua_etcp_client_send);  // value
-    // lua_settable(L, -3);
-
-    // lua_pushstring(L, "etcp_client_create_conn");       // key
-    // lua_pushcfunction(L, lua_etcp_client_create_conn);  // value
-    // lua_settable(L, -3);
-
-    // lua_pushstring(L, "etcp_client_close_conn");       // key
-    // lua_pushcfunction(L, lua_etcp_client_close_conn);  // value
-    // lua_settable(L, -3);
-
-    // lua_pushstring(L, "etcp_client_get_conn");       // key
-    // lua_pushcfunction(L, lua_etcp_client_get_conn);  // value
-    // lua_settable(L, -3);
+    // etcp server api
+    SKT_LUA_REG_FUN("etcp_client_init", lua_etcp_client_init);
+    SKT_LUA_REG_FUN("etcp_client_free", lua_etcp_client_free);
+    SKT_LUA_REG_FUN("etcp_client_send", lua_etcp_client_send);
+    SKT_LUA_REG_FUN("etcp_client_create_conn", lua_etcp_client_create_conn);
+    SKT_LUA_REG_FUN("etcp_client_close_conn", lua_etcp_client_close_conn);
+    SKT_LUA_REG_FUN("etcp_client_get_conn", lua_etcp_client_get_conn);
 
     // TODO: add get item from userdata
 
