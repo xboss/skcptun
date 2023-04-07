@@ -302,6 +302,28 @@ static int lua_get_ms(lua_State *L) {
     return 1;
 }
 
+static int lua_get_from_skcp(lua_State *L) {
+    skcp_t *skcp = (skcp_t *)lua_touserdata(L, -2);  // 取栈第一个参数
+    if (!skcp) {
+        SKT_LUA_RET_ERROR(L, "skcp is nil");
+    }
+    const char *name = luaL_checkstring(L, 2);
+    if (!name) {
+        SKT_LUA_RET_ERROR(L, "name is nil");
+    }
+
+    int len = strlen(name);
+
+    if (strcmp(name, "fd") == 0) {
+        lua_pushinteger(L, skcp->fd);
+        return 1;
+    }
+
+    lua_pushnil(L);
+    lua_pushstring(L, "name does not exist");
+    return 2;
+}
+
 // static int lua_get_conf(lua_State *L) {
 //     skt_config_t *conf = (skt_config_t *)lua_touserdata(L, 1);  // 取栈第一个参数
 //     if (!conf) {
@@ -364,6 +386,7 @@ int skt_reg_api_to_lua(lua_State *L) {
 
     // other api
     SKT_LUA_REG_FUN("get_ms", lua_get_ms);
+    SKT_LUA_REG_FUN("get_from_skcp", lua_get_from_skcp);
 
     // TODO: add get item from userdata
 

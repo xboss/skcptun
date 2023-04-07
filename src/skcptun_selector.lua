@@ -90,7 +90,9 @@ slt.add = function(udp_fd, skcp)
         up_time = os.time()
     }
     slt.udp_fd_chan_map[udp_fd] = chan
-    slt.best_chan = chan
+    if not slt.best_chan then
+        slt.best_chan = chan
+    end
 end
 
 slt.update = function(type, udp_fd, cid, rtt)

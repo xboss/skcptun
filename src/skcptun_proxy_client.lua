@@ -1,3 +1,5 @@
+local selector = require "skcptun_selector"
+
 local g_skcp = nil
 local g_cid = 0
 
@@ -5,9 +7,15 @@ local g_etcp = nil
 local g_fd = 0
 
 skt.cb.on_init = function(loop)
-    print("lua mode: " .. skt.conf.mode)
-    print("lua skcp_conf_list len: " .. #skt.conf.skcp_conf_list)
-    print("lua skcp_conf_list[1].addr: " .. skt.conf.skcp_conf_list[1].addr)
+    for i = 1, skt.conf.skcp_conf_list_cnt, 1 do
+        local skcp, err = skt.api.skcp_init(skt.conf.skcp_conf_list[i].raw, loop, 2)
+        if not skcp then
+            print("skcp_init " .. err);
+            return
+        end
+        local udp_fd = skt.api.get_from_skcp(skcp, "fd")
+        selector.add(udp_fd, skcp)
+    end
 
     local err = nil
     g_skcp, err = skt.api.skcp_init(skt.conf.skcp_conf_list[1].raw, loop, 2)
