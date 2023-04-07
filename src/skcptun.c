@@ -168,26 +168,38 @@ static int lua_reg_config(lua_State *L) {
     lua_pop(L, 1);  // pop skcp_conf_list
 
     // etcp_serv_conf
-    lua_newtable(L);  // value
-    lua_setfield(L, -2, "etcp_serv_conf");
-    lua_pushstring(L, "etcp_serv_conf");  // key
-    lua_gettable(L, -2);                  // skt.conf.etcp_serv_conf table 压栈
-    lua_pushlightuserdata(L, g_ctx->conf->etcp_serv_conf);
-    lua_setfield(L, -2, "raw");
-    if (g_ctx->conf->etcp_serv_conf->serv_addr) {
-        lua_pushstring(L, g_ctx->conf->etcp_serv_conf->serv_addr);  // value
-        lua_setfield(L, -2, "serv_addr");
+    if (g_ctx->conf->etcp_serv_conf) {
+        lua_newtable(L);  // value
+        lua_setfield(L, -2, "etcp_serv_conf");
+        lua_pushstring(L, "etcp_serv_conf");  // key
+        lua_gettable(L, -2);                  // skt.conf.etcp_serv_conf table 压栈
+        lua_pushlightuserdata(L, g_ctx->conf->etcp_serv_conf);
+        lua_setfield(L, -2, "raw");
+        if (g_ctx->conf->etcp_serv_conf->serv_addr) {
+            lua_pushstring(L, g_ctx->conf->etcp_serv_conf->serv_addr);  // value
+            lua_setfield(L, -2, "serv_addr");
+        }
+        lua_pushinteger(L, g_ctx->conf->etcp_serv_conf->serv_port);  // value
+        lua_setfield(L, -2, "serv_port");
+        lua_pop(L, 1);  // pop etcp_serv_conf
     }
-    lua_pushinteger(L, g_ctx->conf->etcp_serv_conf->serv_port);  // value
-    lua_setfield(L, -2, "serv_port");
-    lua_pop(L, 1);  // pop etcp_serv_conf
 
-    // // etcp_cli_conf
-    // lua_newtable(L);  // value
-    // lua_setfield(L, -2, "etcp_cli_conf");
-    // lua_pushstring(L, "etcp_cli_conf");  // key
-    // lua_gettable(L, -2);                 // skt.conf.etcp_cli_conf table 压栈
-    // lua_pop(L, 1);                       // pop etcp_cli_conf
+    // etcp_cli_conf
+    if (g_ctx->conf->etcp_cli_conf) {
+        lua_newtable(L);  // value
+        lua_setfield(L, -2, "etcp_cli_conf");
+        lua_pushstring(L, "etcp_cli_conf");  // key
+        lua_gettable(L, -2);                 // skt.conf.etcp_cli_conf table 压栈
+        lua_pushlightuserdata(L, g_ctx->conf->etcp_cli_conf);
+        lua_setfield(L, -2, "raw");
+        if (g_ctx->conf->tcp_target_addr) {
+            lua_pushstring(L, g_ctx->conf->tcp_target_addr);  // value
+            lua_setfield(L, -2, "tcp_target_addr");
+        }
+        lua_pushinteger(L, g_ctx->conf->tcp_target_port);  // value
+        lua_setfield(L, -2, "tcp_target_port");
+        lua_pop(L, 1);  // pop etcp_cli_conf
+    }
 
     lua_pop(L, 1);  // pop conf
     return 0;
@@ -317,6 +329,44 @@ static void on_skcp_close(skcp_t *skcp, uint32_t cid) {
     }
     lua_pop(g_ctx->L, 1);
 }
+
+static void on_skcp_accept(skcp_t *skcp, uint32_t cid) {
+    SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_accept") return;
+
+    lua_pushlightuserdata(g_ctx->L, skcp);  // 自动弹出
+    lua_pushinteger(g_ctx->L, cid);         // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 2, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("%s, when call on_skcp_accept in lua", lua_tostring(g_ctx->L, -1));
+        lua_pop(g_ctx->L, 2);
+        return;
+    }
+    lua_pop(g_ctx->L, 1);
+}
+
+static int on_skcp_check_ticket(skcp_t *skcp, char *ticket, int len) {
+    SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_check_ticket") return -1;
+    lua_pushlightuserdata(g_ctx->L, skcp);   // 自动弹出
+    lua_pushlstring(g_ctx->L, ticket, len);  // 自动弹出
+    int rt = lua_pcall(g_ctx->L, 2, 1, 0);   // 调用函数，调用完成以后，会将返回值压入栈中
+    if (rt) {
+        LOG_E("%s, when call on_skcp_check_ticket in lua", lua_tostring(g_ctx->L, -1));
+        lua_pop(g_ctx->L, 2);
+        return -1;
+    }
+    int isnum = 0;
+    int ret = lua_tointegerx(g_ctx->L, -1, &isnum);
+    lua_pop(g_ctx->L, 1);
+    if (!isnum) {
+        LOG_E("return value is not integer, when call on_skcp_check_ticket in lua");
+        lua_pop(g_ctx->L, 1);
+        return -1;
+    }
+
+    lua_pop(g_ctx->L, 1);
+    return ret;
+}
+
 static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
     // LOG_I("stack top: %d, type: %d", lua_gettop(g_ctx->L), lua_type(g_ctx->L, -1));
     SKT_LUA_PUSH_CALLBACK_FUN("on_beat") return;
@@ -385,13 +435,13 @@ static int start_proxy_client() {
         g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
     }
 
-    if (on_init() != 0) {
-        return -1;
-    }
-
     g_ctx->conf->etcp_serv_conf->on_accept = on_tcp_accept;
     g_ctx->conf->etcp_serv_conf->on_recv = on_tcp_recv;
     g_ctx->conf->etcp_serv_conf->on_close = on_tcp_close;
+
+    if (on_init() != 0) {
+        return -1;
+    }
 
     // 定时
     struct ev_timer *bt_watcher = malloc(sizeof(ev_timer));
@@ -401,6 +451,31 @@ static int start_proxy_client() {
     ev_timer_start(g_ctx->loop, bt_watcher);
 
     LOG_D("proxy client loop run");
+    ev_run(g_ctx->loop, 0);
+    LOG_D("loop end");
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                proxy server                                */
+/* -------------------------------------------------------------------------- */
+static int start_proxy_server() {
+    for (size_t i = 0; i < g_ctx->conf->skcp_conf_list_cnt; i++) {
+        g_ctx->conf->skcp_conf_list[i]->on_accept = on_skcp_accept;
+        g_ctx->conf->skcp_conf_list[i]->on_check_ticket = on_skcp_check_ticket;
+        g_ctx->conf->skcp_conf_list[i]->on_close = on_skcp_close;
+        g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
+    }
+
+    g_ctx->conf->etcp_cli_conf->on_recv = on_tcp_recv;
+    g_ctx->conf->etcp_cli_conf->on_close = on_tcp_close;
+
+    if (on_init() != 0) {
+        return -1;
+    }
+
+    LOG_D("proxy server loop run");
     ev_run(g_ctx->loop, 0);
     LOG_D("loop end");
 
@@ -439,7 +514,7 @@ int main(int argc, char *argv[]) {
     }
     else SKT_IF_PROXY_SERV_MODE(conf->mode) {
         // TODO:
-        start_fn = NULL;
+        start_fn = start_proxy_server;
     }
     else SKT_IF_PROXY_CLI_MODE(conf->mode) {
         // TODO:
