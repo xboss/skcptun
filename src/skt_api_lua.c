@@ -295,6 +295,13 @@ static int lua_etcp_client_get_conn(lua_State *L) {
     return 1;
 }
 
+/* -------------------------------- other api ------------------------------- */
+static int lua_get_ms(lua_State *L) {
+    uint64_t t = getmillisecond();
+    lua_pushinteger(L, t);
+    return 1;
+}
+
 // static int lua_get_conf(lua_State *L) {
 //     skt_config_t *conf = (skt_config_t *)lua_touserdata(L, 1);  // 取栈第一个参数
 //     if (!conf) {
@@ -354,6 +361,9 @@ int skt_reg_api_to_lua(lua_State *L) {
     SKT_LUA_REG_FUN("etcp_client_create_conn", lua_etcp_client_create_conn);
     SKT_LUA_REG_FUN("etcp_client_close_conn", lua_etcp_client_close_conn);
     SKT_LUA_REG_FUN("etcp_client_get_conn", lua_etcp_client_get_conn);
+
+    // other api
+    SKT_LUA_REG_FUN("get_ms", lua_get_ms);
 
     // TODO: add get item from userdata
 
