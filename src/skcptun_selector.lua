@@ -45,11 +45,11 @@ local function cal_best_chan()
 
     if min_chan then
         if min_chan.avg_rtt < best_chan.avg_rtt then
-            -- print("chg1 chan from " .. best_chan.udp_fd .. " to " .. min_chan.udp_fd)
+            print("chg1 chan from ", best_chan.udp_fd, " to ", min_chan.udp_fd, best_chan.avg_rtt, min_chan.avg_rtt)
             slt.best_chan = min_chan
             gc_hold_map()
         elseif best_chan.cid <= 0 then
-            print("chg2 chan from " .. best_chan.udp_fd .. " to " .. min_chan.udp_fd)
+            print("chg2 chan from ", best_chan.udp_fd, " to ", min_chan.udp_fd, best_chan.avg_rtt, min_chan.avg_rtt)
             slt.best_chan = min_chan
             gc_hold_map()
         end
@@ -165,9 +165,11 @@ slt.select = function(key)
 
     local hold_chan = slt.hold_map[key]
     if hold_chan and hold_chan.cid > 0 then
+        -- print("select hit hold_map", key)
         return hold_chan
     end
     if hold_chan and hold_chan.cid <= 0 then
+        print("select remove hold_map", key)
         slt.hold_map[key] = nil
     end
     slt.hold_map[key] = slt.best_chan

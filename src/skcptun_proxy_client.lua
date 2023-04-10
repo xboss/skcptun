@@ -144,7 +144,7 @@ skt.cb.on_tcp_accept = function(fd)
     -- format: "cmd(1B)\nfd"
     local payload = "A\n" .. fd
     local chan = selector.select(fd)
-    print("select tcp_fd:", fd, "udp_fd:", chan.udp_fd, "avg_rtt", chan.avg_rtt)
+    -- print("select tcp_fd:", fd, "udp_fd:", chan.udp_fd, "avg_rtt", chan.avg_rtt)
     local buf = sp.pack(CMD_DATA, payload, str_len(payload))
     local rt, err = skt.api.skcp_send(chan.skcp, chan.cid, buf)
     if not rt then
@@ -160,7 +160,7 @@ skt.cb.on_tcp_recv = function(fd, buf)
     -- format: "cmd(1B)\nfd\ndata"
     local payload = "D\n" .. fd .. "\n" .. buf
     local chan = selector.select(fd)
-    print("select tcp_fd:", fd, "udp_fd:", chan.udp_fd, "avg_rtt", chan.avg_rtt)
+    -- print("select tcp_fd:", fd, "udp_fd:", chan.udp_fd, "avg_rtt", chan.avg_rtt)
     local raw = sp.pack(CMD_DATA, payload, str_len(payload))
     local rt, err = skt.api.skcp_send(chan.skcp, chan.cid, raw)
     if not rt then
@@ -175,7 +175,7 @@ skt.cb.on_tcp_close = function(fd)
     -- format: "cmd(1B)\nfd"
     local payload = "C\n" .. fd
     local chan = selector.select(fd)
-    print("select tcp_fd:", fd, "udp_fd:", chan.udp_fd, "avg_rtt", chan.avg_rtt)
+    -- print("select tcp_fd:", fd, "udp_fd:", chan.udp_fd, "avg_rtt", chan.avg_rtt)
     local buf = sp.pack(CMD_DATA, payload, str_len(payload))
     local rt, err = skt.api.skcp_send(chan.skcp, chan.cid, buf)
     if not rt then
