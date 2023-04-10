@@ -1,15 +1,21 @@
 local slt = {}
 
+local RTT_MAX_CNT = 10
+local T_UP_CID = 1
+local T_UP_SND = 2
+local T_UP_RTT = 3
+
+slt.t_up_cid = T_UP_CID
+slt.t_up_snd = T_UP_SND
+slt.t_up_rtt = T_UP_RTT
+
 -- udp_fd -> chan
 slt.udp_fd_chan_map = {}
 
 -- anykey -> chan
 slt.hold_map = {}
 
-local RTT_MAX_CNT = 10
-local T_UP_CID = 1
-local T_UP_SND = 2
-local T_UP_RTT = 3
+
 
 local function gc_hold_map()
     -- 清理 hold_map
@@ -71,7 +77,7 @@ local function cal_best_chan()
     -- end
 end
 
-slt.add = function(udp_fd, skcp)
+slt.add = function(udp_fd, skcp, skcp_conf)
     if slt.udp_fd_chan_map[udp_fd] then
         return
     end
@@ -79,6 +85,7 @@ slt.add = function(udp_fd, skcp)
     local chan = {
         udp_fd = udp_fd,
         skcp = skcp,
+        skcp_conf = skcp_conf,
         cid = 0,
         rtt = {},
         min_rtt = 999999999,
@@ -89,6 +96,7 @@ slt.add = function(udp_fd, skcp)
         rtt_idx = 0,
         up_time = os.time()
     }
+
     slt.udp_fd_chan_map[udp_fd] = chan
     if not slt.best_chan then
         slt.best_chan = chan
