@@ -1,3 +1,5 @@
+package.path = package.path .. ";../src/?.lua;"
+
 local selector = require "skcptun_selector"
 local sp = require "skcptun_protocol"
 
@@ -38,20 +40,6 @@ skt.cb.on_init = function(loop)
     end
 
     ---------------------------------- test ----------------------------------
-    -- local n = 13
-    -- local a = skt.api.brshift(skt.api.band(n, 0xff000000), 24)
-    -- local b = skt.api.brshift(skt.api.band(n, 0x00ff0000), 16)
-    -- local c = skt.api.brshift(skt.api.band(n, 0x0000ff00), 8)
-    -- local d = skt.api.band(n, 0x000000ff)
-    -- print(a, b, c, d)
-
-    -- n = skt.api.hton32(n)
-    -- -- n = skt.api.ntoh32(n)
-    -- a = skt.api.brshift(skt.api.band(n, 0xff000000), 24)
-    -- b = skt.api.brshift(skt.api.band(n, 0x00ff0000), 16)
-    -- c = skt.api.brshift(skt.api.band(n, 0x0000ff00), 8)
-    -- d = skt.api.band(n, 0x000000ff)
-    -- print(a, b, c, d)
 
     -- local payload = "abcdefg"
     -- local buf = sp.pack(CMD_PING, payload, #payload)
