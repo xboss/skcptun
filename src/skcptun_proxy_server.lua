@@ -40,7 +40,7 @@ local function dump_gt(tag)
         g_test_dump_cnt = 0
     end
 
-    if g_test_dump_cnt % 10 ~= 1 then
+    if g_test_dump_cnt % 30 ~= 1 then
         return;
     end
     if tag then
