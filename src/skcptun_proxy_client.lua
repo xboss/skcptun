@@ -205,7 +205,7 @@ skt.cb.on_beat = function()
         -- DBG("------ on_beat udp_fd cid", chan.udp_fd, chan.cid)
         if chan.cid <= 0 then
             skt.api.skcp_req_cid(chan.skcp, chan.skcp_conf.ticket)
-            ERR("skcp_req_cid by beat_cb", chan.skcp_conf.ticket, chan.skcp)
+            DBG("skcp_req_cid by beat_cb", chan.skcp_conf.ticket, chan.skcp)
             return
         end
         -- ping
