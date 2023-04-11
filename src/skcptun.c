@@ -466,23 +466,6 @@ static int on_init() {
 /* -------------------------------------------------------------------------- */
 
 static int start_proxy_client() {
-    // g_ctx->skcp_list_cnt = g_ctx->conf->skcp_conf_list_cnt;
-    // g_ctx->skcp_list = (skcp_t **)calloc(g_ctx->skcp_list_cnt, sizeof(skcp_t *));
-    // for (size_t i = 0; i < g_ctx->skcp_list_cnt; i++) {
-    //     g_ctx->skcp_list[i] = skcp_init(g_ctx->conf->skcp_conf_list[i], g_ctx->loop, NULL, SKCP_MODE_CLI);
-    //     if (!g_ctx->skcp_list[i]) {
-    //         return -1;
-    //     }
-    //     g_ctx->conf->skcp_conf_list[i]->on_close = on_skcp_close;
-    //     g_ctx->conf->skcp_conf_list[i]->on_recv_cid = on_skcp_recv_cid;
-    //     g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
-    // }
-
-    // g_ctx->etcp_serv = etcp_init_server(g_ctx->conf->etcp_serv_conf, g_ctx->loop, NULL);
-    // if (!g_ctx->etcp_serv) {
-    //     return -1;
-    // }
-
     for (size_t i = 0; i < g_ctx->conf->skcp_conf_list_cnt; i++) {
         g_ctx->conf->skcp_conf_list[i]->on_close = on_skcp_close;
         g_ctx->conf->skcp_conf_list[i]->on_recv_cid = on_skcp_recv_cid;

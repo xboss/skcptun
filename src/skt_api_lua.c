@@ -234,6 +234,7 @@ static int lua_etcp_client_free(lua_State *L) {
     return 0;
 }
 
+// etcp, fd, buf
 static int lua_etcp_client_send(lua_State *L) {
     etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -3);  // 取栈第一个参数
     if (!etcp) {
@@ -255,12 +256,17 @@ static int lua_etcp_client_send(lua_State *L) {
     return 1;
 }
 
+// etcp, addr, port
 static int lua_etcp_client_create_conn(lua_State *L) {
     etcp_cli_t *etcp = (etcp_cli_t *)lua_touserdata(L, -3);  // 取栈第一个参数
     if (!etcp) {
         SKT_LUA_RET_ERROR(L, "etcp is nil");
     }
     const char *addr = luaL_checkstring(L, 2);
+    if (!addr) {
+        SKT_LUA_RET_ERROR(L, "addr is nil");
+    }
+
     int port = luaL_checkinteger(L, 3);
     int fd = etcp_client_create_conn(etcp, (char *)addr, port, NULL);
     if (fd <= 0) {
