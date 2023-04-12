@@ -82,6 +82,8 @@ static void finish() {
         g_ctx->tun_fd = -1;
     }
 
+    // TODO: free etcp and skcp
+
     // if (g_ctx->etcp_cli) {
     //     etcp_free_client(g_ctx->etcp_cli);
     //     g_ctx->etcp_cli = NULL;
