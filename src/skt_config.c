@@ -245,7 +245,7 @@ skt_config_t *skt_init_conf(const char *conf_file) {
             SKT_CONF_ERROR(NULL);
         }
 
-        SKT_INIT_SKCP_CONF_LIST("skcp_server");
+        SKT_INIT_SKCP_CONF_LIST("skcp_servers");
         // lua_pop(L, 1);
         // lua_getfield(L, -1, "skcp_server");
         // if (!lua_istable(L, -1)) {
@@ -272,7 +272,7 @@ skt_config_t *skt_init_conf(const char *conf_file) {
         lua_pop(L, 1);
         SKT_LUA_GET_STR(conf->tun_mask, "tun_mask", str, len);
 
-        SKT_INIT_SKCP_CONF_LIST("skcp_server");
+        SKT_INIT_SKCP_CONF_LIST("skcp_servers");
         // lua_pop(L, 1);
         // lua_getfield(L, -1, "skcp_server");
         // if (!lua_istable(L, -1)) {

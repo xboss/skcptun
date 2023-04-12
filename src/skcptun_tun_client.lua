@@ -1,63 +1,122 @@
+package.path = package.path .. ";../src/?.lua;"
+
+-- local selector = require "skcptun_selector"
+local utils = require "skcptun_utils"
+local sp = require "skcptun_protocol"
+
+local DBG = utils.debug
+local ERR = utils.error
+
+local str_byte = string.byte
+local str_char = string.char
+local str_sub = string.sub
+local str_len = string.len
+local str_find = string.find
+
+local CMD_DATA = sp.cmd_data
+local CMD_PING = sp.cmd_ping
+local CMD_PONG = sp.cmd_pong
+
 local g_skcp = nil
 local g_cid = 0
+-- local g_conf = skt.conf
+local g_skcp_conf = skt.conf.skcp_conf_list[1]
+local g_tun_fd = 0;
 
-local g_etcp = nil
-local g_fd = 0
 
-skt.cb.on_init = function(loop)
-    print("lua mode: " .. skt.conf.mode)
-    print("lua skcp_conf_list len: " .. #skt.conf.skcp_conf_list)
-    print("lua skcp_conf_list[1].addr: " .. skt.conf.skcp_conf_list[1].addr)
+skt.cb.on_init = function(loop, tun_fd)
+    g_tun_fd = tun_fd
 
-    local err = nil
-    g_skcp, err = skt.api.skcp_init(skt.conf.skcp_conf_list[1].raw, loop, 2)
+    local err
+    g_skcp, err = skt.api.skcp_init(g_skcp_conf.raw, loop, 2)
     if not g_skcp then
-        print("skcp_init " .. err);
+        ERR("skcp_init ", err);
         return
     end
 
-    g_etcp, err = skt.api.etcp_server_init(skt.conf.etcp_serv_conf.raw, loop)
-    if not g_etcp then
-        print("etcp_server_init " .. err);
-        return
-    end
-
-    -- skt.api.skcp_free(g_skcp)
-
-    print("on_init ok")
+    DBG("on_init ok")
 end
 
 skt.cb.on_skcp_recv_cid = function(skcp, cid)
-    print("recv cid: " .. cid)
+    DBG("recv cid: " .. cid)
+    -- local udp_fd = skt.api.get_from_skcp(skcp, "fd")
+    -- selector.update(T_UP_CID, udp_fd, cid, 0)
     g_cid = cid
 end
 
 skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
-    print("on_skcp_recv_data cid: " .. cid .. " buf:" .. buf)
-    local rt, err = skt.api.etcp_server_send(g_etcp, g_fd, buf);
-    if not rt then
-        print("etcp_server_send " .. err)
+    -- DBG("on_skcp_recv_data cid:", cid, " buf:", buf)
+    local msg, err = sp.unpack(buf)
+    if not msg then
+        ERR("on_skcp_recv_data unpack", err)
         return
     end
-    print("on_skcp_recv_data rt: " .. rt)
+
+    -- TODO: auth ticket
+
+    local payload = msg.payload
+    if msg.cmd == CMD_DATA then
+        local rt = nil
+        rt, err = skt.api.tuntap_write(g_tun_fd, payload);
+        if not rt then
+            ERR("on_skcp_recv_data tuntap_write " .. err)
+            return
+        end
+        -- DBG("on_skcp_recv_data rt: " .. rt)
+        return
+    end
+    if msg.cmd == CMD_PONG then
+        -- pong
+        local snd_time = tonumber(payload)
+        if not snd_time then
+            ERR("send time is nil in pong")
+            return
+        end
+        local now = skt.api.get_ms()
+        -- DBG("rtt:", now - snd_time)
+        return
+    end
 end
 
 skt.cb.on_skcp_close = function(skcp, cid)
-    print("on_skcp_close cid: " .. cid)
+    ERR("on_skcp_close cid: " .. cid)
+    -- local udp_fd = skt.api.get_from_skcp(skcp, "fd")
+    -- selector.update(T_UP_CID, udp_fd, 0, 0)
     g_cid = 0
 end
 
-skt.cb.on_tun_read = function(buf)
-    print("on_tun_read in lua buf: " .. buf)
+skt.cb.on_beat = function()
+    if g_cid <= 0 then
+        skt.api.skcp_req_cid(g_skcp, g_skcp_conf.ticket)
+        DBG("skcp_req_cid by beat_cb", g_skcp_conf.ticket, g_skcp)
+        return
+    end
+
+    -- ping
+    local now = skt.api.get_ms()
+    local payload = "" .. now
+    -- DBG("------ on_beat payload", payload)
+    local raw = sp.pack(CMD_PING, payload, str_len(payload))
+    -- DBG("------ on_beat raw ", raw)
+    local rt, err = skt.api.skcp_send(g_skcp, g_cid, raw)
+    if not rt then
+        ERR("on_beat skcp_send ping ", err)
+        return
+    end
 end
 
-skt.cb.on_beat = function()
-    print("beat in lua file cid: " .. g_cid)
-    if g_cid == 0 then
-        local ok, err = skt.api.skcp_req_cid(g_skcp, skt.conf.skcp_conf_list[1].ticket)
-        if not ok then
-            print("skcp_req_cid " .. err);
-            return
-        end
+skt.cb.on_tun_read = function(buf)
+    -- DBG("on_tun_read in lua buf: ", buf)
+    if g_cid <= 0 then
+        -- ERR("on_tun_read g_cid error")
+        return
     end
+    local raw = sp.pack(CMD_DATA, buf, str_len(buf))
+    -- DBG("------ on_beat raw ", raw)
+    local rt, err = skt.api.skcp_send(g_skcp, g_cid, raw)
+    if not rt then
+        ERR("on_tun_read skcp_send", err)
+        return
+    end
+    -- DBG("on_tun_read rt", rt)
 end

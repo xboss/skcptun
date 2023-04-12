@@ -96,28 +96,6 @@ skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
             return
         end
 
-        -- local sep1 = str_find(payload, "\n", 1)
-        -- local sep2 = str_find(payload, "\n", 3)
-        -- if not sep1 or not sep2 then
-        --     ERR("on_skcp_recv_data payload error")
-        --     return
-        -- end
-        -- local sep1_idx = tonumber(sep1)
-        -- local sep2_idx = tonumber(sep2)
-        -- if sep2_idx - sep1_idx <= 1 then
-        --     ERR("on_skcp_recv_data payload error")
-        --     return
-        -- end
-        -- local tcp_fd = str_sub(payload, sep1_idx + 1, sep2_idx - 1)
-        -- if not tcp_fd then
-        --     ERR("on_skcp_recv_data tcp_fd error")
-        --     return
-        -- end
-        -- local data = str_sub(payload, sep2_idx + 1)
-        -- if not data then
-        --     ERR("on_skcp_recv_data data error")
-        --     return
-        -- end
         local rt = nil
         rt, err = skt.api.etcp_server_send(g_etcp, tcp_fd, data);
         if not rt then
@@ -139,13 +117,6 @@ skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
         selector.update(T_UP_RTT, udp_fd, 0, now - snd_time)
         return
     end
-
-    -- local rt, err = skt.api.etcp_server_send(g_etcp, g_fd, buf);
-    -- if not rt then
-    --     ERR("etcp_server_send " .. err)
-    --     return
-    -- end
-    -- DBG("on_skcp_recv_data rt: " .. rt)
 end
 
 skt.cb.on_skcp_close = function(skcp, cid)
@@ -222,15 +193,4 @@ skt.cb.on_beat = function()
         selector.update(T_UP_SND, udp_fd, 0, 0)
         -- DBG("on_beat skcp_send ping ok rt: " .. rt)
     end
-
-
-    -- TODO:
-    -- DBG("beat in lua file cid: " .. g_cid)
-    -- if g_cid == 0 then
-    --     local ok, err = skt.api.skcp_req_cid(g_skcp, skt.conf.skcp_conf_list[1].ticket)
-    --     if not ok then
-    --         ERR("skcp_req_cid " .. err);
-    --         return
-    --     end
-    -- end
 end

@@ -273,6 +273,20 @@ static int init_vpn_cli() {
     return utunfd;
 }
 
+static int init_vpn_serv() {
+    char dev_name[32] = {0};
+    int utunfd = skt_tuntap_open(dev_name, 32);
+
+    if (utunfd == -1) {
+        LOG_E("open tuntap error");
+        return -1;
+    }
+
+    skt_tuntap_setup(dev_name, g_ctx->conf->tun_ip, g_ctx->conf->tun_mask);
+
+    return utunfd;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  callbacks                                 */
 /* -------------------------------------------------------------------------- */
@@ -437,6 +451,14 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
         return;
     }
 
+    // #include <netinet/ip.h>
+    //     struct ip *ip = (struct ip *)buf;
+    //     char src_ip[20] = {0};
+    //     char dest_ip[20] = {0};
+    //     inet_ntop(AF_INET, &(ip->ip_src.s_addr), src_ip, sizeof(src_ip));
+    //     inet_ntop(AF_INET, &(ip->ip_dst.s_addr), dest_ip, sizeof(dest_ip));
+    //     LOG_I("tun_read_cb src_ip: %s dest_ip: %s len: %d", src_ip, dest_ip, len);
+
     SKT_LUA_PUSH_CALLBACK_FUN("on_tun_read") return;
 
     lua_pushlstring(g_ctx->L, buf, len);    // 自动弹出
@@ -451,8 +473,14 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
 
 static int on_init() {
     SKT_LUA_PUSH_CALLBACK_FUN("on_init") return -1;
+    int arg_num = 1;
     lua_pushlightuserdata(g_ctx->L, g_ctx->loop);  // 自动弹出
-    int rt = lua_pcall(g_ctx->L, 1, 0, 0);         // 调用函数，调用完成以后，会将返回值压入栈中
+    if (g_ctx->tun_fd) {
+        lua_pushinteger(g_ctx->L, g_ctx->tun_fd);  // 自动弹出
+        arg_num++;
+    }
+
+    int rt = lua_pcall(g_ctx->L, arg_num, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
     if (rt) {
         LOG_E("%s, when call on_init in lua", lua_tostring(g_ctx->L, -1));
         lua_pop(g_ctx->L, 2);
@@ -546,6 +574,10 @@ static int start_tun_client() {
     ev_io_init(&r_watcher, on_tun_read, g_ctx->tun_fd, EV_READ);
     ev_io_start(g_ctx->loop, &r_watcher);
 
+    if (on_init() != 0) {
+        return -1;
+    }
+
     LOG_D("tun client loop run");
     ev_run(g_ctx->loop, 0);
     LOG_D("loop end");
@@ -564,7 +596,7 @@ static int start_tun_server() {
         g_ctx->conf->skcp_conf_list[i]->on_recv_data = on_skcp_recv_data;
     }
 
-    g_ctx->tun_fd = init_vpn_cli();
+    g_ctx->tun_fd = init_vpn_serv();
     if (g_ctx->tun_fd < 0) {
         return -1;
     }
@@ -573,6 +605,14 @@ static int start_tun_server() {
     struct ev_io r_watcher;
     ev_io_init(&r_watcher, on_tun_read, g_ctx->tun_fd, EV_READ);
     ev_io_start(g_ctx->loop, &r_watcher);
+
+    if (on_init() != 0) {
+        return -1;
+    }
+
+    LOG_D("tun server loop run");
+    ev_run(g_ctx->loop, 0);
+    LOG_D("loop end");
 
     return 0;
 }

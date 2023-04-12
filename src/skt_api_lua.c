@@ -2,6 +2,7 @@
 
 #include <arpa/inet.h>
 
+#include "skt_tuntap.h"
 #include "skt_utils.h"
 
 #define SKT_LUA_RET_ERROR(_V_L, _V_ERR_MSG) \
@@ -303,6 +304,26 @@ static int lua_etcp_client_get_conn(lua_State *L) {
     return 1;
 }
 
+/* ------------------------------- tuntap api ------------------------------- */
+
+// fd, buf
+static int lua_tuntap_write(lua_State *L) {
+    int fd = luaL_checkinteger(L, 1);
+
+    size_t len = 0;
+    const char *buf = lua_tolstring(L, -1, &len);
+    if (!buf || len == 0) {
+        SKT_LUA_RET_ERROR(L, "buf is nil");
+    }
+    int rt = skt_tuntap_write(fd, (char *)buf, len);
+    if (rt <= 0) {
+        SKT_LUA_RET_ERROR(L, "tcp send error");
+    }
+
+    lua_pushinteger(L, rt);  // 返回值入栈
+    return 1;
+}
+
 /* -------------------------------- other api ------------------------------- */
 static int lua_get_ms(lua_State *L) {
     uint64_t t = getmillisecond();
@@ -515,6 +536,9 @@ int skt_reg_api_to_lua(lua_State *L) {
     SKT_LUA_REG_FUN("etcp_client_create_conn", lua_etcp_client_create_conn);
     SKT_LUA_REG_FUN("etcp_client_close_conn", lua_etcp_client_close_conn);
     SKT_LUA_REG_FUN("etcp_client_get_conn", lua_etcp_client_get_conn);
+
+    // tuntap api
+    SKT_LUA_REG_FUN("tuntap_write", lua_tuntap_write);
 
     // other api
     SKT_LUA_REG_FUN("get_from_skcp", lua_get_from_skcp);
