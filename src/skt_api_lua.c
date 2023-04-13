@@ -553,8 +553,6 @@ int skt_reg_api_to_lua(lua_State *L) {
     SKT_LUA_REG_FUN("blshift", lua_blshift);
     SKT_LUA_REG_FUN("brshift", lua_brshift);
 
-    // TODO: add get item from userdata
-
     lua_pop(L, 2);  // skt & api table 出栈
 
     return 0;

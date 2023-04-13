@@ -43,20 +43,6 @@ skt.cb.on_init = function(loop)
         return
     end
 
-    ---------------------------------- test ----------------------------------
-
-    -- local payload = "abcdefg"
-    -- local buf = sp.pack(CMD_PING, payload, #payload)
-    -- DBG("buf", buf)
-
-    -- DBG("============")
-    -- local msg, err = sp.unpack(buf)
-    -- if not msg then
-    --     ERR(err)
-    --     return
-    -- end
-    -- local s = sp.dump_table(msg)
-
     DBG("on_init ok")
 end
 
