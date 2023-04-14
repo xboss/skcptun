@@ -174,7 +174,7 @@ skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
             ERR("on_beat skcp_send pong " .. err)
             return
         end
-        dump_gt("ping>>>>>>>>>>>")
+        -- dump_gt("ping>>>>>>>>>>>")
         return
     end
 end
