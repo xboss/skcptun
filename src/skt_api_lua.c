@@ -455,33 +455,17 @@ static int lua_lookup_dns(lua_State *L) {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(struct sockaddr_in));
     memcpy(&addr.sin_addr, hptr->h_addr_list[0], hptr->h_length);
+    // uint64_t start = getmillisecond();
     const char *rt = inet_ntop(hptr->h_addrtype, &addr.sin_addr, str, sizeof(str));
     if (!rt) {
         SKT_LUA_RET_ERROR(L, "lookup dns error");
     }
+    // uint64_t end = getmillisecond();
+    // LOG_I("lookup_dns time: %llu domain: %s\n", end - start, domain);
 
     lua_pushstring(L, str);
     return 1;
 }
-
-// static int lua_get_conf(lua_State *L) {
-//     skt_config_t *conf = (skt_config_t *)lua_touserdata(L, 1);  // 取栈第一个参数
-//     if (!conf) {
-//         SKT_LUA_RET_ERROR(L, "conf is nil");
-//     }
-
-//     const char *name = luaL_checkstring(L, 2);
-//     if (!name) {
-//         SKT_LUA_RET_ERROR(L, "name is nil");
-//     }
-
-//     if (strcmp(name, "skcp_conf_list_cnt")) {
-//         /* code */
-//     }
-
-//     lua_pushstring(L, "ok");
-//     return 1;
-// }
 
 int skt_reg_api_to_lua(lua_State *L) {
     lua_getglobal(L, "skt");

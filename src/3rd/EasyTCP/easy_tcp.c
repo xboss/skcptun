@@ -279,7 +279,7 @@ static void serv_accept_cb(struct ev_loop *loop, struct ev_io *watcher, int reve
         return;
     }
 
-    _LOG("accept fd:%d", conn->fd);
+    // _LOG("accept fd:%d", conn->fd);
 }
 
 /* ------------------------------- public api ------------------------------- */
@@ -402,7 +402,7 @@ void etcp_server_close_conn(etcp_serv_t *serv, int fd, int silent) {
         _LOG("etcp_server_close_conn conn is NULL");
         return;
     }
-    _LOG("etcp_server_close_conn fd:%d", conn->fd);
+    // _LOG("etcp_server_close_conn fd:%d", conn->fd);
 
     if (!silent) {
         serv->conf->on_close(fd);
@@ -519,12 +519,12 @@ static int client_connect(struct sockaddr_in servaddr, long recv_timeout, long s
             return -1;
         } else {
             // TODO:  连接没有立即成功，需进行二次判断
-            _LOG("client_connect waiting fd:%d errno:%s ", fd, strerror(errno));
+            // _LOG("client_connect waiting fd:%d errno:%s ", fd, strerror(errno));
             // pending
         }
     }
 
-    _LOG("client_connect ok fd: %d", fd);
+    // _LOG("client_connect ok fd: %d", fd);
 
     return fd;
 }
@@ -670,7 +670,7 @@ int etcp_client_create_conn(etcp_cli_t *cli, char *addr, uint16_t port, void *us
         return -1;
     }
 
-    _LOG("etcp_client_create_conn connect ok addr: %s, port: %d", addr, port);
+    // _LOG("etcp_client_create_conn connect ok addr: %s, port: %d", addr, port);
 
     uint64_t now = getmillisecond();
     etcp_cli_conn_t *conn = _ALLOC(etcp_cli_conn_t, sizeof(etcp_cli_conn_t));
@@ -702,7 +702,7 @@ void etcp_client_close_conn(etcp_cli_t *cli, int fd, int silent) {
         _LOG("etcp_client_close_conn conn is NULL");
         return;
     }
-    _LOG("etcp_client_close_conn fd:%d", conn->fd);
+    // _LOG("etcp_client_close_conn fd:%d", conn->fd);
 
     if (!silent) {
         cli->conf->on_close(fd);
