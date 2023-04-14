@@ -10,6 +10,14 @@ utils.debug = function(...)
     print("DEBUG:", ...)
 end
 
+utils.info = function(...)
+    print("INFO:", ...)
+end
+
+utils.warn = function(...)
+    print("WARN:", ...)
+end
+
 utils.error = function(...)
     print("ERROR:", ...)
 end

@@ -1,6 +1,7 @@
 #include "skt_api_lua.h"
 
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include "skt_tuntap.h"
 #include "skt_utils.h"
@@ -204,6 +205,17 @@ static int lua_etcp_server_get_conn(lua_State *L) {
     return 1;
 }
 
+static int lua_etcp_server_close_conn(lua_State *L) {
+    etcp_serv_t *etcp = (etcp_serv_t *)lua_touserdata(L, -3);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    int fd = luaL_checkinteger(L, 2);
+    int silent = luaL_checkinteger(L, 3);
+    etcp_server_close_conn(etcp, fd, silent);
+    return 0;
+}
+
 /* ----------------------------- etcp client api ---------------------------- */
 
 static int lua_etcp_client_init(lua_State *L) {
@@ -348,18 +360,6 @@ static int check_endian() {
 static int lua_hton32(lua_State *L) {
     int x = luaL_checkinteger(L, 1);
     int y = htonl(x);
-
-    // char s[2] = {0};
-    // for (size_t i = 0; i < 4; i++) {
-    //     s[0] = *((char *)(&y) + i);
-    //     lua_pushstring(L, s);
-    // }
-
-    // for (size_t i = 3; i >= 0; i--) {
-    //     s[0] = (char)((y >> (i * 8)) & 0xFF);
-    //     lua_pushstring(L, s);
-    // }
-
     lua_pushinteger(L, y);
     return 1;
 }
@@ -367,13 +367,6 @@ static int lua_hton32(lua_State *L) {
 static int lua_ntoh32(lua_State *L) {
     int x = luaL_checkinteger(L, 1);
     int y = ntohl(x);
-
-    // char s[2] = {0};
-    // for (size_t i = 3; i >= 0; i--) {
-    //     s[0] = (char)((y >> (i * 8)) & 0xFF);
-    //     lua_pushstring(L, s);
-    // }
-
     lua_pushinteger(L, y);
     return 1;
 }
@@ -395,12 +388,6 @@ static int lua_ntoh32(lua_State *L) {
 static int lua_band(lua_State *L) {
     int a = luaL_checkinteger(L, 1);
     int b = luaL_checkinteger(L, 2);
-
-    // char s[2] = {0};
-    // s[0] = (char)(0xff & (a & b));
-    // lua_pushstring(L, s);
-
-    // char c = (char)(0xff & (a & b));
     lua_pushinteger(L, a & b);
 
     return 1;
@@ -408,49 +395,24 @@ static int lua_band(lua_State *L) {
 static int lua_bor(lua_State *L) {
     int a = luaL_checkinteger(L, 1);
     int b = luaL_checkinteger(L, 2);
-
-    // char s[2] = {0};
-    // s[0] = (char)(0xff & (a | b));
-    // lua_pushstring(L, s);
-
-    // char c = (char)(0xff & (a | b));
     lua_pushinteger(L, a | b);
     return 1;
 }
 static int lua_bxor(lua_State *L) {
     int a = luaL_checkinteger(L, 1);
     int b = luaL_checkinteger(L, 2);
-
-    // char s[2] = {0};
-    // s[0] = (char)(0xff & (a ^ b));
-    // lua_pushstring(L, s);
-
-    // char c = (char)(0xff & (a ^ b));
     lua_pushinteger(L, a ^ b);
     return 1;
 }
 static int lua_blshift(lua_State *L) {
     int v = luaL_checkinteger(L, 1);
     int n = luaL_checkinteger(L, 2);
-
-    // char s[2] = {0};
-    // s[0] = (char)((0xff & v) << n);
-    // lua_pushstring(L, s);
-
-    // char c = (char)((0xff & v) << n);
-    // char c = (char)(v << n);
     lua_pushinteger(L, v << n);
     return 1;
 }
 static int lua_brshift(lua_State *L) {
     int v = luaL_checkinteger(L, 1);
     int n = luaL_checkinteger(L, 2);
-
-    // char s[2] = {0};
-    // s[0] = (char)((0xff & v) >> n);
-    // lua_pushstring(L, s);
-
-    // char c = (char)((0xff & v) >> n);
     lua_pushinteger(L, v >> n);
     return 1;
 }
@@ -475,6 +437,31 @@ static int lua_get_from_skcp(lua_State *L) {
     lua_pushnil(L);
     lua_pushstring(L, "name does not exist");
     return 2;
+}
+
+static int lua_lookup_dns(lua_State *L) {
+    const char *domain = luaL_checkstring(L, 1);
+    if (!domain) {
+        SKT_LUA_RET_ERROR(L, "domain is nil when lookup dns");
+    }
+    struct hostent *hptr = gethostbyname(domain);
+    if (hptr == NULL) {
+        SKT_LUA_RET_ERROR(L, hstrerror(h_errno));
+    }
+    if (hptr->h_addr_list[0] == NULL || hptr->h_length <= 0) {
+        SKT_LUA_RET_ERROR(L, "lookup dns error");
+    }
+    char str[32] = {0};
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(struct sockaddr_in));
+    memcpy(&addr.sin_addr, hptr->h_addr_list[0], hptr->h_length);
+    const char *rt = inet_ntop(hptr->h_addrtype, &addr.sin_addr, str, sizeof(str));
+    if (!rt) {
+        SKT_LUA_RET_ERROR(L, "lookup dns error");
+    }
+
+    lua_pushstring(L, str);
+    return 1;
 }
 
 // static int lua_get_conf(lua_State *L) {
@@ -528,6 +515,7 @@ int skt_reg_api_to_lua(lua_State *L) {
     SKT_LUA_REG_FUN("etcp_server_free", lua_etcp_server_free);
     SKT_LUA_REG_FUN("etcp_server_send", lua_etcp_server_send);
     SKT_LUA_REG_FUN("etcp_server_get_conn", lua_etcp_server_get_conn);
+    SKT_LUA_REG_FUN("etcp_server_close_conn", lua_etcp_server_close_conn);
 
     // etcp server api
     SKT_LUA_REG_FUN("etcp_client_init", lua_etcp_client_init);
@@ -552,6 +540,7 @@ int skt_reg_api_to_lua(lua_State *L) {
     SKT_LUA_REG_FUN("bxor", lua_bxor);
     SKT_LUA_REG_FUN("blshift", lua_blshift);
     SKT_LUA_REG_FUN("brshift", lua_brshift);
+    SKT_LUA_REG_FUN("lookup_dns", lua_lookup_dns);
 
     lua_pop(L, 2);  // skt & api table 出栈
 
