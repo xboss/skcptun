@@ -218,10 +218,19 @@ end
 skt.cb.on_tcp_close = function(fd)
     -- DBG("on_tcp_close in lua fd: " .. fd)
     local item = g_tcp_skcp_map[fd]
-    if not item then
+    if item and item.ct_fd ~= nil then
+        local payload = "C\n" .. item.ct_fd
+        local buf = sp.pack(CMD_DATA, payload, str_len(payload))
+        local rt, err = skt.api.skcp_send(item.skcp, item.cid, buf)
+        if not rt then
+            ERR("on_tcp_close skcp_send " .. err)
+            return
+        end
+    else
         ERR("on_tcp_close invalid fd", fd)
         return
     end
+
     g_ct_st_fd_map[item.udp_fd .. "_" .. item.ct_fd] = nil
     g_cid_st_fd_map[item.udp_fd .. "_" .. item.cid][fd] = nil
     g_cid_st_fd_map[item.udp_fd .. "_" .. item.cid].size = g_cid_st_fd_map[item.udp_fd .. "_" .. item.cid].size - 1

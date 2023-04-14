@@ -336,7 +336,7 @@ etcp_serv_t *etcp_init_server(etcp_serv_conf_t *conf, struct ev_loop *loop, void
     serv->accept_watcher->data = serv;
     ev_io_start(serv->loop, serv->accept_watcher);
 
-    _LOG("tcp server start ok fd:%d, addr:%s, port:%u", serv->serv_fd, serv->conf->serv_addr, serv->conf->serv_port);
+    // _LOG("tcp server start ok fd:%d, addr:%s, port:%u", serv->serv_fd, serv->conf->serv_addr, serv->conf->serv_port);
     return serv;
 }
 
@@ -399,7 +399,7 @@ int etcp_server_send(etcp_serv_t *serv, int fd, char *buf, size_t len) {
 void etcp_server_close_conn(etcp_serv_t *serv, int fd, int silent) {
     etcp_serv_conn_t *conn = find_serv_conn_ht(serv, fd);
     if (!conn) {
-        _LOG("etcp_server_close_conn conn is NULL");
+        // _LOG("etcp_server_close_conn conn is NULL");
         return;
     }
     // _LOG("etcp_server_close_conn fd:%d", conn->fd);
@@ -570,7 +570,7 @@ static void cli_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
     if (rt == 0) {
         // tcp close
-        _LOG("read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
+        // _LOG("read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         etcp_client_close_conn(cli, watcher->fd, 0);
         return;

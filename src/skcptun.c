@@ -330,7 +330,7 @@ static void on_tcp_close(int fd) {
     return;
 }
 static void on_skcp_recv_cid(skcp_t *skcp, uint32_t cid) {
-    LOG_I("on_skcp_recv_cid cid: %u", cid);
+    // LOG_I("on_skcp_recv_cid cid: %u", cid);
 
     SKT_LUA_PUSH_CALLBACK_FUN("on_skcp_recv_cid") return;
 

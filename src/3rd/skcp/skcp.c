@@ -314,7 +314,7 @@ static int init_cli_network(skcp_t *skcp) {
     skcp->servaddr.sin_port = htons(skcp->conf->port);
     skcp->servaddr.sin_addr.s_addr = inet_addr(skcp->conf->addr);
 
-    _LOG("kcp client start ok. fd: %d addr: %s port: %u", skcp->fd, skcp->conf->addr, skcp->conf->port);
+    // _LOG("kcp client start ok. fd: %d addr: %s port: %u", skcp->fd, skcp->conf->addr, skcp->conf->port);
 
     return 0;
 }
@@ -347,7 +347,7 @@ static int init_serv_network(skcp_t *skcp) {
         return -1;
     }
 
-    _LOG("kcp server start ok. fd: %d addr: %s port: %u", skcp->fd, skcp->conf->addr, skcp->conf->port);
+    // _LOG("kcp server start ok. fd: %d addr: %s port: %u", skcp->fd, skcp->conf->addr, skcp->conf->port);
 
     return 0;
 }
@@ -436,7 +436,7 @@ static void conn_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
     uint64_t now = getmillisecond();
     // TODO:
     if (now - conn->last_r_tm > conn->skcp->conf->r_keepalive * 1000) {
-        _LOG("timeout cid: %u", conn->id);
+        // _LOG("timeout cid: %u", conn->id);
         skcp_close_conn(conn->skcp, conn->id);
         return;
     }
@@ -547,7 +547,7 @@ static void on_req_cid_cmd(skcp_t *skcp, skcp_cmd_t *cmd, struct sockaddr_in des
 
     // send result ok
     snprintf(ack, ack_len, "%d\n%u\n%s", 0, conn->id, conn->iv);
-    _LOG("on_req_cid_cmd ack: %s", ack);
+    // _LOG("on_req_cid_cmd ack: %s", ack);
 
 send_req_cid_ack:
     buf = encode_cmd(0, SKCP_CMD_REQ_CID_ACK, ack, strlen(ack), &out_len);
@@ -594,9 +594,9 @@ static void on_req_cid_ack_cmd(skcp_t *skcp, skcp_cmd_t *cmd) {
     }
     memcpy(conn->iv, p + 1, cmd->payload_len - i - 2);
     conn->status = SKCP_CONN_ST_ON;
-    // TODO: set ticket, to the user to resolv
+    // TODO: set ticket, to the user to resolve
 
-    _LOG("on_req_cid_ack_cmd cid: %d iv: %s", conn->id, conn->iv);
+    // _LOG("on_req_cid_ack_cmd cid: %d iv: %s", conn->id, conn->iv);
 
     skcp->conf->on_recv_cid(skcp, conn->id);
 }

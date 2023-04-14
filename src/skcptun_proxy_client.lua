@@ -76,19 +76,24 @@ skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
 
         local tcp_fd = pm.tcp_fd
         local cmd = pm.cmd
-        local data = pm.data
-        if not data then
-            ERR("on_skcp_recv_data payload error")
-            return
-        end
+        if cmd == "C" then
+            -- close tcp connection
+            skt.api.etcp_server_close_conn(g_etcp, tcp_fd, 1)
+        elseif cmd == "D" then
+            local data = pm.data
+            if not data then
+                ERR("on_skcp_recv_data payload error")
+                return
+            end
 
-        local rt = nil
-        rt, err = skt.api.etcp_server_send(g_etcp, tcp_fd, data);
-        if not rt then
-            ERR("etcp_server_send " .. err)
-            return
+            local rt = nil
+            rt, err = skt.api.etcp_server_send(g_etcp, tcp_fd, data);
+            if not rt then
+                ERR("etcp_server_send " .. err)
+                return
+            end
+            -- DBG("on_skcp_recv_data rt: " .. rt)
         end
-        -- DBG("on_skcp_recv_data rt: " .. rt)
         return
     end
     if msg.cmd == CMD_PONG then
