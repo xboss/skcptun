@@ -29,13 +29,6 @@ local sp = {
 sp.pack = function(cmd, payload, payload_len, flg, ver)
     flg = flg or 0x00
     ver = ver or VERSION
-    -- print("pack payload_len:", payload_len)
-    -- payload_len = skt.api.hton32(payload_len)
-    -- local s1, s2, s3, s4 = skt.api.hton32(payload_len)
-    -- print("pack str payload_len:", s1, s2, s3, s4)
-
-    -- return NAME ..
-    --     str_char(ver) .. str_char(flg) .. s1 .. s2 .. s3 .. s4 .. payload
     return NAME ..
         str_char(ver) .. str_char(flg) .. str_char(cmd) .. str_char(skt.api.band(skt.api.brshift(payload_len, 24), 0xff))
         .. str_char(skt.api.band(skt.api.brshift(payload_len, 16), 0xff))
@@ -60,12 +53,9 @@ sp.unpack = function(buf)
     end
 
     local len1, len2, len3, len4 = str_byte(buf, 6, 9)
-    -- print("--- unpack", len1, len2, len3, len4)
     -- 计算剩余长度
     local payload_len = skt.api.bor(skt.api.blshift(len1, 24),
         skt.api.bor(skt.api.blshift(len2, 16), skt.api.bor(skt.api.blshift(len3, 8), len4)))
-    -- payload_len = skt.api.ntoh32(payload_len)
-    -- print("unpack payload_len:", payload_len)
     local payload = nil
     if payload_len > 0 then
         payload = str_sub(buf, 10, 10 + payload_len)

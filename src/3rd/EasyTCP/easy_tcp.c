@@ -178,7 +178,7 @@ static void serv_timeout_cb(struct ev_loop *loop, struct ev_timer *watcher, int 
     if ((now - conn->last_r_tm) >= serv->conf->r_keepalive * 1000 ||
         (now - conn->last_w_tm) >= serv->conf->w_keepalive * 1000) {
         // 超时
-        _LOG("timeout_cb timeout free fd:%d", conn->fd);
+        // _LOG("timeout_cb timeout free fd:%d", conn->fd);
         etcp_server_close_conn(serv, conn->fd, 0);
         return;
     }
@@ -198,18 +198,18 @@ static void serv_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revent
 
     if (rt == 0) {
         // tcp close
-        // _LOG("read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
+        // _LOG("read_cb tcp close fd:%d, %s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         etcp_server_close_conn(serv, watcher->fd, 0);
         return;
     } else if (rt == -1) {
         // pending
-        _LOG("read_cb tcp pending fd:%d, errno:%s", watcher->fd, strerror(errno));
+        _LOG("read_cb tcp pending fd:%d, %s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         return;
     } else if (rt == -2) {
         // error
-        _LOG("read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
+        _LOG("read_cb tcp error fd:%d, %s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         etcp_server_close_conn(serv, watcher->fd, 0);
         return;
@@ -379,16 +379,16 @@ int etcp_server_send(etcp_serv_t *serv, int fd, char *buf, size_t len) {
     ssize_t rt = tcp_write(fd, buf, len);
     if (rt == 0) {
         // tcp close
-        _LOG("etcp_server_send tcp close fd:%d, errno:%s", fd, strerror(errno));
+        _LOG("etcp_server_send tcp close fd:%d, %s", fd, strerror(errno));
         etcp_server_close_conn(serv, fd, 0);
         return 0;
     } else if (rt == -1) {
         // pending
-        _LOG("etcp_server_send tcp pending fd:%d, errno:%s", fd, strerror(errno));
+        _LOG("etcp_server_send tcp pending fd:%d, %s", fd, strerror(errno));
         return 0;
     } else if (rt == -2) {
         // error
-        _LOG("etcp_server_send tcp error fd:%d, errno:%s", fd, strerror(errno));
+        _LOG("etcp_server_send tcp error fd:%d, %s", fd, strerror(errno));
         etcp_server_close_conn(serv, fd, 0);
         return 0;
     }
@@ -514,12 +514,12 @@ static int client_connect(struct sockaddr_in servaddr, long recv_timeout, long s
     if (0 != rt) {
         if (errno != EINPROGRESS) {
             // 连接失败
-            _LOG("client_connect error fd:%d errno:%s ", fd, strerror(errno));
+            _LOG("client_connect error fd:%d %s ", fd, strerror(errno));
             // error
             return -1;
         } else {
             // TODO:  连接没有立即成功，需进行二次判断
-            // _LOG("client_connect waiting fd:%d errno:%s ", fd, strerror(errno));
+            // _LOG("client_connect waiting fd:%d %s ", fd, strerror(errno));
             // pending
         }
     }
@@ -539,16 +539,16 @@ static int cli_send(etcp_cli_conn_t *conn, char *buf, size_t len) {
     ssize_t rt = tcp_write(fd, buf, len);
     if (rt == 0) {
         // tcp close
-        _LOG("cli_send tcp close fd:%d, errno:%s", fd, strerror(errno));
+        _LOG("cli_send tcp close fd:%d, %s", fd, strerror(errno));
         etcp_client_close_conn(cli, fd, 0);
         return 0;
     } else if (rt == -1) {
         // pending
-        _LOG("cli_send tcp pending fd:%d, errno:%s", fd, strerror(errno));
+        _LOG("cli_send tcp pending fd:%d, %s", fd, strerror(errno));
         return 0;
     } else if (rt == -2) {
         // error
-        _LOG("cli_send tcp error fd:%d, errno:%s", fd, strerror(errno));
+        _LOG("cli_send tcp error fd:%d, %s", fd, strerror(errno));
         etcp_client_close_conn(cli, fd, 0);
         return 0;
     }
@@ -570,18 +570,18 @@ static void cli_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
     if (rt == 0) {
         // tcp close
-        // _LOG("read_cb tcp close fd:%d, errno:%s", watcher->fd, strerror(errno));
+        // _LOG("read_cb tcp close fd:%d, %s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         etcp_client_close_conn(cli, watcher->fd, 0);
         return;
     } else if (rt == -1) {
         // pending
-        _LOG("read_cb tcp pending fd:%d, errno:%s", watcher->fd, strerror(errno));
+        _LOG("read_cb tcp pending fd:%d, %s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         return;
     } else if (rt == -2) {
         // error
-        _LOG("read_cb tcp error fd:%d, errno:%s", watcher->fd, strerror(errno));
+        _LOG("read_cb tcp error fd:%d, %s", watcher->fd, strerror(errno));
         _FREEIF(buf);
         etcp_client_close_conn(cli, watcher->fd, 0);
         return;
@@ -606,7 +606,7 @@ static void cli_write_cb(struct ev_loop *loop, struct ev_io *watcher, int revent
         DL_FOREACH_SAFE(conn->send_buf, item, sbtmp) {
             int rt = cli_send(conn, item->buf, item->len);
             if (rt <= 0) {
-                _LOG("write_cb write error fd:%d rt:%d errno:%d %s", conn->fd, rt, errno, strerror(errno));
+                _LOG("write_cb write error fd:%d rt:%d %d %s", conn->fd, rt, errno, strerror(errno));
                 return;
             }
             DL_DELETE(conn->send_buf, item);

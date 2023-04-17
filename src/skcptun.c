@@ -202,12 +202,12 @@ static int lua_reg_config(lua_State *L) {
         lua_gettable(L, -2);                 // skt.conf.etcp_cli_conf table 压栈
         lua_pushlightuserdata(L, g_ctx->conf->etcp_cli_conf);
         lua_setfield(L, -2, "raw");
-        if (g_ctx->conf->tcp_target_addr) {
-            lua_pushstring(L, g_ctx->conf->tcp_target_addr);  // value
-            lua_setfield(L, -2, "tcp_target_addr");
-        }
-        lua_pushinteger(L, g_ctx->conf->tcp_target_port);  // value
-        lua_setfield(L, -2, "tcp_target_port");
+        // if (g_ctx->conf->tcp_target_addr) {
+        //     lua_pushstring(L, g_ctx->conf->tcp_target_addr);  // value
+        //     lua_setfield(L, -2, "tcp_target_addr");
+        // }
+        // lua_pushinteger(L, g_ctx->conf->tcp_target_port);  // value
+        // lua_setfield(L, -2, "tcp_target_port");
         lua_pop(L, 1);  // pop etcp_cli_conf
     }
 
@@ -415,17 +415,6 @@ static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     }
 
     SKT_LUA_PUSH_CALLBACK_FUN("on_beat") return;
-    // lua_getfield(g_ctx->L, -1, "cb");  // skt.cb table 压栈
-    // if (!lua_istable(g_ctx->L, -1)) {
-    //     LOG_E("skt.cb is not table");
-    //     return;
-    // }
-
-    // lua_getfield(g_ctx->L, -1, "on_beat");  // skt.cb.on_beat function 压栈， 会被lua_pcall自动弹出
-    // if (!lua_isfunction(g_ctx->L, -1)) {
-    //     LOG_E("skt.cb.on_beat is not function");
-    //     return;
-    // }
 
     int rt = lua_pcall(g_ctx->L, 0, 0, 0);  // 调用函数，调用完成以后，会将返回值压入栈中
     if (rt) {
@@ -516,10 +505,7 @@ static int start_proxy_client() {
     ev_timer_set(&bt_watcher, 0, 1);
     ev_timer_start(g_ctx->loop, &bt_watcher);
 
-    LOG_D("proxy client loop run");
     ev_run(g_ctx->loop, 0);
-    LOG_D("loop end");
-
     return 0;
 }
 
@@ -541,10 +527,7 @@ static int start_proxy_server() {
         return -1;
     }
 
-    LOG_D("proxy server loop run");
     ev_run(g_ctx->loop, 0);
-    LOG_D("loop end");
-
     return 0;
 }
 
@@ -578,10 +561,7 @@ static int start_tun_client() {
         return -1;
     }
 
-    LOG_D("tun client loop run");
     ev_run(g_ctx->loop, 0);
-    LOG_D("loop end");
-
     return 0;
 }
 
@@ -610,10 +590,7 @@ static int start_tun_server() {
         return -1;
     }
 
-    LOG_D("tun server loop run");
     ev_run(g_ctx->loop, 0);
-    LOG_D("loop end");
-
     return 0;
 }
 
@@ -632,7 +609,7 @@ int main(int argc, char *argv[]) {
     char *lua_file = NULL;
 
     const char *conf_file = argv[1];
-    LOG_I("config file:%s", conf_file);
+    LOG_I("load config file:%s", conf_file);
     // read config file
     skt_config_t *conf = skt_init_conf(conf_file);
     if (!conf) {
