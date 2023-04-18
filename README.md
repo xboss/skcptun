@@ -1,8 +1,9 @@
 # skcptun
-skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWRT and Linux and MacOS, implemented in c language and Lua.
+skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWRT and Linux and MacOS, implemented in C language and Lua.
 
 ## 状态
 * “又不是不能用”
+* 目前是加入了Lua的版本，[纯C版本](https://github.com/xboss/skcptun/tree/pure_c_version)不在维护了。
 
 ## 特性
 * 基于可靠UDP的加密隧道，加密后的传输数据没有任何特征。
