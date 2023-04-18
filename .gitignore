@@ -8,6 +8,7 @@ out
 !skcptun_server_sample.conf
 !skcptun_sample.conf
 test/*
+src/ss5*
 
 #cmake files
 build/*
