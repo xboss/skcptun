@@ -26,6 +26,11 @@ cd build
 cmake ..
 make
 ```
+如果是直接clone，需要更新子模块:
+```
+git submodule update --init --recursive
+```
+
 ## 环境配置
 ### TCP模式
 * 配置好config文件，启动即可使用
