@@ -28,6 +28,7 @@ add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRC
 target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun ev)
+target_link_libraries(skcptun m)
 # target_link_libraries(skcptun luajit)
 
 # ############# static #############
