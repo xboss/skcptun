@@ -9,14 +9,14 @@ message("project dir: ${PROJECT_SOURCE_DIR}")
 link_directories("/usr/local/lib")
 
 include_directories(${PROJECT_SOURCE_DIR}/src/)
-include_directories(${PROJECT_SOURCE_DIR}/src/3rd/skcp)
+include_directories(${PROJECT_SOURCE_DIR}/src/3rd/skcp/src)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/uthash)
-include_directories(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP)
+include_directories(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP/src)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/src DIR_SRCS)
-aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/skcp DIR_SRCS_SKCP)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/skcp/src DIR_SRCS_SKCP)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/uthash DIR_SRCS_UTHASH)
-aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP DIR_SRCS_EASYTCP)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP/src DIR_SRCS_EASYTCP)
 
 # ############# main #############
 add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
