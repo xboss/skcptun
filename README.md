@@ -16,7 +16,7 @@ skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWR
 ## 安装
 运行环境：Linux，MacOS
 
-依赖库：[OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#installing-openssl)，[libev](https://github.com/enki/libev)，[luajit](https://github.com/openresty/luajit2)
+依赖库：[OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#installing-openssl)，[libev](https://github.com/enki/libev)
 
 下载源码并解压后:
 ```
