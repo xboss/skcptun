@@ -12,18 +12,23 @@ include_directories(${PROJECT_SOURCE_DIR}/src/)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/skcp/src)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/uthash)
 include_directories(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP/src)
+include_directories(${PROJECT_SOURCE_DIR}/src/3rd/lua)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/src DIR_SRCS)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/skcp/src DIR_SRCS_SKCP)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/uthash DIR_SRCS_UTHASH)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/EasyTCP/src DIR_SRCS_EASYTCP)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/lua DIR_SRCS_LUA)
+
+list(REMOVE_ITEM DIR_SRCS_LUA ${PROJECT_SOURCE_DIR}/src/3rd/lua/lua.c)
+list(REMOVE_ITEM DIR_SRCS_LUA ${PROJECT_SOURCE_DIR}/src/3rd/lua/onelua.c)
 
 # ############# main #############
-add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
+add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
 target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun ev)
-target_link_libraries(skcptun luajit)
+# target_link_libraries(skcptun luajit)
 
 # ############# static #############
 # add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})

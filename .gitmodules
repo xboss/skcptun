@@ -4,3 +4,6 @@
 [submodule "src/3rd/EasyTCP"]
 	path = src/3rd/EasyTCP
 	url = https://github.com/xboss/EasyTCP.git
+[submodule "src/3rd/lua"]
+	path = src/3rd/lua
+	url = https://github.com/lua/lua.git

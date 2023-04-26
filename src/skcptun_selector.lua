@@ -52,7 +52,9 @@ local function cal_best_chan()
 
     if min_chan then
         if min_chan.avg_rtt < best_chan.avg_rtt then
-            log_d("chg1 chan from ", best_chan.udp_fd, " to ", min_chan.udp_fd, best_chan.avg_rtt, min_chan.avg_rtt)
+            -- log_d("chg1 chan from ", best_chan.udp_fd, " to ", min_chan.udp_fd, best_chan.avg_rtt, min_chan.avg_rtt)
+            log_d("chg1 chan from ", best_chan.udp_fd, " to ", min_chan.udp_fd, best_chan.avg_rtt, min_chan.avg_rtt,
+                best_chan.pkt_snd, best_chan.pkt_recv)
             slt.best_chan = min_chan
             gc_hold_map()
         elseif best_chan.cid <= 0 then

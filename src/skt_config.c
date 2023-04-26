@@ -1,13 +1,16 @@
+#define LUA_COMPAT_5_3
+
 #include "skt_config.h"
 
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "easy_tcp.h"
+#include "lauxlib.h"
+#include "lua.h"
+#include "luaconf.h"
+#include "lualib.h"
 #include "skcp.h"
 #include "skt_utils.h"
 

@@ -1,10 +1,10 @@
 #include <ev.h>
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
 #include <unistd.h>
 
 #include "easy_tcp.h"
+#include "lauxlib.h"
+#include "lua.h"
+#include "lualib.h"
 #include "skcp.h"
 #include "skt_api_lua.h"
 #include "skt_config.h"
