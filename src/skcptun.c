@@ -527,7 +527,7 @@ static int on_init() {
     SKT_LUA_PUSH_CALLBACK_FUN("on_init") return -1;
     int arg_num = 1;
     lua_pushlightuserdata(g_ctx->L, g_ctx->loop);  // 自动弹出
-    if (g_ctx->tun_fd) {
+    if (g_ctx->tun_fd > 0) {
         lua_pushinteger(g_ctx->L, g_ctx->tun_fd);  // 自动弹出
         arg_num++;
     }

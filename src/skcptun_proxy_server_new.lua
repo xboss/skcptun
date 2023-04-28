@@ -78,16 +78,6 @@ skt.cb.on_init = function(loop)
 
     tcp_target_addr = skt.conf.etcp_cli_conf_list[1].addr
     tcp_target_port = skt.conf.etcp_cli_conf_list[1].port
-
-    -- local err = nil
-    -- g_etcp, err = skt.api.etcp_client_init(skt.conf.etcp_cli_conf.raw, loop)
-    -- if not g_etcp then
-    --     log_e("etcp_client_init " .. err);
-    --     return
-    -- end
-
-    -- log_i("start etcp client ok", "target addr:", skt.conf.tcp_target_addr, "target port:",
-    --     skt.conf.tcp_target_port)
 end
 
 skt.cb.on_skcp_accept = function(skcp, cid)
