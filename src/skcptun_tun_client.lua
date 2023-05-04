@@ -22,12 +22,13 @@ local CMD_PONG = sp.cmd_pong
 local g_skcp = nil
 local g_cid = 0
 -- local g_conf = skt.conf
-local g_skcp_conf = skt.conf.skcp_conf_list[1]
+local g_skcp_conf = nil
 local g_tun_fd = 0;
 
 
 skt.cb.on_init = function(loop, tun_fd)
     g_tun_fd = tun_fd
+    g_skcp_conf = skt.conf.skcp_cli_conf_list[1]
 
     local err
     g_skcp, err = skt.api.skcp_init(g_skcp_conf.raw, loop, 2)
@@ -75,7 +76,10 @@ skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
             return
         end
         local now = skt.api.get_ms()
-        -- log_d("rtt:", now - snd_time)
+        local rtt = now - snd_time
+        if rtt > 200 then
+            log_d("rtt:", now - snd_time)
+        end
         return
     end
 end

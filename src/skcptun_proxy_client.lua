@@ -27,28 +27,26 @@ local g_etcp = nil
 
 
 skt.cb.on_init = function(loop)
-    for i = 1, skt.conf.skcp_conf_list_cnt, 1 do
-        local skcp, err = skt.api.skcp_init(skt.conf.skcp_conf_list[i].raw, loop, 2)
+    for i = 1, skt.conf.skcp_cli_conf_list_size, 1 do
+        local skcp, err = skt.api.skcp_init(skt.conf.skcp_cli_conf_list[i].raw, loop, 2)
         if not skcp then
             log_e("skcp_init " .. err);
             return
         end
         local udp_fd = skt.api.get_from_skcp(skcp, "fd")
-        selector.add(udp_fd, skcp, skt.conf.skcp_conf_list[i])
-        log_i("start skcp client ok", "addr:", skt.conf.skcp_conf_list[i].addr, "port:",
-            skt.conf.skcp_conf_list[i].port)
+        selector.add(udp_fd, skcp, skt.conf.skcp_cli_conf_list[i])
+        log_i("start skcp client ok", "addr:", skt.conf.skcp_cli_conf_list[i].addr, "port:",
+            skt.conf.skcp_cli_conf_list[i].port)
     end
 
     local err = nil
-
-    g_etcp, err = skt.api.etcp_server_init(skt.conf.etcp_serv_conf.raw, loop)
+    g_etcp, err = skt.api.etcp_server_init(skt.conf.etcp_serv_conf_list[1].raw, loop)
     if not g_etcp then
         log_e("etcp_server_init " .. err);
         return
     end
-
-    log_i("start etcp server ok", "addr:", skt.conf.etcp_serv_conf.serv_addr, "port:",
-        skt.conf.etcp_serv_conf.serv_port)
+    log_i("start tcp server ok", "addr:", skt.conf.etcp_serv_conf_list[1].addr, "port:",
+        skt.conf.etcp_serv_conf_list[1].port)
 end
 
 skt.cb.on_skcp_recv_cid = function(skcp, cid)

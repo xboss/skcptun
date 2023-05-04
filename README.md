@@ -41,7 +41,15 @@ git submodule update --init --recursive
 * 需要安装 "iproute2" 和 “iptables” 工具包。
 
 #### 服务端
-* 开启ip转发，将“net.ipv4.ip_forward=1” 添加到 "/etc/sysctl.conf" 文件，执行“sysctl -p”生效。
+* 开启ip转发，将以下配置添加到 "/etc/sysctl.conf" 文件，执行“sysctl -p”生效。
+```
+net.ipv4.ip_forward=1
+net.ipv4.conf.all.route_localnet = 1
+net.ipv4.conf.default.route_localnet = 1
+net.ipv4.conf.[网卡接口].route_localnet = 1
+net.ipv4.conf.lo.route_localnet = 1
+net.ipv4.conf.[虚拟网卡接口].route_localnet = 1
+```
 * 打开ip转发，修改默认转发策略 “iptables -P FORWARD ACCEPT”
 * 修改nat的源地址改成出口网卡的地址 “iptables -t nat -A POSTROUTING -s 192.168.2.1/24 -o enp1s0 -j MASQUERADE”
 
@@ -64,39 +72,41 @@ skcptun <configfile>
 
 ## skcptun的配置信息
 “skt.conf.*”：skcptun向Lua脚本暴露的配置信息变量。
-### skt.conf.mode
-启动模式，目前包含“proxy_client”，“proxy_server”，“tun_client”，“tun_server”4种模式，可以通过Lua脚本扩展更多模式。
 ### skt.conf.tun_ip
 虚拟网卡的ip，客户端和服务端需要设置为同一网段，“tun_client”和“tun_server”模式中有效。
 ### skt.conf.tun_mask
 虚拟网卡的子网掩码，客户端和服务端设置保持一致，“tun_client”和“tun_server”模式中有效。
-### skt.conf.tcp_target_addr
-skcptun服务端在TCP模式下需要连接的目标地址，“proxy_server”模式中有效。
-### skt.conf.tcp_target_port
-skcptun服务端在TCP模式下需要连接的目标端口，“proxy_server”模式中有效。
-### skt.conf.skcp_conf_list_cnt
-“skcp_conf”的个数。
-### skt.conf.skcp_conf_list[i].raw
-第i个“skcp_conf”本身指针，用于给API传参。
-### skt.conf.skcp_conf_list[i].addr
-第i个“skcp_conf”的IP地址
-### skt.conf.skcp_conf_list[i].port
-第i个“skcp_conf”的端口
-### skt.conf.skcp_conf_list[i].key
-第i个“skcp_conf”的加密串
-### skt.conf.skcp_conf_list[i].ticket
-第i个“skcp_conf”的客户端和服务端约定的访问票据，“tun_client”和“proxy_client”模式中有效。
-### skt.conf.skcp_conf_list[i].max_conn_cnt
-第i个“skcp_conf”的最大连接数，“proxy_server”和“tun_server”模式中有效。
-### skt.conf.etcp_serv_conf.raw
+### skt.conf.skcp_serv_conf_list_size
+“skcp_serv_conf”的个数。
+### skt.conf.skcp_serv_conf_list[i].raw
+第i个“skcp_serv_conf”本身指针，用于给API传参。
+### skt.conf.skcp_serv_conf_list[i].addr
+第i个“skcp_serv_conf”的IP地址
+### skt.conf.skcp_serv_conf_list[i].port
+第i个“skcp_serv_conf”的端口
+### skt.conf.skcp_serv_conf_list[i].key
+第i个“skcp_serv_conf”的加密串
+### skt.conf.skcp_serv_conf_list[i].ticket
+第i个“skcp_serv_conf”的客户端和服务端约定的访问票据，“tun_client”和“proxy_client”模式中有效。
+### skt.conf.skcp_serv_conf_list[i].max_conn_cnt
+第i个“skcp_serv_conf”的最大连接数，“proxy_server”和“tun_server”模式中有效。
+### skt.conf.skcp_cli_conf_list* 配置同 skt.conf.skcp_serv_conf_list*
+### skt.conf.etcp_serv_conf_list_size
+"etcp_serv_conf_list"的个数
+### skt.conf.etcp_serv_conf_list[i].raw
 tcp服务端“etcp_serv_conf”本身的指针，用于给API传参。
-### skt.conf.etcp_serv_conf.serv_addr
+### skt.conf.etcp_serv_conf_list[i].addr
 tcp服务端的监听地址。
-### skt.conf.etcp_serv_conf.serv_port
+### skt.conf.etcp_serv_conf_list[i].port
 tcp服务端的监听端口。
-### skt.conf.etcp_cli_conf.raw
-tcp客户端“etcp_cli_conf”本身的指针。
-
+### skt.conf.etcp_cli_conf_list_size
+"etcp_cli_conf_list"的个数
+### skt.conf.etcp_cli_conf_list[i].raw
+tcp客户端“etcp_cli_conf”本身的指针，用于给API传参。
+### skt.conf.etcp_cli_conf_list[i].addr
+tcp客户端的连接地址，在“proxy server”模式下有效。
+### skt.conf.etcp_cli_conf_list[i].port
+tcp客户端的连接端口，在“proxy server”模式下有效。
 
 ## skcptun 提供的内部 Lua API
 “skt.api.*”，skcptun向Lua脚本暴露的API。

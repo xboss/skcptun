@@ -18,8 +18,8 @@ local CMD_DATA = sp.cmd_data
 local CMD_PING = sp.cmd_ping
 local CMD_PONG = sp.cmd_pong
 
-local tcp_target_addr = skt.conf.tcp_target_addr
-local tcp_target_port = skt.conf.tcp_target_port
+local tcp_target_addr = nil
+local tcp_target_port = nil
 
 -- local g_skcp = nil
 -- local g_cid = 0
@@ -57,25 +57,27 @@ local function dump_gt(tag)
 end
 
 skt.cb.on_init = function(loop)
-    for i = 1, skt.conf.skcp_conf_list_cnt, 1 do
-        local skcp, err = skt.api.skcp_init(skt.conf.skcp_conf_list[i].raw, loop, 1)
+    for i = 1, skt.conf.skcp_serv_conf_list_size, 1 do
+        local skcp, err = skt.api.skcp_init(skt.conf.skcp_serv_conf_list[i].raw, loop, 1)
         if not skcp then
             log_e("skcp_init " .. err);
             return
         end
-        log_i("start skcp server ok", "addr:", skt.conf.skcp_conf_list[i].addr, "port:",
-            skt.conf.skcp_conf_list[i].port)
+        log_i("start skcp server ok", "addr:", skt.conf.skcp_serv_conf_list[i].addr, "port:",
+            skt.conf.skcp_serv_conf_list[i].port)
     end
 
     local err = nil
-    g_etcp, err = skt.api.etcp_client_init(skt.conf.etcp_cli_conf.raw, loop)
+    g_etcp, err = skt.api.etcp_client_init(skt.conf.etcp_cli_conf_list[1].raw, loop)
     if not g_etcp then
         log_e("etcp_client_init " .. err);
         return
     end
+    log_i("start tcp client ok", "addr:", skt.conf.etcp_cli_conf_list[1].addr, "port:",
+        skt.conf.etcp_cli_conf_list[1].port)
 
-    log_i("start etcp client ok", "target addr:", skt.conf.tcp_target_addr, "target port:",
-        skt.conf.tcp_target_port)
+    tcp_target_addr = skt.conf.etcp_cli_conf_list[1].addr
+    tcp_target_port = skt.conf.etcp_cli_conf_list[1].port
 end
 
 skt.cb.on_skcp_accept = function(skcp, cid)

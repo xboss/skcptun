@@ -29,14 +29,12 @@ target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun ev)
 target_link_libraries(skcptun m)
-# target_link_libraries(skcptun luajit)
 
 # ############# static #############
-# add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_CJSON} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP})
+# add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
 # target_link_libraries(skcptun_static ssl -static)
 # target_link_libraries(skcptun_static crypto -static)
 # target_link_libraries(skcptun_static ev -static)
-# target_link_libraries(skcptun_static luajit -static)
 # target_link_libraries(skcptun_static m -static)
 # target_link_libraries(skcptun_static dl -static)
 
