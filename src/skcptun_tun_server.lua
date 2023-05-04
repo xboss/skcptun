@@ -20,9 +20,6 @@ local CMD_PING = sp.cmd_ping
 local CMD_PONG = sp.cmd_pong
 
 local g_skcp = nil
--- local g_cid = 0
--- local g_conf = skt.conf
-local g_skcp_conf = skt.conf.skcp_conf_list[1]
 local g_tun_fd = 0;
 -- src_ip->cid
 local g_ip_cid_map = {}
@@ -53,15 +50,16 @@ end
 
 skt.cb.on_init = function(loop, tun_fd)
     g_tun_fd = tun_fd
+    local skcp_conf = skt.conf.skcp_serv_conf_list[1]
 
     local err
-    g_skcp, err = skt.api.skcp_init(g_skcp_conf.raw, loop, 1)
+    g_skcp, err = skt.api.skcp_init(skcp_conf.raw, loop, 1)
     if not g_skcp then
         log_e("skcp_init ", err);
         return
     end
 
-    log_i("start skcp server ok", "addr:", g_skcp_conf.addr, "port:", g_skcp_conf.port)
+    log_i("start skcp server ok", "addr:", skcp_conf.addr, "port:", skcp_conf.port)
 end
 
 skt.cb.on_skcp_accept = function(skcp, cid)
@@ -140,7 +138,7 @@ skt.cb.on_tun_read = function(buf)
     local cid = g_ip_cid_map[dst_ip]
 
     if not cid then
-        log_e("on_tun_read cid error")
+        -- log_e("on_tun_read cid error")
         return
     end
 

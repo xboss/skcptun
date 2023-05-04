@@ -1,7 +1,7 @@
 config = {
-    script_file = "skcptun_proxy_client.lua", -- 运行的入口Lua脚本
-    tun_ip = "192.168.2.2",                   -- 虚拟网卡的ip，客户端和服务端需要设置为同一网段
-    tun_mask = "255.255.255.0",               -- 虚拟网卡的子网掩码，客户端和服务端设置保持一致
+    script_file = "skcptun_proxy_client.lua", -- 运行的入口Lua脚本(必须项)
+    tun_ip = "192.168.2.2",                   -- 虚拟网卡的ip，客户端和服务端需要设置为同一网段，如果配置的话表示“tuntap”模式
+    tun_mask = "255.255.255.0",               -- 虚拟网卡的子网掩码，客户端和服务端设置保持一致，如果配置的话表示“tuntap”模式
 
     tcp_servers = {
         {
@@ -30,8 +30,8 @@ config = {
             tcp_keepalive = 60,
             tcp_recv_timeout = 5,
             tcp_send_timeout = 5,
-            tcp_target_addr = "3.3.3.3", -- skcptun服务端在TCP模式下需要连接的目标地址
-            tcp_target_port = 3333,      -- skcptun服务端在TCP模式下需要连接的目标端口
+            tcp_target_addr = "3.3.3.3", -- skcptun服务端在TCP模式下需要连接的目标地址，非必须项，只有在“proxy_server”模式下有效
+            tcp_target_port = 3333,      -- skcptun服务端在TCP模式下需要连接的目标端口，非必须项，只有在“proxy_server”模式下有效
         },
         {
             tcp_read_buf_size = 1024,

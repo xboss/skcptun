@@ -133,8 +133,8 @@ static int lua_reg_config(lua_State *L) {
     // lua_pushinteger(L, g_ctx->conf->tcp_target_port);  // value
     // lua_setfield(L, -2, "tcp_target_port");
 
-    lua_pushinteger(L, g_ctx->conf->skcp_serv_conf_list_size);  // value
-    lua_setfield(L, -2, "skcp_serv_conf_list_size");
+    lua_pushinteger(L, g_ctx->conf->etcp_serv_conf_list_size);  // value
+    lua_setfield(L, -2, "etcp_serv_conf_list_size");
     lua_pushinteger(L, g_ctx->conf->etcp_cli_conf_list_size);  // value
     lua_setfield(L, -2, "etcp_cli_conf_list_size");
     lua_pushinteger(L, g_ctx->conf->skcp_serv_conf_list_size);  // value
