@@ -7,164 +7,6 @@
 #include "skt_tuntap.h"
 #include "skt_utils.h"
 
-// /* -------------------------------------------------------------------------- */
-// /*                                 safe queue                                 */
-// /* -------------------------------------------------------------------------- */
-// typedef struct skt_queue_node_s {
-//     void *data;
-//     struct skt_queue_node_s *next;
-//     struct skt_queue_node_s *prev;
-// } skt_queue_node_t;
-
-// typedef struct {
-//     skt_queue_node_t *head;
-//     skt_queue_node_t *tail;
-//     int size;
-//     int capacity;
-//     pthread_mutex_t lock;
-//     pthread_cond_t not_empty_cond;
-//     pthread_cond_t not_full_cond;
-// } skt_queue_t;
-
-// /**
-//  * @param capacity <0: unlimited
-//  * @return skt_queue_t*
-//  */
-// skt_queue_t *skt_init_queue(int capacity) {
-//     skt_queue_t *q = (skt_queue_t *)calloc(1, sizeof(skt_queue_t));
-//     q->head = NULL;
-//     q->tail = NULL;
-//     q->size = 0;
-//     q->capacity = capacity;
-//     // if (pthread_mutex_init(&q->lock, NULL) != 0) {
-//     //     FREE_IF(q);
-//     //     LOG_E("init lock error in skt_init_queue");
-//     //     return NULL;
-//     // }
-//     if (pthread_mutex_init(&q->lock, NULL) != 0 || pthread_cond_init(&q->not_empty_cond, NULL) != 0 ||
-//         pthread_cond_init(&q->not_full_cond, NULL) != 0) {
-//         FREE_IF(q);
-//         LOG_E("init lock or cond error in skt_init_block_queue");
-//         return NULL;
-//     }
-//     return q;
-// }
-// /**
-//  * @param q
-//  * @return full: return 1; not full: return 0;
-//  */
-// int skt_is_queue_full(skt_queue_t *q) {
-//     if (q->capacity < 0) {
-//         return 0;
-//     }
-
-//     if (q->size >= q->capacity) {
-//         return 1;
-//     }
-//     return 0;
-// }
-
-// /**
-//  * @param q
-//  * @return empty: return 1; not empty: return 0;
-//  */
-// int skt_is_queue_empty(skt_queue_t *q) {
-//     if (q->size == 0) {
-//         return 1;
-//     }
-//     return 0;
-// }
-
-// /**
-//  * @param q
-//  * @param data
-//  * @return int ok:0; error:-1
-//  */
-// int skt_push_queue(skt_queue_t *q, void *data) {
-//     // LOG_I("skt_push_queue size: %d", q->size);
-//     if (skt_is_queue_full(q)) {
-//         LOG_E("safe queue is full");
-//         return -1;
-//     }
-
-//     pthread_mutex_lock(&q->lock);
-//     skt_queue_node_t *node = (skt_queue_node_t *)calloc(1, sizeof(skt_queue_node_t));
-//     node->data = data;
-//     node->prev = NULL;
-//     node->next = NULL;
-//     if (skt_is_queue_empty(q)) {
-//         q->head = node;
-//         q->tail = node;
-//     } else {
-//         node->next = q->head;
-//         q->head->prev = node;
-//         q->head = node;
-//     }
-//     q->size++;
-//     pthread_cond_signal(&q->not_empty_cond);
-//     pthread_mutex_unlock(&q->lock);
-//     return 0;
-// }
-
-// void *skt_pop_queue(skt_queue_t *q) {
-//     // LOG_I("skt_pop_queue size: %d", q->size);
-//     if (skt_is_queue_empty(q)) {
-//         return NULL;
-//     }
-
-//     pthread_mutex_lock(&q->lock);
-//     skt_queue_node_t *node = q->tail;
-//     if (q->size == 1) {
-//         // 只有一个节点
-//         q->tail = NULL;
-//         q->head = NULL;
-//     } else {
-//         // 多个节点
-//         q->tail->prev->next = NULL;
-//         q->tail = q->tail->prev;
-//     }
-
-//     q->size--;
-//     void *data = node->data;
-//     FREE_IF(node);
-//     pthread_mutex_unlock(&q->lock);
-//     return data;
-// }
-
-// void *skt_pop_block_queue(skt_queue_t *q) {
-//     pthread_mutex_lock(&q->lock);
-//     if (skt_is_queue_empty(q)) {
-//         pthread_cond_wait(&q->not_empty_cond, &q->lock);
-//     }
-//     // LOG_I("skt_pop_block_queue size: %d", q->size);
-//     skt_queue_node_t *node = q->tail;
-//     if (q->size == 1) {
-//         // 只有一个节点
-//         q->tail = NULL;
-//         q->head = NULL;
-//     } else {
-//         // 多个节点
-//         q->tail->prev->next = NULL;
-//         q->tail = q->tail->prev;
-//     }
-
-//     q->size--;
-//     void *data = node->data;
-//     FREE_IF(node);
-//     pthread_mutex_unlock(&q->lock);
-//     return data;
-// }
-
-// // void skt_free_queue(skt_queue_t *q) {
-// //     if (!q) {
-// //         return;
-// //     }
-// //     pthread_mutex_destroy(&q->lock);
-// //     while (q->size > 0) {
-// //     }
-// //     FREE_IF(q);
-// // }
-
 /* -------------------------------------------------------------------------- */
 /*                                   common                                   */
 /* -------------------------------------------------------------------------- */
@@ -260,36 +102,12 @@ static void on_skcp_server_recv_data(uint32_t cid, char *buf, int len) {
         skcp_mt_send(g_smt, g_cid, raw, len);
         FREE_IF(raw);
 
-        // skt_q_msg_t *msg = (skt_q_msg_t *)calloc(1, sizeof(skt_q_msg_t));
-        // msg->buf = (char *)calloc(1, len);
-        // memcpy(msg->buf, buf, len);
-        // *msg->buf = SKT_CMD_PONG;
-        // msg->buf_len = len;
-        // if (skt_push_queue(g_skcp_input_queue, msg) != 0) {
-        //     LOG_E("on_skcp_server_recv_data skt_push_queue error");
-        //     return;
-        // }
-        // // *buf = SKT_CMD_PONG;
-        // // if (skcp_send(skcp, g_cid, buf, len) < 0) {
-        // //     LOG_E("on_skcp_server_recv_data skcp_send error");
-        // //     return;
-        // // }
         ping_tm = now;
     } else if (cmd == SKT_CMD_PUSH) {
         // push
         if (skt_tuntap_write(g_tun_fd, buf + 1, len - 1) < 0) {
             LOG_E("on_skcp_server_recv_data skt_tuntap_write error");
         }
-
-        // skt_q_msg_t *msg = (skt_q_msg_t *)calloc(1, sizeof(skt_q_msg_t));
-        // msg->buf = (char *)calloc(1, len - 1);
-        // memcpy(msg->buf, buf + 1, len - 1);
-        // msg->buf_len = len - 1;
-        // if (skt_push_queue(g_tun_input_queue, msg) != 0) {
-        //     LOG_E("on_skcp_server_recv_data skt_push_queue error");
-        //     return;
-        // }
-        // LOG_I("g_tun_input_queue push data size: %d", g_tun_input_queue->size);
     } else {
         // error cmd
         LOG_E("on_skcp_server_recv_data error cmd %x", cmd);
@@ -377,6 +195,8 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
         return;
     }
 
+    LOG_I("stat on_tun_read");
+
     char buf[SKT_TUN_RD_BUF_LEN];
     int len = skt_tuntap_read(g_tun_fd, buf, SKT_TUN_RD_BUF_LEN);
     if (len <= 0) {
@@ -401,112 +221,7 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
     memcpy(raw + 1, buf, len);
     skcp_mt_send(g_smt, g_cid, raw, raw_len);
     // FREE_IF(raw);
-
-    // skt_q_msg_t *msg = (skt_q_msg_t *)calloc(1, sizeof(skt_q_msg_t));
-    // msg->buf = (char *)calloc(1, len + 1);
-    // *msg->buf = SKT_CMD_PUSH;
-    // memcpy(msg->buf + 1, buf, len);
-    // msg->buf_len = len + 1;
-    // if (skt_push_queue(g_skcp_input_queue, msg) != 0) {
-    //     LOG_E("on_tun_read skt_push_queue error");
-    //     return;
-    // }
-    // LOG_I("g_skcp_input_queue push data size: %d", g_skcp_input_queue->size);
 }
-
-// static void skcp_async_cb(struct ev_loop *loop, ev_async *watcher, int revents) {
-//     fprintf(stdout, "get the order, start move...\n");
-// }
-
-// void *skcp_thread_fn(void *arg) {
-// #if (defined(__linux__) || defined(__linux))
-//     g_skcp_loop = ev_loop_new(EVBACKEND_EPOLL);
-// #elif defined(__APPLE__)
-//     g_skcp_loop = ev_loop_new(EVBACKEND_KQUEUE);
-// #else
-//     g_skcp_loop = ev_default_loop(0);
-// #endif
-
-//     // skcp server
-//     if (skcp_mode == SKCP_MODE_SERV) {
-//         g_conf->skcp_serv_conf_list[0]->on_accept = on_skcp_server_accept;
-//         g_conf->skcp_serv_conf_list[0]->on_check_ticket = on_skcp_server_check_ticket;
-//         g_conf->skcp_serv_conf_list[0]->on_close = on_skcp_server_close;
-//         g_conf->skcp_serv_conf_list[0]->on_recv_data = on_skcp_server_recv_data;
-
-//         skcp_t *skcp_serv = skcp_init(g_conf->skcp_serv_conf_list[0], g_skcp_loop, NULL, SKCP_MODE_SERV);
-//         if (!skcp_serv) {
-//             LOG_E("init skcp server error");
-//             return NULL;
-//         }
-//         LOG_I("skcp server ok %s %u", g_conf->skcp_serv_conf_list[0]->addr, g_conf->skcp_serv_conf_list[0]->port);
-//         skcp = skcp_serv;
-//     }
-
-//     // skcp client
-//     if (skcp_mode == SKCP_MODE_CLI) {
-//         g_conf->skcp_cli_conf_list[0]->on_close = on_skcp_client_close;
-//         g_conf->skcp_cli_conf_list[0]->on_recv_cid = on_skcp_client_recv_cid;
-//         g_conf->skcp_cli_conf_list[0]->on_recv_data = on_skcp_client_recv_data;
-//         skcp_t *skcp_cli = skcp_init(g_conf->skcp_cli_conf_list[0], g_skcp_loop, NULL, SKCP_MODE_CLI);
-//         if (!skcp_cli) {
-//             LOG_E("init skcp client error");
-//             return NULL;
-//         }
-//         LOG_I("skcp client ok %s %u", g_conf->skcp_cli_conf_list[0]->addr, g_conf->skcp_cli_conf_list[0]->port);
-//         skcp = skcp_cli;
-//     }
-
-//     // 定时
-//     struct ev_timer bt_watcher;
-//     ev_init(&bt_watcher, on_beat);
-//     ev_timer_set(&bt_watcher, 1, 1);
-//     ev_timer_start(g_loop, &bt_watcher);
-
-//     // char raw[1500] = {0};  // TODO:
-//     while (1) {
-//         LOG_I("g_skcp_input_queue pop size: %d tid: %lu", g_skcp_input_queue->size, (unsigned long)pthread_self());
-//         skt_q_msg_t *msg = (skt_q_msg_t *)skt_pop_block_queue(g_skcp_input_queue);
-//         if (!msg) {
-//             LOG_E("pop skcp_input_queue NULL");
-//             break;
-//         }
-//         // assert(msg->buf_len + 1 <= 1500);
-//         // raw[0] = SKT_CMD_PUSH;
-//         // memcpy(raw, msg->buf + 1, msg->buf_len);
-
-//         if (skcp_send(skcp, g_cid, msg->buf, msg->buf_len) < 0) {
-//             LOG_E("skcp_thread_fn skcp_send error");
-//             // TODO: 按顺序放回队列
-//         }
-//         // LOG_I("skcp_thread_fn skcp_send ok");
-//         FREE_IF(msg->buf);
-//         FREE_IF(msg);
-//     }
-
-//     return NULL;
-// }
-
-// void *tun_thread_fn(void *arg) {
-//     while (1) {
-//         LOG_I("g_tun_input_queue pop size: %d", g_tun_input_queue->size);
-//         skt_q_msg_t *msg = (skt_q_msg_t *)skt_pop_block_queue(g_tun_input_queue);
-//         if (!msg) {
-//             LOG_E("pop tun_input_queue NULL");
-//             break;
-//         }
-
-//         if (skt_tuntap_write(g_tun_fd, msg->buf, msg->buf_len) < 0) {
-//             LOG_E("tun_thread_fn skt_tuntap_write error");
-//             // TODO: 按顺序放回队列
-//         }
-//         // LOG_I("tun_thread_fn skt_tuntap_write ok");
-//         FREE_IF(msg->buf);
-//         FREE_IF(msg);
-//     }
-
-//     return NULL;
-// }
 
 void dispatch_skcp_msg() {
     while (g_smt->out_box->size > 0) {
@@ -626,63 +341,3 @@ int main(int argc, char *argv[]) {
     LOG_I("bye");
     return 0;
 }
-
-/* ---------------------------------- test ---------------------------------- */
-// void *test_thread_fn(void *arg) {
-//     while (1) {
-//         // LOG_I("g_skcp_input_queue size: %d", g_skcp_input_queue->size);
-//         skt_q_msg_t *msg = (skt_q_msg_t *)skt_pop_block_queue(g_skcp_input_queue);
-//         if (!msg) {
-//             LOG_E("pop skcp_input_queue NULL");
-//             break;
-//         }
-
-//         // LOG_I("test_thread_fn ok %s %d", msg->buf, msg->buf_len);
-//         FREE_IF(msg->buf);
-//         FREE_IF(msg);
-//         sleep(1);
-//     }
-//     return NULL;
-// }
-
-// int main(int argc, char *argv[]) {
-//     g_skcp_input_queue = skt_init_queue(-1);
-
-//     pthread_t tid = 0;
-//     if (pthread_create(&tid, NULL, test_thread_fn, NULL)) {
-//         LOG_E("start thread error");
-//         finish();
-//         return -1;
-//     }
-
-//     // for (size_t i = 0; i < 30; i++) {
-//     while (1) {
-//         char *s = "hello";
-//         int l = strlen(s);
-//         skt_q_msg_t *msg = (skt_q_msg_t *)calloc(1, sizeof(skt_q_msg_t));
-//         msg->buf = (char *)calloc(1, l + 1);
-//         memcpy(msg->buf, s, l + 1);
-//         msg->buf_len = l + 1;
-//         if (skt_push_queue(g_skcp_input_queue, msg) != 0) {
-//             LOG_E("on_tun_read skt_push_queue error");
-//             return -1;
-//         }
-//         sleep(3);
-//     }
-
-//     // for (size_t i = 0; i < 30; i++) {
-//     //     // LOG_I("g_skcp_input_queue size: %d", g_skcp_input_queue->size);
-//     //     skt_q_msg_t *msg = (skt_q_msg_t *)skt_pop_block_queue(g_skcp_input_queue);
-//     //     // skt_q_msg_t *msg = (skt_q_msg_t *)skt_pop_queue(g_skcp_input_queue);
-//     //     if (!msg) {
-//     //         LOG_E("pop skcp_input_queue NULL");
-//     //         break;
-//     //     }
-
-//     //     // LOG_I("test_thread_fn ok %s %d", msg->buf, msg->buf_len);
-//     //     FREE_IF(msg->buf);
-//     //     FREE_IF(msg);
-//     // }
-
-//     return 0;
-// }
