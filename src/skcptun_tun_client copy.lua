@@ -25,10 +25,6 @@ local g_cid = 0
 local g_skcp_conf = nil
 local g_tun_fd = 0;
 
-local ping_cnt = 0
-local pong_cnt = 0
-local last_pong = 0
-
 
 skt.cb.on_init = function(loop, tun_fd)
     g_tun_fd = tun_fd
@@ -44,14 +40,14 @@ skt.cb.on_init = function(loop, tun_fd)
     log_i("start skcp client ok", "addr:", g_skcp_conf.addr, "port:", g_skcp_conf.port)
 end
 
-skt.cb.on_skcp_client_recv_cid = function(skcp, cid)
+skt.cb.on_skcp_recv_cid = function(skcp, cid)
     log_d("recv cid: " .. cid)
     -- local udp_fd = skt.api.get_from_skcp(skcp, "fd")
     -- selector.update(T_UP_CID, udp_fd, cid, 0)
     g_cid = cid
 end
 
-skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
+skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
     -- log_d("on_skcp_recv_data cid:", cid, " buf:", buf)
     local msg, err = sp.unpack(buf)
     if not msg then
@@ -64,9 +60,7 @@ skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
     local payload = msg.payload
     if msg.cmd == CMD_DATA then
         local rt = nil
-        -- local at = skt.api.get_ms()
         rt, err = skt.api.tuntap_write(g_tun_fd, payload);
-        -- log_d("tuntap_write timecost:", skt.api.get_ms() - at)
         if not rt then
             log_e("on_skcp_recv_data tuntap_write " .. err)
             return
@@ -81,18 +75,16 @@ skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
             log_e("send time is nil in pong")
             return
         end
-        pong_cnt = pong_cnt + 1
         local now = skt.api.get_ms()
         local rtt = now - snd_time
-        log_d(cid, now - last_pong - 1000, "rtt:", rtt, ping_cnt, pong_cnt)
-        last_pong = now
-        -- if rtt > 200 then
-        -- end
+        if rtt > 200 then
+            log_d("rtt:", now - snd_time)
+        end
         return
     end
 end
 
-skt.cb.on_skcp_client_close = function(skcp, cid)
+skt.cb.on_skcp_close = function(skcp, cid)
     log_e("on_skcp_close cid: " .. cid)
     -- local udp_fd = skt.api.get_from_skcp(skcp, "fd")
     -- selector.update(T_UP_CID, udp_fd, 0, 0)
@@ -112,14 +104,11 @@ skt.cb.on_beat = function()
     -- log_d("------ on_beat payload", payload)
     local raw = sp.pack(CMD_PING, payload, str_len(payload))
     -- log_d("------ on_beat raw ", raw)
-    -- local at = skt.api.get_ms()
     local rt, err = skt.api.skcp_send(g_skcp, g_cid, raw)
-    -- log_d("ping timecost:", skt.api.get_ms() - at)
     if not rt then
         log_e("on_beat skcp_send ping ", err)
         return
     end
-    ping_cnt = ping_cnt + 1
 end
 
 skt.cb.on_tun_read = function(buf)
@@ -130,9 +119,7 @@ skt.cb.on_tun_read = function(buf)
     end
     local raw = sp.pack(CMD_DATA, buf, str_len(buf))
     -- log_d("------ on_beat raw ", raw)
-    -- local at = skt.api.get_ms()
     local rt, err = skt.api.skcp_send(g_skcp, g_cid, raw)
-    -- log_d("on_tun_read timecost:", skt.api.get_ms() - at)
     if not rt then
         log_e("on_tun_read skcp_send", err)
         return

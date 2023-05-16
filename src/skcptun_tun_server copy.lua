@@ -24,8 +24,6 @@ local g_tun_fd = 0;
 -- src_ip->cid
 local g_ip_cid_map = {}
 
-local last_ping = 0
-
 local function get_src_ip(buf)
     -- ip fixed head 20B
     -- log_d("get_src_ip buf len", str_len(buf))
@@ -64,16 +62,16 @@ skt.cb.on_init = function(loop, tun_fd)
     log_i("start skcp server ok", "addr:", skcp_conf.addr, "port:", skcp_conf.port)
 end
 
-skt.cb.on_skcp_server_accept = function(skcp, cid)
+skt.cb.on_skcp_accept = function(skcp, cid)
     log_d("on_skcp_accept cid: " .. cid)
 end
 
-skt.cb.on_skcp_server_check_ticket = function(skcp, ticket)
+skt.cb.on_skcp_check_ticket = function(skcp, ticket)
     log_d("on_skcp_accept ticket: " .. ticket)
     return 0;
 end
 
-skt.cb.on_skcp_server_recv_data = function(skcp, cid, buf)
+skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
     -- log_d("on_skcp_recv_data cid:", cid, " buf:", buf)
     local msg, err = sp.unpack(buf)
     if not msg then
@@ -105,11 +103,6 @@ skt.cb.on_skcp_server_recv_data = function(skcp, cid, buf)
     end
     if msg.cmd == CMD_PING then
         -- ping
-        -- local snd_time = tonumber(payload)
-        local now = skt.api.get_ms()
-        local rtt = now - last_ping
-        log_d(cid, "rtt:", now - last_ping - 1000)
-        last_ping = now
         local raw = sp.pack(CMD_PONG, payload, str_len(payload))
         local rt = nil
         rt, err = skt.api.skcp_send(skcp, cid, raw)
@@ -121,7 +114,7 @@ skt.cb.on_skcp_server_recv_data = function(skcp, cid, buf)
     end
 end
 
-skt.cb.on_skcp_server_close = function(skcp, cid)
+skt.cb.on_skcp_close = function(skcp, cid)
     log_e("on_skcp_close cid: " .. cid)
     -- TODO:
 end

@@ -49,17 +49,17 @@ skt.cb.on_init = function(loop)
         skt.conf.etcp_serv_conf_list[1].port)
 end
 
-skt.cb.on_skcp_client_recv_cid = function(skcp, cid)
+skt.cb.on_skcp_recv_cid = function(skcp, cid)
     log_d("recv cid: " .. cid)
     local udp_fd = skt.api.get_from_skcp(skcp, "fd")
     selector.update(T_UP_CID, udp_fd, cid, 0)
 end
 
-skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
-    -- log_d("on_skcp_client_recv_data cid:", cid, " buf:", buf)
+skt.cb.on_skcp_recv_data = function(skcp, cid, buf)
+    -- log_d("on_skcp_recv_data cid:", cid, " buf:", buf)
     local msg, err = sp.unpack(buf)
     if not msg then
-        log_e("on_skcp_client_recv_data unpack", err)
+        log_e("on_skcp_recv_data unpack", err)
         return
     end
 
@@ -72,7 +72,7 @@ skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
         local pm = nil
         pm, err = utils.parse_msg(payload)
         if not pm then
-            log_e("on_skcp_client_recv_data", err);
+            log_e("on_skcp_recv_data", err);
             return
         end
 
@@ -84,7 +84,7 @@ skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
         elseif cmd == "D" then
             local data = pm.data
             if not data then
-                log_e("on_skcp_client_recv_data payload error")
+                log_e("on_skcp_recv_data payload error")
                 return
             end
 
@@ -95,10 +95,10 @@ skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
             local rt = nil
             rt, err = skt.api.etcp_server_send(g_etcp, tcp_fd, data);
             if not rt then
-                log_w("on_skcp_client_recv_data etcp_server_send " .. err)
+                log_w("on_skcp_recv_data etcp_server_send " .. err)
                 return
             end
-            -- log_d("on_skcp_client_recv_data rt: " .. rt)
+            -- log_d("on_skcp_recv_data rt: " .. rt)
         end
         return
     end
@@ -116,14 +116,14 @@ skt.cb.on_skcp_client_recv_data = function(skcp, cid, buf)
     end
 end
 
-skt.cb.on_skcp_client_close = function(skcp, cid)
-    log_e("on_skcp_client_close cid: " .. cid)
+skt.cb.on_skcp_close = function(skcp, cid)
+    log_e("on_skcp_close cid: " .. cid)
     local udp_fd = skt.api.get_from_skcp(skcp, "fd")
     selector.update(T_UP_CID, udp_fd, 0, 0)
 end
 
-skt.cb.on_tcp_server_accept = function(fd)
-    log_d("on_tcp_server_accept in lua fd: " .. fd)
+skt.cb.on_tcp_accept = function(fd)
+    log_d("on_tcp_accept in lua fd: " .. fd)
     -- format: "cmd(1B)\nfd"
     local payload = "A\n" .. fd
     local chan = selector.select(fd)
@@ -131,14 +131,14 @@ skt.cb.on_tcp_server_accept = function(fd)
     local buf = sp.pack(CMD_DATA, payload, str_len(payload))
     local rt, err = skt.api.skcp_send(chan.skcp, chan.cid, buf)
     if not rt then
-        log_e("on_tcp_server_accept skcp_send " .. err)
+        log_e("on_tcp_accept skcp_send " .. err)
         return
     end
-    -- log_d("on_tcp_server_accept skcp_send ok rt: " .. rt)
+    -- log_d("on_tcp_accept skcp_send ok rt: " .. rt)
 end
 
-skt.cb.on_tcp_server_recv = function(fd, buf)
-    log_d("on_tcp_server_recv in lua fd: " .. fd, str_byte(buf, 1, str_len(buf)))
+skt.cb.on_tcp_recv = function(fd, buf)
+    log_d("on_tcp_recv in lua fd: " .. fd, str_byte(buf, 1, str_len(buf)))
 
     -- format: "cmd(1B)\nfd\ndata"
     local payload = "D\n" .. fd .. "\n" .. buf
@@ -147,14 +147,14 @@ skt.cb.on_tcp_server_recv = function(fd, buf)
     local raw = sp.pack(CMD_DATA, payload, str_len(payload))
     local rt, err = skt.api.skcp_send(chan.skcp, chan.cid, raw)
     if not rt then
-        log_e("on_tcp_server_recv skcp_send " .. err)
+        log_e("on_tcp_recv skcp_send " .. err)
         return
     end
-    -- log_d("on_tcp_server_recv skcp_send rt: " .. rt)
+    -- log_d("on_tcp_recv skcp_send rt: " .. rt)
 end
 
-skt.cb.on_tcp_server_close = function(fd)
-    log_d("on_tcp_server_close in lua fd: " .. fd)
+skt.cb.on_tcp_close = function(fd)
+    log_d("on_tcp_close in lua fd: " .. fd)
     -- format: "cmd(1B)\nfd"
     local payload = "C\n" .. fd
     local chan = selector.select(fd)
@@ -162,10 +162,10 @@ skt.cb.on_tcp_server_close = function(fd)
     local buf = sp.pack(CMD_DATA, payload, str_len(payload))
     local rt, err = skt.api.skcp_send(chan.skcp, chan.cid, buf)
     if not rt then
-        log_e("on_tcp_server_close skcp_send " .. err)
+        log_e("on_tcp_close skcp_send " .. err)
         return
     end
-    -- log_d("on_tcp_server_close skcp_send ok rt: " .. rt)
+    -- log_d("on_tcp_close skcp_send ok rt: " .. rt)
 end
 
 skt.cb.on_beat = function()

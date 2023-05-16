@@ -23,12 +23,22 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/src/3rd/lua DIR_SRCS_LUA)
 list(REMOVE_ITEM DIR_SRCS_LUA ${PROJECT_SOURCE_DIR}/src/3rd/lua/lua.c)
 list(REMOVE_ITEM DIR_SRCS_LUA ${PROJECT_SOURCE_DIR}/src/3rd/lua/onelua.c)
 
-# ############# main #############
-add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
-target_link_libraries(skcptun ssl)
-target_link_libraries(skcptun crypto)
-target_link_libraries(skcptun ev)
-target_link_libraries(skcptun m)
+# # ############# main #############
+# add_executable(skcptun ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
+# target_link_libraries(skcptun ssl)
+# target_link_libraries(skcptun crypto)
+# target_link_libraries(skcptun ev)
+# target_link_libraries(skcptun m)
+# target_link_libraries(skcptun pthread)
+
+# ############# test #############
+add_executable(skcptun_tt ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
+target_link_libraries(skcptun_tt ssl)
+target_link_libraries(skcptun_tt crypto)
+target_link_libraries(skcptun_tt ev)
+target_link_libraries(skcptun_tt m)
+target_link_libraries(skcptun_tt pthread)
+
 
 # ############# static #############
 # add_executable(skcptun_static ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})

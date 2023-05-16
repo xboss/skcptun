@@ -427,10 +427,28 @@ static int lua_get_from_skcp(lua_State *L) {
         SKT_LUA_RET_ERROR(L, "name is nil");
     }
 
-    int len = strlen(name);
-
     if (strcmp(name, "fd") == 0) {
         lua_pushinteger(L, skcp->fd);
+        return 1;
+    }
+
+    lua_pushnil(L);
+    lua_pushstring(L, "name does not exist");
+    return 2;
+}
+
+static int lua_get_from_etcp_serv(lua_State *L) {
+    etcp_serv_t *etcp = (etcp_serv_t *)lua_touserdata(L, -2);  // 取栈第一个参数
+    if (!etcp) {
+        SKT_LUA_RET_ERROR(L, "etcp is nil");
+    }
+    const char *name = luaL_checkstring(L, 2);
+    if (!name) {
+        SKT_LUA_RET_ERROR(L, "name is nil");
+    }
+
+    if (strcmp(name, "serv_fd") == 0) {
+        lua_pushinteger(L, etcp->serv_fd);
         return 1;
     }
 
@@ -514,6 +532,7 @@ int skt_reg_api_to_lua(lua_State *L) {
 
     // other api
     SKT_LUA_REG_FUN("get_from_skcp", lua_get_from_skcp);
+    SKT_LUA_REG_FUN("get_from_etcp_serv", lua_get_from_etcp_serv);
     SKT_LUA_REG_FUN("get_ms", lua_get_ms);
     SKT_LUA_REG_FUN("hton32", lua_hton32);
     SKT_LUA_REG_FUN("ntoh32", lua_ntoh32);

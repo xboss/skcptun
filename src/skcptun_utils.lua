@@ -7,19 +7,56 @@ local str_find = string.find
 local utils = {}
 
 utils.debug = function(...)
-    print("DEBUG:", ...)
+    print("DEBUG: " .. os.date("%Y%m%d_%H:%M:%S"), ...)
 end
 
 utils.info = function(...)
-    print("INFO:", ...)
+    print("INFO: " .. os.date("%Y%m%d_%H:%M:%S"), ...)
 end
 
 utils.warn = function(...)
-    print("WARN:", ...)
+    print("WARN: " .. os.date("%Y%m%d_%H:%M:%S"), ...)
 end
 
 utils.error = function(...)
-    print("ERROR:", ...)
+    print("ERROR: " .. os.date("%Y%m%d_%H:%M:%S"), ...)
+end
+
+utils.encode_msg = function(...)
+    local arg = { ... }
+    local rt = arg[1]
+    for i, v in ipairs(arg) do
+        if i > 1 then
+            rt = rt .. " " .. v
+        end
+    end
+    return rt
+end
+
+utils.decode_msg = function(buf, nfields)
+    if nfields <= 1 then
+        return { buf }
+    end
+    local rt = {}
+    local i = 1
+    local cnt = 1
+    while cnt < nfields do
+        local idx = str_find(buf, " ", i)
+        -- print(i, cnt, idx, str_len(buf))
+        if not idx then
+            -- print("break")
+            break
+        end
+        rt[cnt] = str_sub(buf, i, idx - 1)
+        i = idx + 1
+        cnt = cnt + 1
+    end
+    -- print(i, cnt, str_len(buf))
+    local buf_len = str_len(buf)
+    if i <= buf_len then
+        rt[cnt] = str_sub(buf, i, buf_len)
+    end
+    return rt
 end
 
 utils.parse_msg = function(payload)
@@ -151,9 +188,8 @@ return utils
 
 
 -- ---------------------------------- test ---------------------------------- --
--- local rt, err = utils.parse_msg("A\n89\nfasdfasdfas")
--- if not rt then
---     utils.error(err)
---     return
--- end
--- utils.dump(rt)
+-- local buf = utils.encode_msg("aaa", 0x03, "cccc", "fd")
+-- print(buf)
+-- local buf = "A 8 www.baidu.com 80 37"
+-- local msg = utils.decode_msg(buf, 4)
+-- utils.dump(msg)

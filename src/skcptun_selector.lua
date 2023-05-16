@@ -143,8 +143,10 @@ slt.update = function(type, udp_fd, cid, rtt)
 
         -- 计算最优channel
         cal_best_chan()
+        if chan.pkt_snd ~= chan.pkt_recv then
+            log_d("chan:", chan.udp_fd, chan.cid, chan.avg_rtt, chan.pkt_snd, chan.pkt_recv)
+        end
     end
-    -- log_d("chan:", chan.udp_fd, chan.cid, chan.avg_rtt, chan.pkt_snd, chan.pkt_recv)
 end
 
 slt.select = function(key)
