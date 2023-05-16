@@ -94,7 +94,7 @@ static void on_skcp_server_recv_data(uint32_t cid, char *buf, int len) {
     if (cmd == SKT_CMD_PING) {
         // ping
         uint64_t now = getmillisecond();
-        LOG_I("ping interval: %llu", now - ping_tm);
+        LOG_I("cid: %u ping interval: %llu", cid, now - ping_tm);
 
         char *raw = (char *)calloc(1, len);
         memcpy(raw, buf, len);
@@ -132,7 +132,8 @@ static void on_skcp_client_recv_data(uint32_t cid, char *buf, int len) {
         char s[32] = {0};
         memcpy(s, buf + 1, len);
         uint64_t ptm = atoll(s);
-        LOG_I("tid: %lu rtt: %llu", (unsigned long)pthread_self(), now - ptm);
+        // LOG_I("tid: %lu rtt: %llu", (unsigned long)pthread_self(), now - ptm);
+        LOG_I("cid: %u rtt: %llu", cid, now - ptm);
     } else if (cmd == SKT_CMD_PUSH) {
         // push
         if (skt_tuntap_write(g_tun_fd, buf + 1, len - 1) < 0) {
@@ -195,7 +196,7 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
         return;
     }
 
-    LOG_I("stat on_tun_read");
+    // LOG_I("stat on_tun_read");
 
     char buf[SKT_TUN_RD_BUF_LEN];
     int len = skt_tuntap_read(g_tun_fd, buf, SKT_TUN_RD_BUF_LEN);
