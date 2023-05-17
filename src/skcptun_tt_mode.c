@@ -166,8 +166,10 @@ static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     }
 
     // LOG_I("on_beat tid: %lu", (unsigned long)pthread_self());
-    // LOG_I("on_beat k_in: %d k_out: %d t_in: %d, t_out: %d", g_smt->in_box->size, g_smt->out_box->size,
-    //       g_tun_in_box->size, g_tun_out_box->size);
+    if (g_smt->in_box->size > 0 || g_smt->out_box->size > 0 || g_tun_in_box->size > 0 || g_tun_out_box->size) {
+        LOG_I("on_beat cid: %u k_in: %d k_out: %d t_in: %d, t_out: %d", g_cid, g_smt->in_box->size,
+              g_smt->out_box->size, g_tun_in_box->size, g_tun_out_box->size);
+    }
 
     if (g_skcp_mode == SKCP_MODE_CLI) {
         // only client mode
@@ -197,6 +199,9 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
     }
 
     // LOG_I("stat on_tun_read");
+    if (g_cid == 0) {
+        return;
+    }
 
     char buf[SKT_TUN_RD_BUF_LEN];
     int len = skt_tuntap_read(g_tun_fd, buf, SKT_TUN_RD_BUF_LEN);
@@ -214,6 +219,7 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
         LOG_I("on_tun_read src_ip: %s dest_ip: %s", src_ip, dest_ip);
         return;
     }
+    // LOG_I("on_tun_read ok src_ip: %s dest_ip: %s", src_ip, dest_ip);
 
     size_t raw_len = len + 1;
     // char *raw = (char *)calloc(1, raw_len);
