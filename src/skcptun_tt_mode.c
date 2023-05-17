@@ -166,9 +166,10 @@ static void on_beat(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     }
 
     // LOG_I("on_beat tid: %lu", (unsigned long)pthread_self());
-    if (g_smt->in_box->size > 0 || g_smt->out_box->size > 0 || g_tun_in_box->size > 0 || g_tun_out_box->size) {
-        LOG_I("on_beat cid: %u k_in: %d k_out: %d t_in: %d, t_out: %d", g_cid, g_smt->in_box->size,
-              g_smt->out_box->size, g_tun_in_box->size, g_tun_out_box->size);
+    if (g_smt->in_box->size > 0 || g_smt->out_box->size > 0 || g_tun_in_box->size > 0 || g_tun_out_box->size ||
+        g_smt->wait_snd > 100) {
+        LOG_I("on_beat cid: %u wait_snd: %d k_in: %d k_out: %d t_in: %d, t_out: %d", g_cid, g_smt->wait_snd,
+              g_smt->in_box->size, g_smt->out_box->size, g_tun_in_box->size, g_tun_out_box->size);
     }
 
     if (g_skcp_mode == SKCP_MODE_CLI) {
