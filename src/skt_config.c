@@ -26,14 +26,17 @@
 #define SKT_LUA_GET_INT(_v_i_value, _v_e_item) \
     lua_getfield(L, -1, (_v_e_item));          \
     (_v_i_value) = lua_tointeger(L, -1);       \
+    lua_pop(L, 1);                             \
     if ((_v_i_value) > 0)
 
 #define SKT_LUA_GET_STR(_v_dest_str, _v_e_item, _v_tmp_str, _v_tmp_str_len) \
     lua_getfield(L, -1, (_v_e_item));                                       \
     (_v_tmp_str) = lua_tolstring(L, -1, &(_v_tmp_str_len));                 \
+    if (!(_v_tmp_str)) lua_pop(L, 1);                                       \
     if ((_v_tmp_str)) {                                                     \
         (_v_dest_str) = (char *)calloc(1, (_v_tmp_str_len) + 1);            \
         strcpy((_v_dest_str), (_v_tmp_str));                                \
+        lua_pop(L, 1);                                                      \
     }
 
 static etcp_serv_conf_t **init_tcp_serv_list_conf(lua_State *L, size_t size) {
@@ -47,33 +50,33 @@ static etcp_serv_conf_t **init_tcp_serv_list_conf(lua_State *L, size_t size) {
         int ivalue = 0;
         SKT_LUA_GET_INT(ivalue, "tcp_read_buf_size") { etcp_serv_conf_list[i]->r_buf_size = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_keepalive") {
             etcp_serv_conf_list[i]->w_keepalive = etcp_serv_conf_list[i]->r_keepalive = ivalue;
         }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_recv_timeout") { etcp_serv_conf_list[i]->recv_timeout = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_send_timeout") { etcp_serv_conf_list[i]->send_timeout = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_timeout_interval") { etcp_serv_conf_list[i]->timeout_interval = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_listen_port") { etcp_serv_conf_list[i]->serv_port = ivalue; }
         else {
             LOG_E("invalid 'tcp_listen_port' in config file");
         }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         size_t len = 0;
         const char *str = NULL;
         SKT_LUA_GET_STR(etcp_serv_conf_list[i]->serv_addr, "tcp_listen_addr", str, len) else {
             LOG_E("invalid 'tcp_listen_addr' in config file");
         }
-        lua_pop(L, 2);
+        lua_pop(L, 1);
     }
 
     return etcp_serv_conf_list;
@@ -90,25 +93,25 @@ static etcp_cli_conf_t **init_tcp_cli_list_conf(lua_State *L, size_t size) {
         int ivalue = 0;
         SKT_LUA_GET_INT(ivalue, "tcp_read_buf_size") { etcp_cli_conf_list[i]->r_buf_size = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_keepalive") {
             etcp_cli_conf_list[i]->w_keepalive = etcp_cli_conf_list[i]->r_keepalive = ivalue;
         }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_recv_timeout") { etcp_cli_conf_list[i]->recv_timeout = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_send_timeout") { etcp_cli_conf_list[i]->send_timeout = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "tcp_target_port") { etcp_cli_conf_list[i]->target_port = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         size_t len = 0;
         const char *str = NULL;
         SKT_LUA_GET_STR(etcp_cli_conf_list[i]->target_addr, "tcp_target_addr", str, len)
-        lua_pop(L, 2);
+        lua_pop(L, 1);
     }
 
     return etcp_cli_conf_list;
@@ -117,8 +120,10 @@ static etcp_cli_conf_t **init_tcp_cli_list_conf(lua_State *L, size_t size) {
 static skcp_conf_t **init_skcp_list_conf(lua_State *L, size_t size) {
     skcp_conf_t **skcp_conf_list = (skcp_conf_t **)calloc(size, sizeof(skcp_conf_t *));
     for (size_t i = 0; i < size; i++) {
+        LOG_I("init_skcp_list_conf 111 stack: %d", lua_gettop(L));
         lua_pushinteger(L, i + 1);
         lua_gettable(L, -2);
+        LOG_I("init_skcp_list_conf 222 stack: %d", lua_gettop(L));
 
         skcp_conf_list[i] = (skcp_conf_t *)malloc(sizeof(skcp_conf_t));
         SKCP_DEF_CONF(skcp_conf_list[i]);
@@ -133,45 +138,69 @@ static skcp_conf_t **init_skcp_list_conf(lua_State *L, size_t size) {
             }
         }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "skcp_keepalive") {
             skcp_conf_list[i]->w_keepalive = skcp_conf_list[i]->r_keepalive = ivalue;
         }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "skcp_max_conn_cnt") { skcp_conf_list[i]->max_conn_cnt = ivalue; }
 
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_INT(ivalue, "port") { skcp_conf_list[i]->port = ivalue; }
 
         size_t len = 0;
         const char *str = NULL;
-        lua_pop(L, 1);
+        // lua_pop(L, 1);
         SKT_LUA_GET_STR(skcp_conf_list[i]->addr, "address", str, len) else {
             LOG_E("invalid 'address' in config file");
         }
 
-        lua_pop(L, 1);
-        lua_getfield(L, -1, "ticket");
-        str = lua_tolstring(L, -1, &len);
-        if (str) {
-            len = len < SKCP_TICKET_LEN ? len : SKCP_TICKET_LEN;
-            memcpy(skcp_conf_list[i]->ticket, str, len);
-        }
+        LOG_I("init_skcp_list_conf 333 stack: %d", lua_gettop(L));
 
-        lua_pop(L, 1);
-        lua_getfield(L, -1, "password");
-        str = lua_tolstring(L, -1, &len);
-        if (str) {
+        len = 0;
+        str = NULL;
+        // lua_pop(L, 1);
+        SKT_LUA_GET_STR(skcp_conf_list[i]->ticket, "ticket", str, len) else {
+            LOG_E("invalid 'ticket' in config file");
+        }
+        // lua_getfield(L, -1, "ticket");
+        // str = lua_tolstring(L, -1, &len);
+        // if (str) {
+        //     len = len < SKCP_TICKET_LEN ? len : SKCP_TICKET_LEN;
+        //     memcpy(skcp_conf_list[i]->ticket, str, len);
+        // }
+
+        // lua_pop(L, 1);
+        LOG_I("init_skcp_list_conf 444 stack: %d", lua_gettop(L));
+        len = 0;
+        str = NULL;
+        char *password = NULL;
+        SKT_LUA_GET_STR(password, "password", str, len) else { LOG_E("invalid 'password' in config file"); }
+        if (password) {
             char padding[16] = {0};
             len = len > 16 ? 16 : len;
-            memcpy(padding, str, len);
+            memcpy(padding, password, len);
+            skcp_conf_list[i]->key = (char *)calloc(1, 32);
             char_to_hex(padding, len, skcp_conf_list[i]->key);
+            FREE_IF(password);
         }
 
-        lua_pop(L, 2);
+        // lua_getfield(L, -1, "password");
+        // str = lua_tolstring(L, -1, &len);
+        // if (str) {
+        //     char padding[16] = {0};
+        //     len = len > 16 ? 16 : len;
+        //     memcpy(padding, str, len);
+        //     char_to_hex(padding, len, skcp_conf_list[i]->key);
+        // }
+
+        LOG_I("init_skcp_list_conf 555 stack: %d", lua_gettop(L));
+        lua_pop(L, 1);
+        LOG_I("init_skcp_list_conf 666 stack: %d", lua_gettop(L));
     }
 
+    LOG_I("init_skcp_list_conf 777 stack: %d", lua_gettop(L));
     return skcp_conf_list;
 }
 
@@ -213,14 +242,16 @@ skt_config_t *skt_init_conf(const char *conf_file) {
     const char *str = NULL;
     SKT_LUA_GET_STR(conf->script_file, "script_file", str, len) else { SKT_CONF_ERROR("script_file", NULL); }
 
-    lua_pop(L, 1);
+    // lua_pop(L, 1);
     SKT_LUA_GET_STR(conf->tun_ip, "tun_ip", str, len);
-    lua_pop(L, 1);
+    // lua_pop(L, 1);
     SKT_LUA_GET_STR(conf->tun_mask, "tun_mask", str, len);
 
+    LOG_I("111 stack: %d", lua_gettop(L));
     // init skcp_servers
-    lua_pop(L, 1);
+    // lua_pop(L, 1);
     lua_getfield(L, -1, "skcp_servers");
+    LOG_I("222 stack: %d", lua_gettop(L));
     if (!lua_isnoneornil(L, -1) && lua_istable(L, -1)) {
         conf->skcp_serv_conf_list_size = lua_objlen(L, -1);
         if (conf->skcp_serv_conf_list_size <= 0) {
@@ -228,10 +259,12 @@ skt_config_t *skt_init_conf(const char *conf_file) {
         }
         conf->skcp_serv_conf_list = init_skcp_list_conf(L, conf->skcp_serv_conf_list_size);
     }
+    LOG_I("333 stack: %d", lua_gettop(L));
 
     // init skcp_clients
     lua_pop(L, 1);
-    lua_getfield(L, -1, "skcp_clients");
+    LOG_I("444 stack: %d", lua_gettop(L));
+    int type = lua_getfield(L, -1, "skcp_clients");
     if (!lua_isnoneornil(L, -1) && lua_istable(L, -1)) {
         conf->skcp_cli_conf_list_size = lua_objlen(L, -1);
         if (conf->skcp_cli_conf_list_size <= 0) {
@@ -239,10 +272,18 @@ skt_config_t *skt_init_conf(const char *conf_file) {
         }
         conf->skcp_cli_conf_list = init_skcp_list_conf(L, conf->skcp_cli_conf_list_size);
     }
+    LOG_I("555 stack: %d type: %d", lua_gettop(L), type);
 
     // init tcp server config
     lua_pop(L, 1);
-    lua_getfield(L, -1, "tcp_servers");
+    LOG_I("666 stack: %d", lua_gettop(L));
+    // lua_getglobal(L, "config");
+    // lua_pushstring(L, "tcp_servers");
+    // LOG_I("666.1 stack: %d", lua_gettop(L));
+    // int type = lua_gettable(L, -1);
+    type = lua_getfield(L, -1, "tcp_servers");
+    // type = lua_getfield(L, -1, "tun_ip");
+    LOG_I("777 stack: %d type: %d", lua_gettop(L), type);
     if (!lua_isnoneornil(L, -1) && lua_istable(L, -1)) {
         conf->etcp_serv_conf_list_size = lua_objlen(L, -1);
         if (conf->etcp_serv_conf_list_size <= 0) {

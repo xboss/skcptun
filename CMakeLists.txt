@@ -32,12 +32,22 @@ list(REMOVE_ITEM DIR_SRCS_LUA ${PROJECT_SOURCE_DIR}/src/3rd/lua/onelua.c)
 # target_link_libraries(skcptun pthread)
 
 # ############# test #############
-add_executable(skcptun_tt ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
-target_link_libraries(skcptun_tt ssl)
-target_link_libraries(skcptun_tt crypto)
-target_link_libraries(skcptun_tt ev)
-target_link_libraries(skcptun_tt m)
-target_link_libraries(skcptun_tt pthread)
+list(REMOVE_ITEM DIR_SRCS ${PROJECT_SOURCE_DIR}/src/skcptun_tt_mode.c)
+list(REMOVE_ITEM DIR_SRCS ${PROJECT_SOURCE_DIR}/src/skt_api_lua.c)
+add_executable(skcptun_mt ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
+target_link_libraries(skcptun_mt ssl)
+target_link_libraries(skcptun_mt crypto)
+target_link_libraries(skcptun_mt ev)
+target_link_libraries(skcptun_mt m)
+target_link_libraries(skcptun_mt pthread)
+
+# # ############# test #############
+# add_executable(skcptun_tt ${DIR_SRCS} ${DIR_SRCS_SKCP} ${DIR_SRCS_UTHASH} ${DIR_SRCS_EASYTCP} ${DIR_SRCS_LUA})
+# target_link_libraries(skcptun_tt ssl)
+# target_link_libraries(skcptun_tt crypto)
+# target_link_libraries(skcptun_tt ev)
+# target_link_libraries(skcptun_tt m)
+# target_link_libraries(skcptun_tt pthread)
 
 
 # ############# static #############
