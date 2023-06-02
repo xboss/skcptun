@@ -267,6 +267,48 @@ static void on_tun_read(struct ev_loop *loop, struct ev_io *watcher, int revents
 //     }
 // }
 
+static void on_test(struct ev_loop *loop, struct ev_timer *watcher, int revents) {
+    // TODO:
+    int is_print = 0;
+    char mq_info[1024] = {0};
+    char *p = mq_info;
+    // char skcp_mq_info[64] = {0};
+    // char engine_mq_info[64] = {0};
+    // char io_mq_info[64] = {0};
+    int skcp_in_mq_size = g_skcp->in_mq->size;
+    if (skcp_in_mq_size > 0) {
+        is_print = 1;
+    }
+    sprintf(p, "%d | ", skcp_in_mq_size);
+    int engine_in_mq_size[1024] = {0};
+    int io_in_mq_size[1024] = {0};
+    for (int i = 0; i < g_skcp->conf->engine_cnt; i++) {
+        engine_in_mq_size[i] = g_skcp->engine_list[i]->in_mq->size;
+        if (engine_in_mq_size[i] > 0) {
+            is_print = 1;
+        }
+
+        p += strlen(p);
+        sprintf(p, "%d ", engine_in_mq_size[i]);
+    }
+
+    p += strlen(p);
+    sprintf(p, "| ");
+
+    for (int i = 0; i < g_skcp->conf->io_cnt; i++) {
+        io_in_mq_size[i] = g_skcp->io_list[0]->in_mq->size;
+        if (io_in_mq_size[i] > 0) {
+            is_print = 1;
+        }
+        p += strlen(p);
+        sprintf(p, "%d ", io_in_mq_size[i]);
+    }
+
+    if (is_print) {
+        LOG_I(">>> %s", mq_info);
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                    main                                    */
 /* -------------------------------------------------------------------------- */
@@ -346,7 +388,11 @@ int main(int argc, char *argv[]) {
     ev_signal_init(&sig_stop_watcher, sig_cb, SIGSTOP);
     ev_signal_start(g_loop, &sig_stop_watcher);
 
-    // sleep(1);
+    // test
+    struct ev_timer test_watcher;
+    ev_init(&test_watcher, on_test);
+    ev_timer_set(&test_watcher, 1, 1);
+    ev_timer_start(g_loop, &test_watcher);
 
     ev_run(g_loop, 0);
     finish();
