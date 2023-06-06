@@ -22,18 +22,19 @@ typedef struct {
 } skt_q_msg_t;
 
 static struct ev_loop *g_loop = NULL;
+static struct ev_loop *g_tt_loop = NULL;
 static struct ev_loop *g_skcp_loop = NULL;
 
 static int g_tun_fd = -1;
 static skt_config_t *g_conf = NULL;
 
 static skcp_t *g_skcp = NULL;
-// static int g_skcp_mode;
 
 static uint32_t g_cid = 0;
-// static skt_queue_t *g_skcp_input_queue = NULL;
+static pthread_t g_tuntap_tid;
 static skcp_queue_t *g_tun_in_box = NULL;
-static skcp_queue_t *g_tun_out_box = NULL;
+// static skcp_queue_t *g_tun_out_box = NULL;
+static ev_async *tuntap_notify_input_watcher = NULL;
 static uint64_t ping_tm = 0;
 
 static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
@@ -79,6 +80,19 @@ static int init_vpn() {
     return utunfd;
 }
 
+static int tuntap_send(const char *buf, int len) {
+    if (!buf || len <= 0) {
+        return -1;
+    }
+    skcp_msg_t *msg = skcp_init_msg(SKCP_MSG_TYPE_DATA, 0, buf, len, NULL, NULL);
+    if (skcp_push_queue(g_tun_in_box, msg) != 0) {
+        SKCP_FREE_MSG(msg);
+        return -1;
+    }
+    ev_async_send(g_tt_loop, tuntap_notify_input_watcher);
+    return 0;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                  callbacks                                 */
 /* -------------------------------------------------------------------------- */
@@ -105,9 +119,13 @@ static void on_skcp_server_recv(skcp_t *skcp, uint32_t cid, char *buf, int len) 
         ping_tm = now;
     } else if (cmd == SKT_CMD_PUSH) {
         // push
-        if (skt_tuntap_write(g_tun_fd, buf + 1, len - 1) < 0) {
-            LOG_E("on_skcp_server_recv_data skt_tuntap_write error");
+        if (tuntap_send(buf + 1, len - 1) < 0) {
+            LOG_E("on_skcp_server_recv_data tuntap_send error");
         }
+
+        // if (skt_tuntap_write(g_tun_fd, buf + 1, len - 1) < 0) {
+        //     LOG_E("on_skcp_server_recv_data skt_tuntap_write error");
+        // }
     } else {
         // error cmd
         LOG_E("on_skcp_server_recv_data error cmd %x", cmd);
@@ -136,9 +154,12 @@ static void on_skcp_client_recv(skcp_t *skcp, uint32_t cid, char *buf, int len) 
         LOG_I("cid: %u rtt: %llu", cid, now - ptm);
     } else if (cmd == SKT_CMD_PUSH) {
         // push
-        if (skt_tuntap_write(g_tun_fd, buf + 1, len - 1) < 0) {
-            LOG_E("on_skcp_client_recv_data skt_tuntap_write error");
+        if (tuntap_send(buf + 1, len - 1) < 0) {
+            LOG_E("on_skcp_client_recv_data tuntap_send error");
         }
+        // if (skt_tuntap_write(g_tun_fd, buf + 1, len - 1) < 0) {
+        //     LOG_E("on_skcp_client_recv_data skt_tuntap_write error");
+        // }
 
         // skt_q_msg_t *msg = (skt_q_msg_t *)calloc(1, sizeof(skt_q_msg_t));
         // msg->buf = (char *)calloc(1, len - 1);
@@ -275,10 +296,16 @@ static void on_test(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     // char skcp_mq_info[64] = {0};
     // char engine_mq_info[64] = {0};
     // char io_mq_info[64] = {0};
+    if (g_tun_in_box->size > 0) {
+        is_print = 1;
+    }
+    sprintf(p, "%d | ", g_tun_in_box->size);
+
     int skcp_in_mq_size = g_skcp->in_mq->size;
     if (skcp_in_mq_size > 0) {
         is_print = 1;
     }
+    p += strlen(p);
     sprintf(p, "%d | ", skcp_in_mq_size);
     int engine_in_mq_size[1024] = {0};
     int io_in_mq_size[1024] = {0};
@@ -309,6 +336,42 @@ static void on_test(struct ev_loop *loop, struct ev_timer *watcher, int revents)
     }
 }
 
+static void tuntap_notify_input_cb(struct ev_loop *loop, struct ev_async *watcher, int revents) {
+    // send
+    while (g_tun_in_box->size > 0) {
+        skcp_msg_t *msg = (skcp_msg_t *)skcp_pop_queue(g_tun_in_box);
+        if (skt_tuntap_write(g_tun_fd, msg->buf, msg->buf_len) < 0) {
+            LOG_E("tuntap_notify_input_cb skt_tuntap_write error");
+        }
+        SKCP_FREE_MSG(msg);
+    }
+}
+
+static void *tuntap_routine_fn(void *arg) {
+#if (defined(__linux__) || defined(__linux))
+    g_tt_loop = ev_loop_new(EVBACKEND_EPOLL);
+#elif defined(__APPLE__)
+    g_tt_loop = ev_loop_new(EVBACKEND_KQUEUE);
+#else
+    g_tt_loop = ev_default_loop(0);
+#endif
+
+    // 设置tun读事件循环
+    struct ev_io r_watcher;
+    ev_io_init(&r_watcher, on_tun_read, g_tun_fd, EV_READ);
+    ev_io_start(g_tt_loop, &r_watcher);
+
+    tuntap_notify_input_watcher = (ev_async *)SKCP_ALLOC(sizeof(ev_async));
+    ev_async_init(tuntap_notify_input_watcher, tuntap_notify_input_cb);
+    ev_async_start(g_tt_loop, tuntap_notify_input_watcher);
+
+    LOG_I("start tuntap thread ok");
+    ev_run(g_tt_loop, 0);
+    LOG_I("tuntap thread end");
+
+    return NULL;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                    main                                    */
 /* -------------------------------------------------------------------------- */
@@ -327,7 +390,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // init libev
+// init libev
 #if (defined(__linux__) || defined(__linux))
     g_loop = ev_loop_new(EVBACKEND_EPOLL);
 #elif defined(__APPLE__)
@@ -354,7 +417,7 @@ int main(int argc, char *argv[]) {
     }
 
     g_tun_in_box = skcp_init_queue(-1);
-    g_tun_out_box = skcp_init_queue(-1);
+    // g_tun_out_box = skcp_init_queue(-1);
 
     if (g_conf->tun_ip > 0 && g_conf->tun_mask) {
         // init tuntap
@@ -364,10 +427,11 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        // 设置tun读事件循环
-        struct ev_io r_watcher;
-        ev_io_init(&r_watcher, on_tun_read, g_tun_fd, EV_READ);
-        ev_io_start(g_loop, &r_watcher);
+        if (pthread_create(&g_tuntap_tid, NULL, tuntap_routine_fn, NULL)) {  // TODO:  free it
+            LOG_E("start tuntap thread error");
+            finish();
+            return -1;
+        }
     }
 
     // 定时
