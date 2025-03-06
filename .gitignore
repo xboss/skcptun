@@ -1,25 +1,13 @@
+#project
 .DS_Store
 .vscode
 *.log
-*.conf
 *.sh
+*.conf
 out
-!skcptun_client_sample.conf
-!skcptun_server_sample.conf
-!skcptun_sample.conf
-test/*
-src/ss5*
+build
+test
 
-#cmake files
-build/*
-build*
-CMakeFiles
-CMakeCache.txt
-*.cmake
-DartConfiguration.tcl
-skcptun
-Makefile
-Testing
 
 # Prerequisites
 *.d
