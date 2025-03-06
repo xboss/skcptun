@@ -29,6 +29,15 @@ typedef struct {
     int read_buf_size;
     char* log_file;
     int log_level;
+
+    // kcp config
+    int mtu;
+    int interval;
+    int nodelay;
+    int resend;
+    int nc;
+    int sndwnd;
+    int rcvwnd;
 } skt_config_t;
 
 #endif /* _SKT_H */
