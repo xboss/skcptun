@@ -9,9 +9,11 @@
 
 #include "skt.h"
 #include "ssconf.h"
+#include "skcptun.h"
 
 
 static skt_config_t g_conf;
+static skcptun_t *g_skt;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
     char *keys[] = {"mode",    "listen_ip",     "listen_port", "target_ip", "target_port", "password",
@@ -33,9 +35,9 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
         int len = strlen(v);
         if (strcmp("mode", keys[i]) == 0) {
             if (strcmp(v, "local") == 0) {
-                conf->mode = SSPIPE_MODE_LOCAL;
+                conf->mode = SKT_MODE_LOCAL;
             } else if (strcmp(v, "remote") == 0) {
-                conf->mode = SSPIPE_MODE_REMOTE;
+                conf->mode = SKT_MODE_REMOTE;
             } else {
                 conf->mode = -1;
             }
@@ -54,7 +56,7 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
         } else if (strcmp("password", keys[i]) == 0) {
             memcpy(conf->key, v, strnlen(v, AES_128_KEY_SIZE));
         } else if (strcmp("ticket", keys[i]) == 0) {
-            memcpy(conf->ticket, v, strnlen(v, SSPIPE_TICKET_SIZE));
+            memcpy(conf->ticket, v, strnlen(v, SKT_TICKET_SIZE));
         }
         // else if (strcmp("timeout", keys[i]) == 0) {
         //     conf->timeout = atoi(v);
@@ -95,13 +97,13 @@ static int check_config(skt_config_t *conf) {
         fprintf(stderr, "Invalid listen_port:%u in configfile.\n", conf->listen_port);
         return _ERR;
     }
-    if (conf->mode == SSPIPE_MODE_LOCAL || conf->mode == SSPIPE_MODE_REMOTE) {
+    if (conf->mode == SKT_MODE_LOCAL || conf->mode == SKT_MODE_REMOTE) {
         if (conf->target_port > 65535) {
             fprintf(stderr, "Invalid target_port:%u in configfile.\n", conf->target_port);
             return _ERR;
         }
     }
-    if (conf->mode != SSPIPE_MODE_LOCAL && conf->mode != SSPIPE_MODE_REMOTE) {
+    if (conf->mode != SKT_MODE_LOCAL && conf->mode != SKT_MODE_REMOTE) {
         fprintf(stderr, "Invalid mode:%d in configfile. local mode is 'local', remote mode is 'remote'.\n", conf->mode);
         return _ERR;
     }
@@ -110,7 +112,7 @@ static int check_config(skt_config_t *conf) {
 
 static void handle_exit(int sig) {
     _LOG("exit by signal %d ... ", sig);
-    sspipe_stop(g_pipe);
+    skt_stop(g_skt);
 }
 
 static void signal_handler(int sn) {
@@ -142,18 +144,18 @@ int main(int argc, char const *argv[]) {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, signal_handler);
 
-    g_pipe = sspipe_init(&g_conf);
-    if (!g_pipe) {
-        _LOG_E("init pipe error.");
+    g_skt = skt_init(&g_conf);
+    if (!g_skt) {
+        _LOG_E("init skt error.");
         return 1;
     }
 
-    rt = sspipe_start(g_pipe);
+    rt = skt_start(g_skt);
     if (rt != _OK) {
         _LOG_E("start server error.");
     }
 
-    sspipe_free(g_pipe);
+    skt_free(g_skt);
     sslog_free();
     printf("Bye\n");
     return 0;

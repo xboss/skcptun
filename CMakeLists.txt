@@ -9,6 +9,7 @@ set(CMAKE_C_WALL ON)
 set(SOURCE_FILES
 src/crypto.c
 src/main.c
+src/skcptun.c
 src/ssconf.c
 src/sslog.c
 src/sstcp.c
