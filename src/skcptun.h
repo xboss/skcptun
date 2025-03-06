@@ -4,13 +4,15 @@
 #include "skt.h"
 #include "sstcp.h"
 #include "ikcp.h"
+#include "ssudp.h"
 
 typedef struct {
     skt_config_t *conf;
     sstcp_server_t *tcp_server;
+    ssudp_t* udp;
     ikcpcb *kcp;
     int udp_fd;
-    uint32_t conv;
+    int tun_fd;
 } skcptun_t;
 
 skcptun_t* skt_init(skt_config_t* conf);
