@@ -1,12 +1,12 @@
 #ifndef _SSUDP_H
 #define _SSUDP_H
 
+#include <netinet/in.h>
 #include <stdint.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 
 typedef struct {
-    int sockfd;
+    int fd;
     struct sockaddr_in local_addr;
     struct sockaddr_in remote_addr;
 } ssudp_t;
