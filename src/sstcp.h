@@ -1,13 +1,12 @@
 #ifndef _SSTCP_H
 #define _SSTCP_H
 
-#include "skt.h"
-
-
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <pthread.h>
+
+#include "skt.h"
 
 // 定义服务器结构体
 typedef struct sstcp_server_s sstcp_server_t;

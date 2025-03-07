@@ -1,10 +1,14 @@
+#define _XOPEN_SOURCE 700
+
 #include "sstcp.h"
 
 #include <assert.h>
 #include <netinet/tcp.h>
+#include <stdint.h>  // 添加这个头文件以使用 intptr_t
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 static void setreuseaddr(int fd) {
     int reuse = 1;
@@ -33,9 +37,8 @@ static void* client_thread(void* arg) {
 
 // 创建服务器
 sstcp_server_t* sstcp_create_server(const char* bind_ip, int port, sstcp_client_thread_cb_t handler, void* user_data) {
-    if (!bind_ip || port <= 0 || !handler) 
-        return NULL;
-    
+    if (!bind_ip || port <= 0 || !handler) return NULL;
+
     sstcp_server_t* server = (sstcp_server_t*)calloc(1, sizeof(sstcp_server_t));
     if (!server) return NULL;
 
@@ -110,7 +113,7 @@ int sstcp_start_server(sstcp_server_t* server) {
 
         // 为每个客户端创建一个线程
         void** arg = (void**)malloc(2 * sizeof(void*));
-        arg[0] = (void*)(intptr_t)new_socket;
+        arg[0] = (void*)(intptr_t)new_socket;  // 使用 intptr_t 进行转换
         arg[1] = (void*)server;
 
         pthread_t thread_id;
@@ -176,14 +179,10 @@ int sstcp_connect(sstcp_client_t* client, const char* server_ip, int port) {
 }
 
 // 发送数据
-int sstcp_send(int fd, const char* data, int length) {
-    return send(fd, data, length, 0);
-}
+int sstcp_send(int fd, const char* data, int length) { return send(fd, data, length, 0); }
 
 // 接收数据
-int sstcp_receive(int fd, char* buffer, int length) {
-    return recv(fd, buffer, length, 0);
-}
+int sstcp_receive(int fd, char* buffer, int length) { return recv(fd, buffer, length, 0); }
 
 // 释放客户端资源
 void sstcp_free_client(sstcp_client_t* client) {

@@ -1,7 +1,11 @@
+
+#define _XOPEN_SOURCE 700
+
 #include "skcptun.h"
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "tun.h"
 #include "uthash.h"
@@ -237,7 +241,6 @@ static void handle_ctrl_server(int fd, sstcp_server_t* server) {
 
     // send kcp conv
     int pkt_len = 0;
-    int payload_len_net = htonl(sizeof(uint32_t));
     uint32_t cid_net = htonl(cid);
     // reuse pkt
     if (pack(skt, (char*)&cid_net, sizeof(uint32_t), pkt, &pkt_len) == _ERR) return;

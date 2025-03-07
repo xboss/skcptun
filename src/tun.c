@@ -11,7 +11,9 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "ladder.h"
+#define _OK 0
+#define _ERR -1
+
 int tun_alloc(char* dev, size_t dev_len) {
     if (dev == NULL || dev_len < IFNAMSIZ) {
         fprintf(stderr, "Invalid device name buffer\n");

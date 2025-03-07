@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(skcptun)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_WALL ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall")
 
 
 # 添加源文件
@@ -16,6 +15,7 @@ src/sstcp.c
 src/ssbuff.c
 src/ssudp.c
 src/test_ssudp.c
+src/tun.c
 # src/test_proxy.c
 )
 

@@ -11,6 +11,10 @@
 // #define INET_ADDRSTRLEN 16
 // #endif  // INET_ADDRSTRLEN
 
+#ifndef IFNAMSIZ
+#define IFNAMSIZ 16
+#endif
+
 #define _OK 0
 #define _ERR -1
 
