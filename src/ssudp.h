@@ -8,7 +8,9 @@
 typedef struct {
     int fd;
     struct sockaddr_in local_addr;
+    socklen_t la_len;
     struct sockaddr_in remote_addr;
+    socklen_t ra_len;
 } ssudp_t;
 
 ssudp_t* ssudp_init(const char* local_ip, uint16_t local_port, const char* remote_ip, uint16_t remote_port);

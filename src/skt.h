@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <ev.h>
 
 #include "crypto.h"
 #include "sslog.h"
@@ -21,6 +22,7 @@
 #define SKT_MODE_LOCAL 0
 #define SKT_MODE_REMOTE 1
 #define SKT_TICKET_SIZE (32)
+#define SKT_MTU (1500)
 
 typedef struct {
     char ctrl_server_ip[INET_ADDRSTRLEN];
@@ -35,7 +37,6 @@ typedef struct {
     int mode;
     // int send_timeout;  // 发送超时时间（毫秒）
     // int recv_timeout;  // 接收超时时间（毫秒）
-    int read_buf_size;
     char* log_file;
     int log_level;
 
@@ -43,9 +44,10 @@ typedef struct {
     char tun_dev[IFNAMSIZ + 1];
     char tun_ip[INET_ADDRSTRLEN + 1];
     char tun_netmask[INET_ADDRSTRLEN + 1];
+    int tun_mtu;
 
     // kcp config
-    int mtu;
+    int kcp_mtu;
     int interval;
     int nodelay;
     int resend;

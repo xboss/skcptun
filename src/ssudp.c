@@ -54,7 +54,7 @@ ssize_t ssudp_send(ssudp_t* ssudp, const void* buf, size_t len) {
     return sendto(ssudp->fd, buf, len, 0, (struct sockaddr*)&ssudp->remote_addr, sizeof(ssudp->remote_addr));
 }
 
-ssize_t ssudp_recv(ssudp_t* ssudp, void* buf, size_t len) { return recvfrom(ssudp->fd, buf, len, 0, NULL, NULL); }
+ssize_t ssudp_recv(ssudp_t* ssudp, void* buf, size_t len) { return recvfrom(ssudp->fd, buf, len, 0, (struct sockaddr*)&ssudp->remote_addr, &ssudp->ra_len); }
 
 void ssudp_free(ssudp_t* ssudp) {
     if (ssudp) {

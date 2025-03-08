@@ -14,6 +14,7 @@
 
 static skt_config_t g_conf;
 static skcptun_t *g_skt;
+struct ev_loop* g_loop;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
     char *keys[] = {"mode",    "listen_ip",     "listen_port", "target_ip", "target_port", "password",
@@ -144,16 +145,20 @@ int main(int argc, char const *argv[]) {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, signal_handler);
 
-    g_skt = skt_init(&g_conf);
+    g_loop = EV_DEFAULT;
+
+    g_skt = skt_init(&g_conf, g_loop);
     if (!g_skt) {
         _LOG_E("init skt error.");
         return 1;
     }
 
-    rt = skt_start(g_skt);
-    if (rt != _OK) {
-        _LOG_E("start server error.");
-    }
+    // rt = skt_start(g_skt);
+    // if (rt != _OK) {
+    //     _LOG_E("start server error.");
+    // }
+
+    ev_run (g_loop, 0);
 
     skt_free(g_skt);
     sslog_free();
