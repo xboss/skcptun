@@ -1,7 +1,7 @@
 #ifndef _SKCPTUN_H
 #define _SKCPTUN_H
 
-#include "ikcp.h"
+
 #include "skt.h"
 #include "sstcp.h"
 #include "ssudp.h"

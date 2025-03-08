@@ -7,6 +7,8 @@
 
 #include "crypto.h"
 #include "sslog.h"
+#include "uthash.h"
+#include "ikcp.h"
 
 // #if !defined(INET_ADDRSTRLEN)
 // #define INET_ADDRSTRLEN 16
@@ -25,11 +27,11 @@
 #define SKT_MTU (1500)
 
 typedef struct {
-    char ctrl_server_ip[INET_ADDRSTRLEN];
+    char ctrl_server_ip[INET_ADDRSTRLEN + 1];
     unsigned short ctrl_server_port;
-    char udp_local_ip[INET_ADDRSTRLEN];
+    char udp_local_ip[INET_ADDRSTRLEN + 1];
     unsigned short udp_local_port;
-    char udp_remote_ip[INET_ADDRSTRLEN];
+    char udp_remote_ip[INET_ADDRSTRLEN + 1];
     unsigned short udp_remote_port;
     unsigned char key[AES_128_KEY_SIZE + 1];
     unsigned char iv[AES_BLOCK_SIZE + 1];
