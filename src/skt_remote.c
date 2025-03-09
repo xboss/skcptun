@@ -122,16 +122,17 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
 int skt_remote_start(skcptun_t* skt) {
 
     // init udp data channel
-    skt->udp = ssudp_init(conf->udp_local_ip, conf->udp_local_port, conf->udp_remote_ip, conf->udp_remote_port);
-    if (skt->udp == NULL) {
+    skt->udp_peer = skt_udp_peer_init(skt->conf->udp_local_ip, skt->conf->udp_local_port, skt->conf->udp_remote_ip, skt->conf->udp_remote_port);
+    if (skt->udp_peer == NULL) {
         return NULL;
     }
+    // skt_kcp_conn_add(,)
 
 
     ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
     ev_io_start(skt->loop, skt->tun_io_watcher);
 
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp->fd, EV_READ);
+    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_peer->fd, EV_READ);
     ev_io_start(skt->loop, skt->udp_io_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->interval);

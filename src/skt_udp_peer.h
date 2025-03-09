@@ -9,7 +9,7 @@ typedef struct {
     int fd;
     struct sockaddr_in local_addr;
     socklen_t la_len;
-    UT_hash_handle hh;
+    // UT_hash_handle hh;
 } skt_udp_peer_t;
 
 skt_udp_peer_t* skt_udp_peer_init(const char* local_ip, uint16_t local_port, const char* remote_ip, uint16_t remote_port);

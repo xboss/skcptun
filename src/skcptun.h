@@ -25,7 +25,7 @@ typedef struct {
     int udp_fd;
     int tun_fd;
     skt_udp_peer_t *udp_peer; // udp peer table
-    skt_kcp_conn_t *kcp_conn; // kcp conn table
+    // skt_kcp_conn_t *kcp_conn; // kcp conn table
     // ikcpcb* kcp;
     int running;
 
