@@ -45,7 +45,9 @@ typedef struct {
     // tun config
     char tun_dev[IFNAMSIZ + 1];
     char tun_ip[INET_ADDRSTRLEN + 1];
+    // uint32_t tun_ip;
     char tun_netmask[INET_ADDRSTRLEN + 1];
+    // uint32_t tun_netmask;
     int tun_mtu;
 
     // kcp config

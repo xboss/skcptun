@@ -2,12 +2,33 @@
 
 #include <stdio.h>
 
+#include "skt_conv.h"
+
 static void on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt) {
     // check ticket
+    if (strncmp(skt->conf->ticket, pkt->ticket, SKT_TICKET_SIZE) != 0) {
+        _LOG("invalid ticket in auth");
+        return;
+    }
     // gen cid
+    int cid = skt_conv_gen_cid();
+
     // gen virtual ip
+    uint32_t my_tun_ip = 0;
+    if (inet_pton(AF_INET, skt->conf->tun_ip, &my_tun_ip) != 1) return;
+    assert(my_tun_ip > 0);
+    uint32_t vt_ip = my_tun_ip + 1; /* TODO: gen and check virtual ip */
+    uint32_t vt_ip_net = htonl(vt_ip);
+
+    // uint32_t src_addr_host_order = ntohl(src_addr_network_order);
+    // inet_ntop(AF_INET, &src_addr_host_order, src_ip_str, INET_ADDRSTRLEN);
 
     // send resp
+    char raw[SKT_MTU] = {0};
+    int raw_len = 0;
+    if (skt_pack(skt, SKT_PKT_CMD_AUTH_RESP, pkt->ticket, &vt_ip_net, sizeof(uint32_t), raw, &raw_len)) return;
+    assert(raw_len > 0);
+    ssudp_send(skt->udp, raw, raw_len);
 }
 
 static void on_cmd_data(skcptun_t* skt, skt_packet_t* pkt) {
@@ -99,6 +120,14 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
 ////////////////////////////////
 
 int skt_remote_start(skcptun_t* skt) {
+
+    // init udp data channel
+    skt->udp = ssudp_init(conf->udp_local_ip, conf->udp_local_port, conf->udp_remote_ip, conf->udp_remote_port);
+    if (skt->udp == NULL) {
+        return NULL;
+    }
+
+
     ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
     ev_io_start(skt->loop, skt->tun_io_watcher);
 

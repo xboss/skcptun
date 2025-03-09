@@ -3,8 +3,10 @@
 
 
 #include "skt.h"
-#include "sstcp.h"
-#include "ssudp.h"
+// #include "sstcp.h"
+// #include "ssudp.h"
+#include "skt_udp_peer.h"
+#include "skt_kcp_conn.h"
 
 #define SKT_PKT_CMD_SZIE (1)
 #define SKT_PKT_CMD_DATA (0x01u)
@@ -19,9 +21,12 @@ typedef struct {
     skt_config_t* conf;
     // sstcp_server_t* tcp_server;
     // sstcp_client_t* tcp_client;
-    ssudp_t* udp;
+    // ssudp_t* udp;
+    int udp_fd;
     int tun_fd;
-    ikcpcb* kcp;
+    skt_udp_peer_t *udp_peer; // udp peer table
+    skt_kcp_conn_t *kcp_conn; // kcp conn table
+    // ikcpcb* kcp;
     int running;
 
     ev_timer *timeout_watcher;
@@ -42,6 +47,6 @@ typedef struct {
 } skt_packet_t;
 
 int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw, int* raw_len);
-int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, const char* ticket, char* payload, int *payload_len);
+int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, char* ticket, char* payload, int *payload_len);
 
 #endif /* _SKCPTUN_H */

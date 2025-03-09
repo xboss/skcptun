@@ -3,7 +3,6 @@
 
 #include "skcptun.h"
 
-#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
@@ -51,7 +50,7 @@ static void print_hex(const char* label, const unsigned char* data, int len) {
 // cmd(1B)ticket(32)payload(mtu-32B-1B)
 
  int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw, int* raw_len) {
-    assert(payload <= skt->conf->tun_mtu - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE);
+    assert(payload_len <= skt->conf->tun_mtu - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE);
     if (_IS_SECRET) {
         char cipher_buf[SKT_MTU] = {0};
         memcpy(cipher_buf, &cmd, SKT_PKT_CMD_SZIE);
@@ -71,7 +70,7 @@ static void print_hex(const char* label, const unsigned char* data, int len) {
     return _OK;
 }
 
- int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, const char* ticket, char* payload, int *payload_len) {
+ int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, char* ticket, char* payload, int *payload_len) {
     assert(raw_len <= skt->conf->kcp_mtu);
     assert(raw_len > SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
     char* p = (char*)raw;
@@ -156,12 +155,12 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
         return NULL;
     }
 
-    // init udp data channel
-    skt->udp = ssudp_init(conf->udp_local_ip, conf->udp_local_port, conf->udp_remote_ip, conf->udp_remote_port);
-    if (skt->udp == NULL) {
-        skt_free(skt);
-        return NULL;
-    }
+    // // init udp data channel
+    // skt->udp = ssudp_init(conf->udp_local_ip, conf->udp_local_port, conf->udp_remote_ip, conf->udp_remote_port);
+    // if (skt->udp == NULL) {
+    //     skt_free(skt);
+    //     return NULL;
+    // }
 
     skt->loop = loop;
     skt->timeout_watcher = (ev_timer*)calloc(1, sizeof(ev_timer));
