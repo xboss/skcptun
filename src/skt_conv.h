@@ -5,7 +5,7 @@
 typedef struct {
     uint32_t cid;
     char ip[INET_ADDRSTRLEN + 1];
-    uint32_t v_ip; /* TODO: */
+    uint32_t vt_ip; /* TODO: */
     ikcpcb* kcp;
     struct sockaddr_in addr;
     
