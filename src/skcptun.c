@@ -11,14 +11,15 @@
 #include "tun.h"
 
 
-#define SKT_PKT_HEADER_SZIE 4
-#define MAX_DATA_PAYLOAD_SZIE (1024 * 2)
-#define RECV_DATA_BUF_SIZE ((MAX_DATA_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE) * 5)
-#define MAX_CTRL_PAYLOAD_SZIE (128)
+
+// #define SKT_PKT_HEADER_SZIE 4
+// #define MAX_DATA_PAYLOAD_SZIE (1024 * 2)
+// #define RECV_DATA_BUF_SIZE ((MAX_DATA_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE) * 5)
+// #define MAX_CTRL_PAYLOAD_SZIE (128)
 // #define RECV_CTRL_BUF_SIZE (MAX_CTRL_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE)
-#define RECV_TIMEOUT 1000 * 60 * 5
-#define SEND_TIMEOUT 1000 * 60 * 5
-#define POLL_TIMEOUT 1000
+// #define RECV_TIMEOUT 1000 * 60 * 5
+// #define SEND_TIMEOUT 1000 * 60 * 5
+// #define POLL_TIMEOUT 1000
 
 #define _IS_SECRET (strlen((const char*)skt->conf->key) > 0 && strlen((const char*)skt->conf->iv) > 0)
 
@@ -41,48 +42,58 @@ static void print_hex(const char* label, const unsigned char* data, int len) {
     printf("\n");
 }
 
-
 ////////////////////////////////
 // protocol
 ////////////////////////////////
 
-inline static int pack(skcptun_t* skt, char* payload, int payload_len, char* pkt, int* pkt_len) {
-    int cipher_len = 0;
-    int payload_len_net = htonl(payload_len);
-    memcpy(pkt, &payload_len_net, SKT_PKT_HEADER_SZIE);
-    *pkt_len += SKT_PKT_HEADER_SZIE;
+
+
+// cmd(1B)ticket(32)payload(mtu-32B-1B)
+
+ int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw, int* raw_len) {
+    assert(payload <= skt->conf->tun_mtu - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE);
     if (_IS_SECRET) {
-        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)&payload, (size_t)payload_len, (unsigned char*)pkt + SKT_PKT_HEADER_SZIE, (size_t*)&cipher_len)) {
+        char cipher_buf[SKT_MTU] = {0};
+        memcpy(cipher_buf, &cmd, SKT_PKT_CMD_SZIE);
+        memcpy(cipher_buf + SKT_PKT_CMD_SZIE, ticket, SKT_TICKET_SIZE);
+        memcpy(cipher_buf + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, payload, payload_len);
+        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)&cipher_buf, (size_t)(payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE), (unsigned char*)raw, (size_t*)raw_len)) {
             _LOG_E("crypto encrypt failed");
             return _ERR;
         }
-        assert(cipher_len == payload_len && cipher_len > 0);
-        *pkt_len += cipher_len;
+        assert(payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE == *raw_len);
     } else {
-        memcpy(pkt + SKT_PKT_HEADER_SZIE, payload, payload_len);
-        *pkt_len += payload_len;
+        memcpy(raw, &cmd, SKT_PKT_CMD_SZIE);
+        memcpy(raw + SKT_PKT_CMD_SZIE, ticket, SKT_TICKET_SIZE);
+        memcpy(raw + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, payload, payload_len);
+        *raw_len = payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE;
     }
     return _OK;
 }
 
-inline static int unpack(skcptun_t* skt, char* pkt, int pkt_len, char* payload, int* payload_len) {
+ int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, const char* ticket, char* payload, int *payload_len) {
+    assert(raw_len <= skt->conf->kcp_mtu);
+    assert(raw_len > SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
+    char* p = (char*)raw;
     if (_IS_SECRET) {
+        char cipher_buf[SKT_MTU] = {0};
         int cipher_len = 0;
-        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)pkt + SKT_PKT_HEADER_SZIE, pkt_len - SKT_PKT_HEADER_SZIE, (unsigned char*)payload, (size_t*)&cipher_len)) {
-            _LOG_E("crypto decrypt failed when do_auth");
-            assert(cipher_len == pkt_len - SKT_PKT_HEADER_SZIE);
-            *payload_len += cipher_len;
+        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, raw_len, (unsigned char*)cipher_buf, (size_t*)&cipher_len)) {
+            _LOG_E("crypto decrypt failed");
             return _ERR;
-        } else {
-            memcpy(payload, pkt + SKT_PKT_HEADER_SZIE, pkt_len - SKT_PKT_HEADER_SZIE);
-            *payload_len += pkt_len - SKT_PKT_HEADER_SZIE;
         }
+        assert(cipher_len == raw_len);
+        p = cipher_buf;
     }
+    memcpy(cmd, p, SKT_PKT_CMD_SZIE);
+    memcpy(ticket, p + SKT_PKT_CMD_SZIE, SKT_TICKET_SIZE);
+    memcpy(payload, p + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, raw_len - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
+    *payload_len = raw_len - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE;
     return _OK;
 }
 
 ////////////////////////////////
-// controller channel
+// callback
 ////////////////////////////////
 
 static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
@@ -90,29 +101,8 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
     return 0;
 }
 
-static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
-    if (EV_ERROR & revents) {
-        _LOG("timeout_cb got invalid event");
-        return;
-    }
-}
-
-static void tun_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
-    if (EV_ERROR & revents) {
-        _LOG("tun_read_cb got invalid event");
-        return;
-    }
-}
-
-static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
-    if (EV_ERROR & revents) {
-        _LOG("udp_read_cb got invalid event");
-        return;
-    }
-}
-
 ////////////////////////////////
-// API
+// skcptun API
 ////////////////////////////////
 
 skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
@@ -172,6 +162,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
         skt_free(skt);
         return NULL;
     }
+
     skt->loop = loop;
     skt->timeout_watcher = (ev_timer*)calloc(1, sizeof(ev_timer));
     if (!skt->timeout_watcher) {
@@ -179,8 +170,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
         skt_free(skt);
         return NULL;
     }
-    ev_timer_init(skt->timeout_watcher, timeout_cb, 0, conf->interval);
-    ev_timer_start(loop, skt->timeout_watcher);
+    skt->timeout_watcher->data = skt;
 
     skt->tun_io_watcher = (ev_io*)calloc(1, sizeof(ev_io));
     if (!skt->tun_io_watcher) {
@@ -188,8 +178,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
         skt_free(skt);
         return NULL;
     }
-    ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
-    ev_io_start(skt->loop, skt->tun_io_watcher);
+    skt->tun_io_watcher->data = skt;
 
     skt->udp_io_watcher = (ev_io*)calloc(1, sizeof(ev_io));
     if (!skt->udp_io_watcher) {
@@ -197,8 +186,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
         skt_free(skt);
         return NULL;
     }
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp->fd, EV_READ);
-    ev_io_start(skt->loop, skt->udp_io_watcher);
+    skt->udp_io_watcher->data = skt;
 
     return NULL;
 }

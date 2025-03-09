@@ -9,19 +9,22 @@ link_directories(/usr/local/lib)
 
 # 添加源文件
 set(SOURCE_FILES
-src/crypto.c
-# src/main.c
-src/skcptun.c
-src/ssconf.c
+# src/crypto.c
+# # src/main.c
+# src/skcptun.c
+# src/ssconf.c
+# src/sslog.c
+# src/sstcp.c
+# src/ssbuff.c
+# src/ssudp.c
+# src/test_ssudp.c
+# src/tun.c
+# src/tun_osx.c
+# src/ikcp.c
+# # src/test_proxy.c
+
+src/skt_conv.c
 src/sslog.c
-src/sstcp.c
-src/ssbuff.c
-src/ssudp.c
-src/test_ssudp.c
-src/tun.c
-src/tun_osx.c
-src/ikcp.c
-# src/test_proxy.c
 )
 
 
