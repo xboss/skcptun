@@ -16,7 +16,6 @@ typedef struct {
     uint64_t last_r_tm;  // 最后一次读操作的时间戳
     uint64_t last_w_tm;  // 最后一次写操作的时间戳
 
-    char ticket[SKT_TICKET_SIZE + 1];
 } skt_kcp_conn_t;
 
 // uint32_t skt_kcp_conn_gen_cid();

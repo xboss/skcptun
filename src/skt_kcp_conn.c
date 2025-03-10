@@ -35,7 +35,7 @@ int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
 
     char raw[SKT_MTU] = {0};
     int raw_len = 0;
-    if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->ticket, buf, len, raw, &raw_len)) {
+    if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->peer->ticket, buf, len, raw, &raw_len)) {
         return 0;
     }
     assert(raw_len == len);
@@ -61,7 +61,7 @@ skt_kcp_conn_t *skt_kcp_conn_add(uint32_t tun_ip, const char *ticket, skt_udp_pe
     conn->peer = peer;
     conn->create_time = skt_mstime();
     conn->skt = skt;
-    strncpy(conn->ticket, ticket, SKT_TICKET_SIZE);
+    strncpy(peer->ticket, ticket, SKT_TICKET_SIZE);
 
     conn->cid = gen_cid();
     if (skt_kcp_conn_get_by_cid(conn->cid) != NULL) {
