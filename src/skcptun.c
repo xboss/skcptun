@@ -3,10 +3,6 @@
 
 #include "skcptun.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/time.h>
-
 // #define SKT_PKT_HEADER_SZIE 4
 // #define MAX_DATA_PAYLOAD_SZIE (1024 * 2)
 // #define RECV_DATA_BUF_SIZE ((MAX_DATA_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE) * 5)
@@ -15,79 +11,6 @@
 // #define RECV_TIMEOUT 1000 * 60 * 5
 // #define SEND_TIMEOUT 1000 * 60 * 5
 // #define POLL_TIMEOUT 1000
-
-#define _IS_SECRET (strlen((const char*)skt->conf->key) > 0 && strlen((const char*)skt->conf->iv) > 0)
-
-////////////////////////////////
-// tools
-////////////////////////////////
-
-uint64_t skt_mstime() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    uint64_t millisecond = (tv.tv_sec * 1000000l + tv.tv_usec) / 1000l;
-    return millisecond;
-}
-
-static void print_hex(const char* label, const unsigned char* data, int len) {
-    printf("%s: ", label);
-    for (int i = 0; i < len; i++) {
-        printf("%02x ", data[i]);
-    }
-    printf("\n");
-}
-
-////////////////////////////////
-// protocol
-////////////////////////////////
-
-// cmd(1B)ticket(32)payload(mtu-32B-1B)
-
-int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw,
-             int* raw_len) {
-    assert(payload_len <= skt->conf->tun_mtu - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE);
-    if (_IS_SECRET) {
-        char cipher_buf[SKT_MTU] = {0};
-        memcpy(cipher_buf, &cmd, SKT_PKT_CMD_SZIE);
-        memcpy(cipher_buf + SKT_PKT_CMD_SZIE, ticket, SKT_TICKET_SIZE);
-        memcpy(cipher_buf + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, payload, payload_len);
-        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)&cipher_buf,
-                           (size_t)(payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE), (unsigned char*)raw,
-                           (size_t*)raw_len)) {
-            _LOG_E("crypto encrypt failed");
-            return _ERR;
-        }
-        assert(payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE == *raw_len);
-    } else {
-        memcpy(raw, &cmd, SKT_PKT_CMD_SZIE);
-        memcpy(raw + SKT_PKT_CMD_SZIE, ticket, SKT_TICKET_SIZE);
-        memcpy(raw + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, payload, payload_len);
-        *raw_len = payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE;
-    }
-    return _OK;
-}
-
-int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, char* ticket, char* payload, int* payload_len) {
-    assert(raw_len <= skt->conf->kcp_mtu);
-    assert(raw_len > SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
-    char* p = (char*)raw;
-    if (_IS_SECRET) {
-        char cipher_buf[SKT_MTU] = {0};
-        int cipher_len = 0;
-        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, raw_len,
-                           (unsigned char*)cipher_buf, (size_t*)&cipher_len)) {
-            _LOG_E("crypto decrypt failed");
-            return _ERR;
-        }
-        assert(cipher_len == raw_len);
-        p = cipher_buf;
-    }
-    memcpy(cmd, p, SKT_PKT_CMD_SZIE);
-    memcpy(ticket, p + SKT_PKT_CMD_SZIE, SKT_TICKET_SIZE);
-    memcpy(payload, p + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, raw_len - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
-    *payload_len = raw_len - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE;
-    return _OK;
-}
 
 ////////////////////////////////
 // callback

@@ -1,5 +1,6 @@
-#include "skt_conv.h"
 #include <stdio.h>
+
+#include "skt_conv.h"
 
 #define SKT_CONV_MIN (10000)
 
@@ -52,7 +53,7 @@ int skt_conv_add(uint32_t cid, const char* ip, const ikcpcb* kcp, struct sockadd
         return _ERR;
     }
     conv->cid = cid;
-    conv->kcp = ( ikcpcb*)kcp;
+    conv->kcp = (ikcpcb*)kcp;
     memcpy(conv->ip, ip, strnlen(ip, INET_ADDRSTRLEN));
     conv->addr = addr;
 

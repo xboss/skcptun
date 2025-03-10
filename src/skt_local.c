@@ -1,7 +1,5 @@
 #include "skt_local.h"
 
-#include <stdio.h>
-
 #include "skt_kcp_conn.h"
 
 // recv auth resp format: cmd(1B)|ticket(32B)|cid(4B)|tun_ip(4b)|tun_netmask(4b)|tun_mtu(4b)|timestamp(8B)

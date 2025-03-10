@@ -29,25 +29,36 @@ static void on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_i
         return;
     }
     assert(my_tun_ip > 0);
-    uint32_t vt_ip = my_tun_ip + 1; /* TODO: gen and check virtual ip */
-    uint32_t vt_ip_net = htonl(vt_ip);
+    uint32_t tun_ip = my_tun_ip + 1; /* TODO: gen and check tun ip */
+    uint32_t tun_ip_net = htonl(tun_ip);
+
+    uint32_t netmask = 0;
+    if (inet_pton(AF_INET, skt->conf->tun_netmask, &netmask) != 1) {
+        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+        return;
+    }
+    uint32_t netmask_net = htonl(netmask);
 
     // new kcp connection
-    kcp_conn = skt_kcp_conn_add(vt_ip, peer, skt);
+    kcp_conn = skt_kcp_conn_add(tun_ip, pkt->ticket, peer, skt);
     if (!kcp_conn) {
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
         return;
     }
-    kcp_conn->kcp = ikcp_create(kcp_conn->cid, kcp_conn);
     peer->cid = kcp_conn->cid;
 
-    // send auth resp format: cmd(1B)|ticket(32B)|cid(4B)|virtual ip(4b)|timestamp(8B)
+    // send auth resp format: cmd(1B)|ticket(32B)|cid(4B)|tun_ip(4b)|tun_netmask(4b)|tun_mtu(4b)|timestamp(8B)
     uint32_t cid_net = htonl(kcp_conn->cid);
     uint64_t timestamp_net = htonll(skt_mstime());
-    char payload[16] = {0};
-    memcpy(payload, &cid_net, sizeof(uint32_t));
-    memcpy(payload, &vt_ip_net, sizeof(uint32_t));
-    memcpy(payload, &timestamp_net, sizeof(uint64_t));
+    int kcp_mtu_net = htonl(skt->conf->kcp_mtu);
+
+    char payload[57] = {0};
+    memcpy(payload, &cid_net, 4);
+    memcpy(payload + 4, &tun_ip_net, 4);
+    memcpy(payload + 8, &netmask_net, 4);
+    memcpy(payload + 12, &kcp_mtu_net, 4);
+    memcpy(payload + 16, &timestamp_net, 8);
+
     char raw[SKT_MTU] = {0};
     int raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_AUTH_RESP, pkt->ticket, payload, sizeof(payload), raw, &raw_len)) {
@@ -70,7 +81,6 @@ static void on_cmd_data(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_in re
         _LOG_E("peer does not exists. on_cmd_data");
         return;
     }
-
     // check is kcp packet
     if (pkt->payload_len < SKT_KCP_HEADER_SZIE) {
         _LOG_E("invalid kcp packet, payload_len:%d", pkt->payload_len);
@@ -83,28 +93,18 @@ static void on_cmd_data(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_in re
         _LOG_E("invalid cid:%d", cid);
         return;
     }
-    // ikcp_input
-    int ret = ikcp_input(kcp_conn->kcp, pkt->payload, pkt->payload_len);
-    assert(ret == 0);
-    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-    do {
-        int peeksize = ikcp_peeksize(kcp_conn->kcp);
-        if (peeksize <= 0) {
-            break;
-        }
-        // kcp recv
-        char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
-        assert(peeksize <= sizeof(recv_buf));
-        int recv_len = ikcp_recv(kcp_conn->kcp, recv_buf, peeksize);
-        if (recv_len > 0) {
-            ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-            kcp_conn->last_r_tm = skt_mstime();
-        }
-        // send to tun
-        if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {
-            _LOG_E("tun_write failed");
-        }
-    } while (1);
+    /* TODO: */
+    char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
+    int recv_len = skt_kcp_conn_recv(kcp_conn, pkt->payload, pkt->payload_len, recv_buf);
+    if (recv_len <= 0) {
+        _LOG_E("skt_kcp_conn_recv error. cid:%d len:%d", cid, recv_len);
+        return;
+    }
+    // send to tun
+    if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {
+        _LOG_E("tun_write failed");
+        return;
+    }
 }
 
 static void on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_in remote_addr, skt_udp_peer_t* peer) {

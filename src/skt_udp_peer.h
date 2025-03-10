@@ -23,6 +23,17 @@ void skt_udp_peer_free(skt_udp_peer_t* peer);
 
 skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr);
 int skt_udp_peer_add(skt_udp_peer_t* peer);
-int skt_udp_peer_del(int fd, uint32_t remote_addr);
+void skt_udp_peer_del(int fd, uint32_t remote_addr);
+
+typedef struct {
+    char cmd;
+    char* ticket;
+    char* payload;
+    int payload_len;
+} skt_packet_t;
+
+int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw,
+             int* raw_len);
+int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, char* ticket, char* payload, int* payload_len);
 
 #endif /* _SKT_UDP_PEER_H */
