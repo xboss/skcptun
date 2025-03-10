@@ -1,16 +1,34 @@
 #include "skt_udp_peer.h"
 
-
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-skt_udp_peer_t* skt_udp_peer_init(const char* local_ip, uint16_t local_port, const char* remote_ip, uint16_t remote_port) {
-    skt_udp_peer_t* peer = (skt_udp_peer_t*)malloc(sizeof(skt_udp_peer_t));
+typedef struct {
+    uint32_t addr;
+    skt_udp_peer_t* peer;
+    UT_hash_handle hh;
+} addr_peer_index_t;
+
+static addr_peer_index_t* g_addr_peer_index = NULL;
+
+static addr_peer_index_t* init_addr_peer_index(skt_udp_peer_t* peer) {
+    addr_peer_index_t* addr_peer_index = (addr_peer_index_t*)calloc(1, sizeof(addr_peer_index_t));
+    if (!addr_peer_index) {
+        perror("alloc");
+        return NULL;
+    }
+    addr_peer_index->addr = peer->remote_addr.sin_addr.s_addr;
+    addr_peer_index->peer = peer;
+    return addr_peer_index;
+}
+skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
+                                   uint16_t remote_port) {
+    skt_udp_peer_t* peer = (skt_udp_peer_t*)calloc(1, sizeof(skt_udp_peer_t));
     if (!peer) {
-        perror("malloc");
+        perror("alloc");
         return NULL;
     }
 
@@ -21,21 +39,22 @@ skt_udp_peer_t* skt_udp_peer_init(const char* local_ip, uint16_t local_port, con
         return NULL;
     }
 
-    memset(&peer->local_addr, 0, sizeof(peer->local_addr));
-    peer->local_addr.sin_family = AF_INET;
-    peer->local_addr.sin_port = htons(local_port);
-    if (inet_pton(AF_INET, local_ip, &peer->local_addr.sin_addr) <= 0) {
-        perror("inet_pton local");
-        close(peer->fd);
-        free(peer);
-        return NULL;
-    }
-
-    if (bind(peer->fd, (struct sockaddr*)&peer->local_addr, sizeof(peer->local_addr)) < 0) {
-        perror("bind");
-        close(peer->fd);
-        free(peer);
-        return NULL;
+    if (local_ip && strnlen(local_ip, INET_ADDRSTRLEN) > 0 && local_port > 0) {
+        memset(&peer->local_addr, 0, sizeof(peer->local_addr));
+        peer->local_addr.sin_family = AF_INET;
+        peer->local_addr.sin_port = htons(local_port);
+        if (inet_pton(AF_INET, local_ip, &peer->local_addr.sin_addr) <= 0) {
+            perror("inet_pton local");
+            close(peer->fd);
+            free(peer);
+            return NULL;
+        }
+        if (bind(peer->fd, (struct sockaddr*)&peer->local_addr, sizeof(peer->local_addr)) < 0) {
+            perror("bind");
+            close(peer->fd);
+            free(peer);
+            return NULL;
+        }
     }
 
     memset(&peer->remote_addr, 0, sizeof(peer->remote_addr));
@@ -48,14 +67,58 @@ skt_udp_peer_t* skt_udp_peer_init(const char* local_ip, uint16_t local_port, con
         return NULL;
     }
 
+    if (!skt_udp_peer_add(peer)) {
+        close(peer->fd);
+        free(peer);
+        return NULL;
+    }
+
     return peer;
 }
 
-ssize_t skt_udp_peer_send(skt_udp_peer_t* peer, const void* buf, size_t len) {
-    return sendto(peer->fd, buf, len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr));
+int skt_udp_peer_add(skt_udp_peer_t* peer) {
+    if (skt_udp_peer_get(peer->fd, peer->remote_addr.sin_addr.s_addr)) {
+        _LOG_E("peer already exist. skt_udp_peer_add");
+        return _ERR;
+    }
+    addr_peer_index_t* addr_peer_index = init_addr_peer_index(peer);
+    if (!addr_peer_index) {
+        close(peer->fd);
+        free(peer);
+        return _ERR;
+    }
+    HASH_ADD_INT(g_addr_peer_index, addr, addr_peer_index);
+    return _OK;
 }
 
-ssize_t skt_udp_peer_recv(skt_udp_peer_t* peer, void* buf, size_t len) { return recvfrom(peer->fd, buf, len, 0, (struct sockaddr*)&peer->remote_addr, &peer->ra_len); }
+int skt_udp_peer_del(int fd, uint32_t remote_addr) {
+    addr_peer_index_t* addr_peer_index = NULL;
+    HASH_FIND_INT(g_addr_peer_index, &remote_addr, addr_peer_index);
+    if (!addr_peer_index) {
+        _LOG_E("peer not exist. skt_udp_peer_del");
+        return _ERR;
+    }
+    HASH_DEL(g_addr_peer_index, addr_peer_index);
+    return _OK;
+}
+
+skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr) {
+    addr_peer_index_t* addr_peer_index = NULL;
+    HASH_FIND_INT(g_addr_peer_index, &remote_addr, addr_peer_index);
+    if (!addr_peer_index) {
+        return NULL;
+    }
+    assert(fd == addr_peer_index->peer->fd);
+    return addr_peer_index->peer;
+}
+
+// ssize_t skt_udp_peer_send(skt_udp_peer_t* peer, const void* buf, size_t len) {
+//     return sendto(peer->fd, buf, len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr));
+// }
+
+// ssize_t skt_udp_peer_recv(skt_udp_peer_t* peer, void* buf, size_t len) {
+//     return recvfrom(peer->fd, buf, len, 0, (struct sockaddr*)&peer->remote_addr, &peer->ra_len);
+// }
 
 void skt_udp_peer_free(skt_udp_peer_t* peer) {
     if (peer) {

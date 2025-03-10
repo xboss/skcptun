@@ -1,13 +1,12 @@
 
 #define _XOPEN_SOURCE 700
 
-#include "skcptun.h"
-
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 
+#include "skcptun.h"
 #include "tun.h"
 #include "uthash.h"
 
@@ -158,7 +157,8 @@ inline static int pack(skcptun_t* skt, char* payload, int payload_len, char* pkt
     memcpy(pkt, &payload_len_net, SKT_PKT_HEADER_SZIE);
     *pkt_len += SKT_PKT_HEADER_SZIE;
     if (_IS_SECRET) {
-        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)&payload, (size_t)payload_len, (unsigned char*)pkt + SKT_PKT_HEADER_SZIE, (size_t*)&cipher_len)) {
+        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)&payload, (size_t)payload_len,
+                           (unsigned char*)pkt + SKT_PKT_HEADER_SZIE, (size_t*)&cipher_len)) {
             _LOG_E("crypto encrypt failed");
             return _ERR;
         }
@@ -174,7 +174,8 @@ inline static int pack(skcptun_t* skt, char* payload, int payload_len, char* pkt
 inline static int unpack(skcptun_t* skt, char* pkt, int pkt_len, char* payload, int* payload_len) {
     if (_IS_SECRET) {
         int cipher_len = 0;
-        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)pkt + SKT_PKT_HEADER_SZIE, pkt_len - SKT_PKT_HEADER_SZIE, (unsigned char*)payload, (size_t*)&cipher_len)) {
+        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)pkt + SKT_PKT_HEADER_SZIE,
+                           pkt_len - SKT_PKT_HEADER_SZIE, (unsigned char*)payload, (size_t*)&cipher_len)) {
             _LOG_E("crypto decrypt failed when do_auth");
             assert(cipher_len == pkt_len - SKT_PKT_HEADER_SZIE);
             *payload_len += cipher_len;
@@ -313,8 +314,8 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
 //     }
 //     uint32_t cid_net = 0;
 //     payload_len = 0;
-//     if (unpack(skt, recv_buf, SKT_PKT_HEADER_SZIE + sizeof(uint32_t), (char*)&cid_net, &payload_len) == _ERR) return _ERR;
-//     *cid = ntohl(cid_net);
+//     if (unpack(skt, recv_buf, SKT_PKT_HEADER_SZIE + sizeof(uint32_t), (char*)&cid_net, &payload_len) == _ERR) return
+//     _ERR; *cid = ntohl(cid_net);
 
 //     return _OK;
 // }
@@ -366,8 +367,8 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
 //     char recv_buf[SKT_MTU] = {0};
 //     char pkt[SKT_MTU] = {0};
 //     int ret = 0, infd = 0, outfd = 0;
-//     struct pollfd fds[3] = {{.fd = skt->tun_fd, .events = POLLIN}, {.fd = skt->udp->fd, .events = POLLIN}, {.fd = skt->tcp_server->server_fd, .events = POLLIN}};
-//     while (skt->running) {
+//     struct pollfd fds[3] = {{.fd = skt->tun_fd, .events = POLLIN}, {.fd = skt->udp->fd, .events = POLLIN}, {.fd =
+//     skt->tcp_server->server_fd, .events = POLLIN}}; while (skt->running) {
 //         _LOG("poll wait start.");
 //         ret = poll(fds, 3, POLL_TIMEOUT);
 //         _LOG("poll wait end. rt:%d", ret);
@@ -446,14 +447,15 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
 //     // connect to ctrl server
 //     int ret = sstcp_connect(skt->tcp_client, skt->conf->ctrl_server_ip, skt->conf->ctrl_server_port);
 //     if (ret != _OK) {
-//         _LOG_E("connect to controller server failed. %d %s:%d", skt->tcp_client->client_fd, skt->conf->ctrl_server_ip, skt->conf->ctrl_server_port);
-//         return _ERR;
+//         _LOG_E("connect to controller server failed. %d %s:%d", skt->tcp_client->client_fd,
+//         skt->conf->ctrl_server_ip, skt->conf->ctrl_server_port); return _ERR;
 //     }
 //     if (sstcp_set_nodelay(skt->tcp_client->client_fd) == _ERR) {
 //         close(skt->tcp_client->client_fd);
 //         return _ERR;
 //     }
-//     _LOG("connect to controller server ok. %d %s:%d", skt->tcp_client->client_fd, skt->conf->ctrl_server_ip, skt->conf->ctrl_server_port);
+//     _LOG("connect to controller server ok. %d %s:%d", skt->tcp_client->client_fd, skt->conf->ctrl_server_ip,
+//     skt->conf->ctrl_server_port);
 
 //     // request conv
 //     uint32_t cid = 0;
@@ -493,22 +495,21 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
 //     return _OK;
 // }
 
-static void timeout_cb (struct ev_loop *loop, ev_timer *watcher, int revents)
-{
+static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     if (EV_ERROR & revents) {
         _LOG("timeout_cb got invalid event");
         return;
     }
 }
 
-static void tun_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
+static void tun_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
     if (EV_ERROR & revents) {
         _LOG("tun_read_cb got invalid event");
         return;
     }
 }
 
-static void udp_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents) {
+static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
     if (EV_ERROR & revents) {
         _LOG("udp_read_cb got invalid event");
         return;
@@ -521,7 +522,8 @@ static void udp_read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
 
 skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     if (!conf) return NULL;
-    if (conf->tun_mtu + SKT_TICKET_SIZE > conf->kcp_mtu || conf->tun_mtu + SKT_TICKET_SIZE > SKT_MTU || conf->kcp_mtu > SKT_MTU) {
+    if (conf->tun_mtu + SKT_KCP_HEADER_SZIE + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE > conf->kcp_mtu ||
+        conf->kcp_mtu > SKT_MTU) {
         _LOG_E("MTU error");
         return NULL;
     }
@@ -616,7 +618,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
         skt_free(skt);
         return NULL;
     }
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp->fd, EV_READ);
+    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
     ev_io_start(skt->loop, skt->udp_io_watcher);
 
     return NULL;

@@ -5,19 +5,24 @@
 #include "skt_udp_peer.h"
 
 typedef struct {
-    uint32_t cid; // primary key
-    uint32_t vt_ip; // key
+    uint32_t cid;     // primary key
+    uint32_t tun_ip;  // key
 
-    ikcpcb* kcp;
+    ikcpcb *kcp;
     skt_udp_peer_t *peer;
+    skcptun_t *skt;
 
-    UT_hash_handle hh;
+    uint64_t create_time;
+    uint64_t last_r_tm;  // 最后一次读操作的时间戳
+    uint64_t last_w_tm;  // 最后一次写操作的时间戳
+
+    // UT_hash_handle hh;
 } skt_kcp_conn_t;
 
-uint32_t skt_kcp_conn_gen_cid();
-skt_kcp_conn_t *skt_kcp_conn_add(uint32_t cid, uint32_t vt_ip, ikcpcb* kcp, skt_udp_peer_t *peer);
+// uint32_t skt_kcp_conn_gen_cid();
+skt_kcp_conn_t *skt_kcp_conn_add(uint32_t tun_ip, skt_udp_peer_t *peer, skcptun_t *skt);
 skt_kcp_conn_t *skt_kcp_conn_get_by_cid(uint32_t cid);
-skt_kcp_conn_t *skt_kcp_conn_get_by_vtip(uint32_t vt_ip);
+skt_kcp_conn_t *skt_kcp_conn_get_by_tun_ip(uint32_t tun_ip);
 void skt_kcp_conn_del(skt_kcp_conn_t *kconn);
 
 #endif /* _SKT_KCP_CONN_H */

@@ -2,13 +2,13 @@
 #define _SKT_H
 
 #include <arpa/inet.h>
-#include <net/if.h>
 #include <ev.h>
+#include <net/if.h>
 
 #include "crypto.h"
+#include "ikcp.h"
 #include "sslog.h"
 #include "uthash.h"
-#include "ikcp.h"
 
 // #if !defined(INET_ADDRSTRLEN)
 // #define INET_ADDRSTRLEN 16
@@ -35,7 +35,7 @@ typedef struct {
     unsigned short udp_remote_port;
     unsigned char key[AES_128_KEY_SIZE + 1];
     unsigned char iv[AES_BLOCK_SIZE + 1];
-    char ticket[SKT_TICKET_SIZE + 1];
+    char ticket[SKT_TICKET_SIZE + 1]; /* TODO: multi ticket */
     int mode;
     // int send_timeout;  // 发送超时时间（毫秒）
     // int recv_timeout;  // 接收超时时间（毫秒）
@@ -59,5 +59,24 @@ typedef struct {
     int sndwnd;
     int rcvwnd;
 } skt_config_t;
+
+typedef struct {
+    struct ev_loop* loop;
+    skt_config_t* conf;
+    // sstcp_server_t* tcp_server;
+    // sstcp_client_t* tcp_client;
+    // ssudp_t* udp;
+    int udp_fd;
+    int tun_fd;
+    // skt_udp_peer_t *udp_peer; // udp peer table
+    // skt_kcp_conn_t *kcp_conn; // kcp conn table
+    // ikcpcb* kcp;
+    int running;
+
+    ev_timer* timeout_watcher;
+    ev_timer* kcp_update_watcher;
+    ev_io* tun_io_watcher;
+    ev_io* udp_io_watcher;
+} skcptun_t;
 
 #endif /* _SKT_H */
