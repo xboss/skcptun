@@ -2,9 +2,9 @@
 
 #include "skt_kcp_conn.h"
 
-// recv auth resp format: cmd(1B)|ticket(32B)|cid(4B)|tun_ip(4b)|tun_netmask(4b)|tun_mtu(4b)|timestamp(8B)
+// recv auth resp format: cmd(1B)|ticket(32B)|cid(4B)|timestamp(8B)
 static void on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_in remote_addr, skt_udp_peer_t* peer) {
-    if (pkt->payload_len < 16) {
+    if (pkt->payload_len < 12) {
         _LOG_E("invalid auth resp. len: %d", pkt->payload_len);
         return;
     }
@@ -18,8 +18,6 @@ static void on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_
     }
     uint32_t cid = ntohl(*(uint32_t*)(pkt->payload));
     uint32_t tun_ip = ntohl(*(uint32_t*)(pkt->payload + 4));
-    uint32_t tun_netmask = ntohl(*(uint32_t*)(pkt->payload + 8));
-    uint32_t tun_mtu = ntohl(*(uint32_t*)(pkt->payload + 12));
 
     /* TODO: */
     // skt->tun_fd = skt_start_tun(skt->conf->tun_dev, skt->conf->tun_ip, skt->conf->tun_netmask, skt->conf->tun_mtu);

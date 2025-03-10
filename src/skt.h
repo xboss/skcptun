@@ -51,6 +51,8 @@ typedef struct {
     unsigned char iv[AES_BLOCK_SIZE + 1];
     char ticket[SKT_TICKET_SIZE + 1]; /* TODO: multi ticket */
     int mode;
+    // uint32_t local_cid;
+    // ikcpcb *local_kcp;
     // int send_timeout;  // 发送超时时间（毫秒）
     // int recv_timeout;  // 接收超时时间（毫秒）
     char* log_file;

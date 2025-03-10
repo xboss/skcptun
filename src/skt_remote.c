@@ -5,13 +5,12 @@
 
 #include "skt_kcp_conn.h"
 
-// recv auth format: cmd(1B)|ticket(32B)|timestamp(8B)
+// recv auth format: cmd(1B)|ticket(32B)|tun_ip(4B)|timestamp(8B)
 static void on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_in remote_addr, skt_udp_peer_t* peer) {
-    if (pkt->payload_len < 8) {
+    if (pkt->payload_len < 12) {
         _LOG_E("invalid auth req. len: %d", pkt->payload_len);
         return;
     }
-    skt_kcp_conn_t* kcp_conn = NULL;
     if (peer) {
         if (peer->cid > 0) {
             _LOG("already authed");
@@ -20,44 +19,34 @@ static void on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_i
         /* TODO: how? delete! kick! */
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
     }
-    if (skt_udp_peer_add(peer) != _OK) return;
-
-    // gen virtual ip
-    uint32_t my_tun_ip = 0;
-    if (inet_pton(AF_INET, skt->conf->tun_ip, &my_tun_ip) != 1) {
-        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+    peer = (skt_udp_peer_t*)calloc(1, sizeof(skt_udp_peer_t));
+    if (!peer) {
+        perror("alloc");
         return;
     }
-    assert(my_tun_ip > 0);
-    uint32_t tun_ip = my_tun_ip + 1; /* TODO: gen and check tun ip */
-    uint32_t tun_ip_net = htonl(tun_ip);
 
-    uint32_t netmask = 0;
-    if (inet_pton(AF_INET, skt->conf->tun_netmask, &netmask) != 1) {
-        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+    if (skt_udp_peer_add(peer) != _OK) {
+        free(peer);
         return;
     }
-    uint32_t netmask_net = htonl(netmask);
 
+    uint32_t tun_ip = ntohl(*(uint32_t*)(pkt->payload));
     // new kcp connection
-    kcp_conn = skt_kcp_conn_add(tun_ip, pkt->ticket, peer, skt);
+    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_add(tun_ip, pkt->ticket, peer, skt);
     if (!kcp_conn) {
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+        free(peer);
         return;
     }
     peer->cid = kcp_conn->cid;
 
-    // send auth resp format: cmd(1B)|ticket(32B)|cid(4B)|tun_ip(4b)|tun_netmask(4b)|tun_mtu(4b)|timestamp(8B)
+    // send auth resp format: cmd(1B)|ticket(32B)|cid(4B)|timestamp(8B)
     uint32_t cid_net = htonl(kcp_conn->cid);
     uint64_t timestamp_net = htonll(skt_mstime());
-    int kcp_mtu_net = htonl(skt->conf->kcp_mtu);
 
-    char payload[57] = {0};
+    char payload[12] = {0};
     memcpy(payload, &cid_net, 4);
-    memcpy(payload + 4, &tun_ip_net, 4);
-    memcpy(payload + 8, &netmask_net, 4);
-    memcpy(payload + 12, &kcp_mtu_net, 4);
-    memcpy(payload + 16, &timestamp_net, 8);
+    memcpy(payload + 4, &timestamp_net, 8);
 
     char raw[SKT_MTU] = {0};
     int raw_len = 0;
@@ -65,6 +54,7 @@ static void on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_i
         ikcp_release(kcp_conn->kcp);
         skt_kcp_conn_del(kcp_conn);
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+        free(peer);
         return;
     }
     assert(raw_len > 0);
@@ -73,6 +63,7 @@ static void on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_i
         ikcp_release(kcp_conn->kcp);
         skt_kcp_conn_del(kcp_conn);
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+        free(peer);
     }
 }
 
@@ -138,7 +129,7 @@ static void on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, struct sockaddr_in re
 
     char raw[SKT_MTU] = {0};
     int raw_len = 0;
-    if (skt_pack(skt, SKT_PKT_CMD_AUTH_RESP, pkt->ticket, pkt->payload, 12, raw, &raw_len)) {
+    if (skt_pack(skt, SKT_PKT_CMD_PONG, pkt->ticket, pkt->payload, 12, raw, &raw_len)) {
         return;
     }
     assert(raw_len > 0);
@@ -249,8 +240,7 @@ int skt_remote_start(skcptun_t* skt) {
     }
 
     // start udp
-    skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port,
-                                              skt->conf->udp_remote_ip, skt->conf->udp_remote_port);
+    skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port, skt->conf->udp_remote_ip, skt->conf->udp_remote_port);
     if (peer == NULL) {
         close(skt->tun_fd);
         return _ERR;
