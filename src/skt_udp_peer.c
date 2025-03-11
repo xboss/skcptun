@@ -38,8 +38,7 @@ static addr_peer_index_t* init_addr_peer_index(skt_udp_peer_t* peer) {
     addr_peer_index->peer = peer;
     return addr_peer_index;
 }
-skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
-                                   uint16_t remote_port) {
+skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip, uint16_t remote_port) {
     skt_udp_peer_t* peer = (skt_udp_peer_t*)calloc(1, sizeof(skt_udp_peer_t));
     if (!peer) {
         perror("alloc");
@@ -154,20 +153,29 @@ void skt_udp_peer_free(skt_udp_peer_t* peer) {
 
 // cmd(1B)ticket(32)payload(mtu-32B-1B)
 
-int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw,
-             int* raw_len) {
+int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw, int* raw_len) {
+    // char raw[SKT_MTU] = {0};
     assert(payload_len <= skt->conf->tun_mtu - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE);
     if (_IS_SECRET) {
         char cipher_buf[SKT_MTU] = {0};
         memcpy(cipher_buf, &cmd, SKT_PKT_CMD_SZIE);
         memcpy(cipher_buf + SKT_PKT_CMD_SZIE, ticket, SKT_TICKET_SIZE);
         memcpy(cipher_buf + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, payload, payload_len);
-        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)&cipher_buf,
+        skt_print_hex("11111 en", (const unsigned char*)raw, SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE + payload_len);
+        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)cipher_buf,
                            (size_t)(payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE), (unsigned char*)raw,
                            (size_t*)raw_len)) {
             _LOG_E("crypto encrypt failed");
             return _ERR;
         }
+        /* TODO: debug */
+        skt_print_hex("22222 en", (const unsigned char*)raw, *raw_len);
+        char tmp_buf[SKT_MTU] = {0};
+        size_t tmp_len = 0;
+        int ttt = crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, *raw_len, (unsigned char*)tmp_buf, (size_t*)&tmp_len);
+        assert(ttt == 0);
+        skt_print_hex("33333 de", (const unsigned char*)tmp_buf, tmp_len);
+
         assert(payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE == *raw_len);
     } else {
         memcpy(raw, &cmd, SKT_PKT_CMD_SZIE);
@@ -185,11 +193,12 @@ int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, char* ti
     if (_IS_SECRET) {
         char cipher_buf[SKT_MTU] = {0};
         int cipher_len = 0;
-        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, raw_len,
-                           (unsigned char*)cipher_buf, (size_t*)&cipher_len)) {
+        skt_print_hex("11111 de", (const unsigned char*)raw, raw_len);
+        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, raw_len, (unsigned char*)cipher_buf, (size_t*)&cipher_len)) {
             _LOG_E("crypto decrypt failed");
             return _ERR;
         }
+        skt_print_hex("22222 de", (const unsigned char*)cipher_buf, cipher_len);
         assert(cipher_len == raw_len);
         p = cipher_buf;
     }
