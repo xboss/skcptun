@@ -9,7 +9,7 @@ link_directories(/usr/local/lib)
 
 # 添加源文件
 set(SOURCE_FILES
-# src/main.c
+src/main.c
 src/crypto.c
 src/skcptun.c
 src/ssconf.c

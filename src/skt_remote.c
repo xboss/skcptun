@@ -234,7 +234,7 @@ int skt_remote_start(skcptun_t* skt) {
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);
 
-    ev_timer_init(skt->kcp_update_watcher, kcp_update_cb, 0, skt->conf->interval / 1000.0);
+    ev_timer_init(skt->kcp_update_watcher, kcp_update_cb, 0, skt->conf->kcp_interval / 1000.0);
     ev_timer_start(skt->loop, skt->kcp_update_watcher);
 
     return _OK;

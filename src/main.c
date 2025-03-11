@@ -7,18 +7,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "skt.h"
-#include "ssconf.h"
 #include "skcptun.h"
-
+#include "skt.h"
+#include "skt_local.h"
+#include "skt_remote.h"
+#include "ssconf.h"
 
 static skt_config_t g_conf;
 static skcptun_t *g_skt;
-struct ev_loop* g_loop;
+struct ev_loop *g_loop;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
-    char *keys[] = {"mode",    "listen_ip",     "listen_port", "target_ip", "target_port", "password",
-                    "timeout", "read_buf_size", "log_file",    "log_level", "ticket"};
+    char *keys[] = {"mode",        "local_ip", "local_port", "remote_ip",   "remote_port", "password",
+                    "timeout",     "ticket",   "log_file",   "log_level",   "timeout",     "tun_ip",
+                    "tun_netmask", "tun_mtu",  "kcp_mtu",    "kcp_interval"};
     int keys_cnt = sizeof(keys) / sizeof(char *);
     ssconf_t *cf = ssconf_init(1024, 1024);
     if (!cf) return _ERR;
@@ -42,34 +44,40 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             } else {
                 conf->mode = -1;
             }
-        } else if (strcmp("listen_ip", keys[i]) == 0) {
+        } else if (strcmp("local_ip", keys[i]) == 0) {
             if (len <= INET_ADDRSTRLEN) {
-                memcpy(conf->listen_ip, v, len);
+                memcpy(conf->udp_local_ip, v, len);
             }
-        } else if (strcmp("listen_port", keys[i]) == 0) {
-            conf->listen_port = (unsigned short)atoi(v);
-        } else if (strcmp("target_ip", keys[i]) == 0) {
+        } else if (strcmp("local_port", keys[i]) == 0) {
+            conf->udp_local_port = (unsigned short)atoi(v);
+        } else if (strcmp("remote_ip", keys[i]) == 0) {
             if (len <= INET_ADDRSTRLEN) {
-                memcpy(conf->target_ip, v, len);
+                memcpy(conf->udp_remote_ip, v, len);
             }
-        } else if (strcmp("target_port", keys[i]) == 0) {
-            conf->target_port = (unsigned short)atoi(v);
+        } else if (strcmp("remote_port", keys[i]) == 0) {
+            conf->udp_remote_port = (unsigned short)atoi(v);
         } else if (strcmp("password", keys[i]) == 0) {
             memcpy(conf->key, v, strnlen(v, AES_128_KEY_SIZE));
         } else if (strcmp("ticket", keys[i]) == 0) {
             memcpy(conf->ticket, v, strnlen(v, SKT_TICKET_SIZE));
-        }
-        // else if (strcmp("timeout", keys[i]) == 0) {
-        //     conf->timeout = atoi(v);
-        // }
-        else if (strcmp("read_buf_size", keys[i]) == 0) {
-            conf->read_buf_size = atoi(v);
-        } else if (strcmp("log_file", keys[i]) == 0) {
-            conf->log_file = (char *)calloc(1, len + 1);
-            if (!conf->log_file) {
-                perror("alloc error");
-                exit(1);
+        } else if (strcmp("timeout", keys[i]) == 0) {
+            conf->timeout = atoi(v);
+        } else if (strcmp("tun_ip", keys[i]) == 0) {
+            if (len <= INET_ADDRSTRLEN) {
+                memcpy(conf->tun_ip, v, len);
             }
+        } else if (strcmp("tun_netmask", keys[i]) == 0) {
+            if (len <= INET_ADDRSTRLEN) {
+                memcpy(conf->tun_netmask, v, len);
+            }
+        } else if (strcmp("tun_mtu", keys[i]) == 0) {
+            conf->tun_mtu = atoi(v);
+        } else if (strcmp("kcp_mtu", keys[i]) == 0) {
+            conf->kcp_mtu = atoi(v);
+        } else if (strcmp("kcp_interval", keys[i]) == 0) {
+            conf->kcp_interval = atoi(v);
+        } else if (strcmp("log_file", keys[i]) == 0) {
+            len = len > 255 ? 255 : len;
             memcpy(conf->log_file, v, len);
         } else if (strcmp("log_level", keys[i]) == 0) {
             if (strcmp(v, "DEBUG") == 0) {
@@ -94,18 +102,20 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
 }
 
 static int check_config(skt_config_t *conf) {
-    if (conf->listen_port > 65535) {
-        fprintf(stderr, "Invalid listen_port:%u in configfile.\n", conf->listen_port);
+    if (conf->udp_local_port > 65535) {
+        fprintf(stderr, "Invalid udp_local_port:%u in configfile.\n", conf->udp_local_port);
         return _ERR;
     }
-    if (conf->mode == SKT_MODE_LOCAL || conf->mode == SKT_MODE_REMOTE) {
-        if (conf->target_port > 65535) {
-            fprintf(stderr, "Invalid target_port:%u in configfile.\n", conf->target_port);
-            return _ERR;
-        }
+    if (conf->udp_remote_port > 65535) {
+        fprintf(stderr, "Invalid udp_remote_port:%u in configfile.\n", conf->udp_remote_port);
+        return _ERR;
     }
     if (conf->mode != SKT_MODE_LOCAL && conf->mode != SKT_MODE_REMOTE) {
         fprintf(stderr, "Invalid mode:%d in configfile. local mode is 'local', remote mode is 'remote'.\n", conf->mode);
+        return _ERR;
+    }
+    if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE > conf->kcp_mtu || conf->kcp_mtu > SKT_MTU) {
+        fprintf(stderr, "MTU error.\n");
         return _ERR;
     }
     return _OK;
@@ -113,7 +123,7 @@ static int check_config(skt_config_t *conf) {
 
 static void handle_exit(int sig) {
     _LOG("exit by signal %d ... ", sig);
-    skt_stop(g_skt);
+    ev_break(g_loop, EVBREAK_ALL);
 }
 
 static void signal_handler(int sn) {
@@ -135,11 +145,11 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
     memset(&g_conf, 0, sizeof(skt_config_t));
-    int rt = load_conf(argv[1], &g_conf);
-    if (rt != _OK) return 1;
-    if (check_config(&g_conf) != 0) return 1;
+    int ret = load_conf(argv[1], &g_conf);
+    if (ret != _OK) return 1;
+    if (check_config(&g_conf) != _OK) return 1;
+
     sslog_init(g_conf.log_file, g_conf.log_level);
-    if (g_conf.log_file) free(g_conf.log_file);
     strcpy((char *)g_conf.iv, "bewatermyfriend.");
 
     signal(SIGPIPE, SIG_IGN);
@@ -153,13 +163,12 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
 
-    // rt = skt_start(g_skt);
-    // if (rt != _OK) {
-    //     _LOG_E("start server error.");
-    // }
-
-    ev_run (g_loop, 0);
-
+    ret = g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_start(g_skt) : skt_local_start(g_skt);
+    if (ret != _OK) {
+        return 1;
+    }
+    ev_run(g_loop, 0);
+    g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_stop(g_skt) : skt_local_stop(g_skt);
     skt_free(g_skt);
     sslog_free();
     printf("Bye\n");

@@ -42,8 +42,6 @@
 #define SKT_PKT_CMD_PONG (0x06u)
 
 typedef struct {
-    char ctrl_server_ip[INET_ADDRSTRLEN + 1];
-    unsigned short ctrl_server_port;
     char udp_local_ip[INET_ADDRSTRLEN + 1];
     unsigned short udp_local_port;
     char udp_remote_ip[INET_ADDRSTRLEN + 1];
@@ -53,22 +51,18 @@ typedef struct {
     char ticket[SKT_TICKET_SIZE + 1]; /* TODO: multi ticket */
     int mode;
     int timeout;  // ms
-    // int send_timeout;  // 发送超时时间（毫秒）
-    // int recv_timeout;  // 接收超时时间（毫秒）
-    char* log_file;
+    char log_file[256];
     int log_level;
 
     // tun config
     char tun_dev[IFNAMSIZ + 1];
     char tun_ip[INET_ADDRSTRLEN + 1];
-    // uint32_t tun_ip;
     char tun_netmask[INET_ADDRSTRLEN + 1];
-    // uint32_t tun_netmask;
     int tun_mtu;
 
     // kcp config
     int kcp_mtu;
-    int interval;
+    int kcp_interval;
     int nodelay;
     int resend;
     int nc;

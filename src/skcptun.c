@@ -20,11 +20,6 @@
 
 skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     if (!conf) return NULL;
-    if (conf->tun_mtu + SKT_TICKET_SIZE > conf->kcp_mtu || conf->tun_mtu + SKT_TICKET_SIZE > SKT_MTU ||
-        conf->kcp_mtu > SKT_MTU) {
-        _LOG_E("MTU error");
-        return NULL;
-    }
 
     skcptun_t* skt = (skcptun_t*)calloc(1, sizeof(skcptun_t));
     if (skt == NULL) {
