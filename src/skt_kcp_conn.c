@@ -76,6 +76,9 @@ skt_kcp_conn_t *skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char *tick
         return NULL;
     }
     conn->kcp->output = udp_output;
+    ikcp_setmtu(conn->kcp, skt->conf->kcp_mtu);
+    ikcp_nodelay(conn->kcp, skt->conf->kcp_nodelay, skt->conf->kcp_interval, skt->conf->kcp_resend, skt->conf->kcp_nc);
+    ikcp_wndsize(conn->kcp, skt->conf->kcp_sndwnd, skt->conf->kcp_rcvwnd);
 
     // add to index
     cid_index_t *cid_index = (cid_index_t *)calloc(1, sizeof(cid_index_t));

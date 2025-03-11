@@ -63,11 +63,12 @@ typedef struct {
     // kcp config
     int kcp_mtu;
     int kcp_interval;
-    int nodelay;
-    int resend;
-    int nc;
-    int sndwnd;
-    int rcvwnd;
+    int kcp_nodelay;
+    int kcp_resend;
+    int kcp_nc;
+    int kcp_sndwnd;
+    int kcp_rcvwnd;
+    int speed_mode;
 } skt_config_t;
 
 typedef struct {

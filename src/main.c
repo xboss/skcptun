@@ -18,9 +18,9 @@ static skcptun_t *g_skt;
 struct ev_loop *g_loop;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
-    char *keys[] = {"mode",        "local_ip", "local_port", "remote_ip",   "remote_port", "password",
-                    "timeout",     "ticket",   "log_file",   "log_level",   "timeout",     "tun_ip",
-                    "tun_netmask", "tun_mtu",  "kcp_mtu",    "kcp_interval"};
+    char *keys[] = {"mode",    "local_ip", "local_port",   "remote_ip", "remote_port", "password",
+                    "ticket",  "log_file", "log_level",    "timeout",   "tun_ip",      "tun_netmask",
+                    "tun_mtu", "kcp_mtu",  "kcp_interval", "speed_mode"};
     int keys_cnt = sizeof(keys) / sizeof(char *);
     ssconf_t *cf = ssconf_init(1024, 1024);
     if (!cf) return _ERR;
@@ -76,6 +76,8 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             conf->kcp_mtu = atoi(v);
         } else if (strcmp("kcp_interval", keys[i]) == 0) {
             conf->kcp_interval = atoi(v);
+        } else if (strcmp("speed_mode", keys[i]) == 0) {
+            conf->speed_mode = atoi(v);
         } else if (strcmp("log_file", keys[i]) == 0) {
             len = len > 255 ? 255 : len;
             memcpy(conf->log_file, v, len);
@@ -136,6 +138,18 @@ static void signal_handler(int sn) {
             break;
         default:
             break;
+    }
+}
+
+static void setup_kcp() {
+    g_conf.kcp_rcvwnd = 32;
+    g_conf.kcp_sndwnd = 32;
+    if (g_conf.speed_mode != 0) {
+        g_conf.kcp_nodelay = 1;
+        g_conf.kcp_resend = 2;
+        g_conf.kcp_nc = 1;
+    } else {
+        g_conf.kcp_nodelay = g_conf.kcp_resend = g_conf.kcp_nc = 0;
     }
 }
 
