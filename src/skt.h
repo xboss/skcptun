@@ -110,7 +110,7 @@ inline void skt_print_iaddr(const char* label, struct sockaddr_in addr) {
     char remote_ip[INET_ADDRSTRLEN + 1] = {0};
     unsigned int remote_port = ntohs(addr.sin_port);
     inet_ntop(AF_INET, &addr.sin_addr, remote_ip, sizeof(addr));
-    _LOG("%s %s:%d\n", label, remote_ip, remote_port);
+    _LOG("%s %s:%d", label, remote_ip, remote_port);
 }
 
 // 检查系统是否为大端

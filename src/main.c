@@ -14,8 +14,8 @@
 #include "ssconf.h"
 
 static skt_config_t g_conf;
-static skcptun_t *g_skt;
-struct ev_loop *g_loop;
+static skcptun_t *g_skt = NULL;
+struct ev_loop *g_loop = NULL;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
     char *keys[] = {"mode",    "local_ip", "local_port",   "remote_ip", "remote_port", "password",

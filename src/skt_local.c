@@ -60,6 +60,7 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
         return _ERR;
     }
     skt->local_cid = peer->cid = cid;
+    _LOG("auth ok!");
     return _OK;
 }
 
@@ -97,7 +98,7 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         skt->local_cid = peer->cid = 0;
     }
 
-    _LOG("on_cmd_pong cid:%u", cid);
+    _LOG("on_cmd_pong ok cid:%u", cid);
     return _OK;
 }
 

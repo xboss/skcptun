@@ -44,7 +44,7 @@ static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* pe
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
         return _ERR;
     }
-    _LOG("on_cmd_auth_req end. cid:%u send:%d", peer->cid, ret);
+    _LOG("on_cmd_auth_req ok! cid:%u send:%d", peer->cid, ret);
     return _OK;
 }
 
@@ -89,6 +89,7 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
         return _ERR;
     }
+    _LOG("send pong to %s:%d ok!", inet_ntoa(peer->remote_addr.sin_addr), ntohs(peer->remote_addr.sin_port));
     return _OK;
 }
 
