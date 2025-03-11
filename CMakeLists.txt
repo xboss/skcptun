@@ -14,7 +14,6 @@ src/crypto.c
 src/skcptun.c
 src/ssconf.c
 src/sslog.c
-src/sstcp.c
 src/skt_udp_peer.c
 src/skt_kcp_conn.c
 src/tun.c

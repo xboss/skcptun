@@ -184,8 +184,6 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     _LOG("recvfrom len:%d", rlen);
 
     skt_print_iaddr("udp_read_cb", remote_addr);
-    // int srt = sendto(skt->udp_fd, raw, rlen, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr));
-    // _LOG("sendto len:%d", srt);
 
     skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
 

@@ -20,3 +20,11 @@ ticket = yourticketyourticketyourticket12
 log_level= DEBUG
 # log_file = /tmp/local.log
 ```
+## TODO:
+- [ ] send all
+- [ ] config kcp 
+- [ ] local reconnect
+- [ ] tun osx
+- [ ] cllect all connetions， include kcp_conn and peer
+- [ ] check memery leaks
+- [ ] antispam
