@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ev.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,7 +37,7 @@
 #define SKT_PKT_CMD_DATA (0x01u)
 #define SKT_PKT_CMD_AUTH_REQ (0x02u)
 #define SKT_PKT_CMD_AUTH_RESP (0x03u)
-#define SKT_PKT_CMD_CLOSE (0x04u)
+// #define SKT_PKT_CMD_CLOSE (0x04u)
 #define SKT_PKT_CMD_PING (0x05u)
 #define SKT_PKT_CMD_PONG (0x06u)
 
@@ -51,8 +52,7 @@ typedef struct {
     unsigned char iv[AES_BLOCK_SIZE + 1];
     char ticket[SKT_TICKET_SIZE + 1]; /* TODO: multi ticket */
     int mode;
-    // uint32_t local_cid;
-    // ikcpcb *local_kcp;
+    int timeout;  // ms
     // int send_timeout;  // 发送超时时间（毫秒）
     // int recv_timeout;  // 接收超时时间（毫秒）
     char* log_file;
@@ -79,14 +79,9 @@ typedef struct {
 typedef struct {
     struct ev_loop* loop;
     skt_config_t* conf;
-    // sstcp_server_t* tcp_server;
-    // sstcp_client_t* tcp_client;
-    // ssudp_t* udp;
     int udp_fd;
     int tun_fd;
-    // skt_udp_peer_t *udp_peer; // udp peer table
-    // skt_kcp_conn_t *kcp_conn; // kcp conn table
-    // ikcpcb* kcp;
+    uint32_t local_cid;
     int running;
 
     ev_timer* timeout_watcher;

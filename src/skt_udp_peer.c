@@ -93,6 +93,7 @@ void skt_udp_peer_del(int fd, uint32_t remote_addr) {
     HASH_FIND_INT(g_addr_peer_index, &remote_addr, addr_peer_index);
     if (addr_peer_index) {
         HASH_DEL(g_addr_peer_index, addr_peer_index);
+        free(addr_peer_index);
     }
     return;
 }

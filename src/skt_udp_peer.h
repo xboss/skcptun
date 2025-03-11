@@ -6,13 +6,15 @@
 // typedef enum { SKT_UDP_PEER_ST_NONE, SKT_UDP_PEER_ST_AUTHED } skt_udp_peer_status_t;
 
 typedef struct {
-    struct sockaddr_in remote_addr;
-    socklen_t ra_len;
     int fd;
+    struct sockaddr_in remote_addr;
+    // socklen_t ra_len;
     struct sockaddr_in local_addr;
-    socklen_t la_len;
+    // socklen_t la_len;
     uint32_t cid;
     char ticket[SKT_TICKET_SIZE + 1];
+    uint64_t last_r_tm;  // 最后一次读操作的时间戳
+    uint64_t last_w_tm;  // 最后一次写操作的时间戳
 } skt_udp_peer_t;
 
 skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,

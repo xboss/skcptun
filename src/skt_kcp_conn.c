@@ -18,7 +18,7 @@ static cid_index_t *g_cid_index = NULL;
 static tun_ip_index_t *g_tun_ip_index = NULL;
 static uint32_t g_cid = SKT_CONV_MIN;
 
-inline static uint32_t gen_cid() {
+uint32_t skt_kcp_conn_gen_cid() {
     g_cid++;
     if (g_cid < SKT_CONV_MIN) {
         _LOG_E("cid overflow");
@@ -46,7 +46,8 @@ int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     }
     return 0;
 }
-skt_kcp_conn_t *skt_kcp_conn_add(uint32_t tun_ip, const char *ticket, skt_udp_peer_t *peer, skcptun_t *skt) {
+skt_kcp_conn_t *skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char *ticket, skt_udp_peer_t *peer,
+                                 skcptun_t *skt) {
     if (skt_kcp_conn_get_by_tun_ip(tun_ip) != NULL) {
         _LOG_E("tun_ip already exists. skt_kcp_conn_add");
         return NULL;
@@ -63,7 +64,7 @@ skt_kcp_conn_t *skt_kcp_conn_add(uint32_t tun_ip, const char *ticket, skt_udp_pe
     conn->skt = skt;
     strncpy(peer->ticket, ticket, SKT_TICKET_SIZE);
 
-    conn->cid = gen_cid();
+    conn->cid = cid;
     if (skt_kcp_conn_get_by_cid(conn->cid) != NULL) {
         _LOG_E("cid %d already exists. skt_kcp_conn_add", conn->cid);
         free(conn);
@@ -123,16 +124,21 @@ skt_kcp_conn_t *skt_kcp_conn_get_by_tun_ip(uint32_t tun_ip) {
 
 void skt_kcp_conn_del(skt_kcp_conn_t *kcp_conn) {
     if (!kcp_conn) return;
+    ikcp_release(kcp_conn->kcp);
+    kcp_conn->kcp = NULL;
+
     cid_index_t *cid_index = NULL;
     HASH_FIND_INT(g_cid_index, &kcp_conn->cid, cid_index);
     if (cid_index) {
         HASH_DEL(g_cid_index, cid_index);
+        free(cid_index);
     }
 
     tun_ip_index_t *tun_ip_index = NULL;
     HASH_FIND_INT(g_tun_ip_index, &kcp_conn->tun_ip, tun_ip_index);
     if (tun_ip_index) {
         HASH_DEL(g_tun_ip_index, tun_ip_index);
+        free(tun_ip_index);
     }
 
     free(kcp_conn);

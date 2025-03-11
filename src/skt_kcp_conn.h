@@ -18,8 +18,9 @@ typedef struct {
 
 } skt_kcp_conn_t;
 
-// uint32_t skt_kcp_conn_gen_cid();
-skt_kcp_conn_t *skt_kcp_conn_add(uint32_t tun_ip, const char *ticket, skt_udp_peer_t *peer, skcptun_t *skt);
+uint32_t skt_kcp_conn_gen_cid();
+skt_kcp_conn_t *skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char *ticket, skt_udp_peer_t *peer,
+                                 skcptun_t *skt);
 skt_kcp_conn_t *skt_kcp_conn_get_by_cid(uint32_t cid);
 skt_kcp_conn_t *skt_kcp_conn_get_by_tun_ip(uint32_t tun_ip);
 void skt_kcp_conn_del(skt_kcp_conn_t *kcp_conn);

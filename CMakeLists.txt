@@ -21,6 +21,7 @@ src/tun.c
 src/tun_osx.c
 src/ikcp.c
 src/skt_remote.c
+src/skt_local.c
 # src/ssbuff.c
 # src/test_ssudp.c
 # # src/test_proxy.c

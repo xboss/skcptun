@@ -3,6 +3,8 @@
 
 #include "skcptun.h"
 
+#include "skt_kcp_conn.h"
+
 // #define SKT_PKT_HEADER_SZIE 4
 // #define MAX_DATA_PAYLOAD_SZIE (1024 * 2)
 // #define RECV_DATA_BUF_SIZE ((MAX_DATA_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE) * 5)
@@ -11,15 +13,6 @@
 // #define RECV_TIMEOUT 1000 * 60 * 5
 // #define SEND_TIMEOUT 1000 * 60 * 5
 // #define POLL_TIMEOUT 1000
-
-////////////////////////////////
-// callback
-////////////////////////////////
-
-static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
-    /* TODO: */
-    return 0;
-}
 
 ////////////////////////////////
 // skcptun API
@@ -84,11 +77,6 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     return skt;
 }
 
-void skt_free(skcptun_t* skt) {
-    /* TODO: */
-    return;
-}
-
 int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_netmask, int tun_mtu) {
     // Allocate TUN device
     int tun_fd = tun_alloc(tun_dev, IFNAMSIZ);
@@ -121,4 +109,38 @@ int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_netmask, int tun_mtu) {
         return _ERR;
     }
     return tun_fd;
+}
+
+int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
+    // check is kcp packet
+    if (pkt->payload_len < SKT_KCP_HEADER_SZIE) {
+        _LOG_E("invalid kcp packet, payload_len:%d", pkt->payload_len);
+        return _ERR;
+    }
+    // get cid
+    uint32_t cid = ikcp_getconv(pkt->payload);
+    // check is conn exists
+    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(cid);
+    if (!kcp_conn) {
+        _LOG_E("invalid cid:%d in on_cmd_data", cid);
+        return _ERR;
+    }
+    char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
+    int recv_len = skt_kcp_conn_recv(kcp_conn, pkt->payload, pkt->payload_len, recv_buf);
+    if (recv_len <= 0) {
+        _LOG_E("skt_kcp_conn_recv error. cid:%d len:%d", cid, recv_len);
+        return _ERR;
+    }
+    // send to tun
+    assert(skt->tun_fd > 0);
+    if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {
+        _LOG_E("tun_write failed");
+        return _ERR;
+    }
+    return _OK;
+}
+
+void skt_free(skcptun_t* skt) {
+    /* TODO: */
+    return;
 }
