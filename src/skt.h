@@ -77,6 +77,7 @@ typedef struct {
     int udp_fd;
     int tun_fd;
     uint32_t local_cid;
+    struct sockaddr_in remote_addr;
     int running;
 
     ev_timer* timeout_watcher;

@@ -61,23 +61,27 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         return _ERR;
     }
 
+    uint64_t now = skt_mstime();
     uint32_t cid = ntohl(*(uint32_t*)(pkt->payload));
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(cid);
     if (!kcp_conn) {
-        _LOG_E("kcp_conn does not exists. on_cmd_ping cid:%u", cid);
-        return _ERR;
+        _LOG_W("kcp_conn does not exists. on_cmd_ping cid:%u", cid);
+        cid = 0;
+    } else {
+        kcp_conn->last_r_tm = now;
+        kcp_conn->peer = peer;
     }
-    peer->last_r_tm = kcp_conn->last_r_tm = skt_mstime();
-    kcp_conn->peer = peer;
+    peer->last_r_tm = now;
 
     // send pong format: cmd(1B)|ticket(32B)|cid(4B)|timestamp(8B)
     // reuse pkt->payload
     uint64_t timestamp_net = skt_htonll(skt_mstime());
+    uint32_t cid_net = htonl(cid);
+    memcpy(pkt->payload, &cid_net, sizeof(cid_net));
     memcpy(pkt->payload + 4, &timestamp_net, sizeof(timestamp_net));
     char raw[SKT_MTU] = {0};
     int raw_len = 0;
-    if (skt_pack(skt, SKT_PKT_CMD_PONG, pkt->ticket, pkt->payload + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, 12, raw,
-                 &raw_len)) {
+    if (skt_pack(skt, SKT_PKT_CMD_PONG, pkt->ticket, pkt->payload, 12, raw, &raw_len)) {
         return _ERR;
     }
     assert(raw_len > 0);
