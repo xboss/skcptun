@@ -19,7 +19,7 @@ struct ev_loop *g_loop;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
     char *keys[] = {"mode",    "local_ip", "local_port",   "remote_ip", "remote_port", "password",
-                    "ticket",  "log_file", "log_level",    "timeout",   "tun_ip",      "tun_netmask",
+                    "ticket",  "log_file", "log_level",    "timeout",   "tun_ip",      "tun_mask",
                     "tun_mtu", "kcp_mtu",  "kcp_interval", "speed_mode"};
     int keys_cnt = sizeof(keys) / sizeof(char *);
     ssconf_t *cf = ssconf_init(1024, 1024);
@@ -66,9 +66,9 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             if (len <= INET_ADDRSTRLEN) {
                 memcpy(conf->tun_ip, v, len);
             }
-        } else if (strcmp("tun_netmask", keys[i]) == 0) {
+        } else if (strcmp("tun_mask", keys[i]) == 0) {
             if (len <= INET_ADDRSTRLEN) {
-                memcpy(conf->tun_netmask, v, len);
+                memcpy(conf->tun_mask, v, len);
             }
         } else if (strcmp("tun_mtu", keys[i]) == 0) {
             conf->tun_mtu = atoi(v);
@@ -123,18 +123,15 @@ static int check_config(skt_config_t *conf) {
     return _OK;
 }
 
-static void handle_exit(int sig) {
-    _LOG("exit by signal %d ... ", sig);
-    ev_break(g_loop, EVBREAK_ALL);
-}
-
 static void signal_handler(int sn) {
     _LOG("signal_handler sig:%d", sn);
     switch (sn) {
         // case SIGQUIT:
         case SIGINT:
             // case SIGTERM:
-            handle_exit(sn);
+            g_skt->running = 0;
+            ev_break(g_loop, EVBREAK_ALL);
+            exit(1); /* TODO: remove it */
             break;
         default:
             break;

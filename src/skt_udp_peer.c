@@ -1,6 +1,7 @@
 #include "skt_udp_peer.h"
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 typedef struct {
@@ -10,6 +11,22 @@ typedef struct {
 } addr_peer_index_t;
 
 static addr_peer_index_t* g_addr_peer_index = NULL;
+
+int set_nonblocking(int fd) {
+    // 获取当前的文件状态标志
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("Error getting file flags");
+        return _ERR;
+    }
+
+    // 设置非阻塞标志
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("Error setting file to non-blocking mode");
+        return _ERR;
+    }
+    return _OK;
+}
 
 static addr_peer_index_t* init_addr_peer_index(skt_udp_peer_t* peer) {
     addr_peer_index_t* addr_peer_index = (addr_peer_index_t*)calloc(1, sizeof(addr_peer_index_t));
@@ -35,6 +52,10 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
         free(peer);
         return NULL;
     }
+    if (set_nonblocking(peer->fd) != _OK) {
+        free(peer);
+        return NULL;
+    }
 
     if (local_ip && strnlen(local_ip, INET_ADDRSTRLEN) > 0 && local_port > 0) {
         memset(&peer->local_addr, 0, sizeof(peer->local_addr));
@@ -54,17 +75,19 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
         }
     }
 
-    memset(&peer->remote_addr, 0, sizeof(peer->remote_addr));
-    peer->remote_addr.sin_family = AF_INET;
-    peer->remote_addr.sin_port = htons(remote_port);
-    if (inet_pton(AF_INET, remote_ip, &peer->remote_addr.sin_addr) <= 0) {
-        perror("inet_pton remote");
-        close(peer->fd);
-        free(peer);
-        return NULL;
+    if (remote_ip && strnlen(remote_ip, INET_ADDRSTRLEN) > 0 && remote_port > 0) {
+        memset(&peer->remote_addr, 0, sizeof(peer->remote_addr));
+        peer->remote_addr.sin_family = AF_INET;
+        peer->remote_addr.sin_port = htons(remote_port);
+        if (inet_pton(AF_INET, remote_ip, &peer->remote_addr.sin_addr) <= 0) {
+            perror("inet_pton remote");
+            close(peer->fd);
+            free(peer);
+            return NULL;
+        }
     }
 
-    if (!skt_udp_peer_add(peer)) {
+    if (skt_udp_peer_add(peer) != _OK) {
         close(peer->fd);
         free(peer);
         return NULL;

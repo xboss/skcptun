@@ -552,7 +552,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     }
 
     // Set TUN device netmask
-    if (tun_set_netmask(conf->tun_dev, conf->tun_netmask) < 0) {
+    if (tun_set_netmask(conf->tun_dev, conf->tun_mask) < 0) {
         perror("tun_set_netmask");
         skt_free(skt);
         return NULL;

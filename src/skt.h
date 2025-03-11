@@ -57,7 +57,7 @@ typedef struct {
     // tun config
     char tun_dev[IFNAMSIZ + 1];
     char tun_ip[INET_ADDRSTRLEN + 1];
-    char tun_netmask[INET_ADDRSTRLEN + 1];
+    char tun_mask[INET_ADDRSTRLEN + 1];
     int tun_mtu;
 
     // kcp config
@@ -103,6 +103,39 @@ inline void skt_print_hex(const char* label, const unsigned char* data, int len)
         printf("%02x ", data[i]);
     }
     printf("\n");
+}
+
+inline void skt_print_iaddr(const char* label, struct sockaddr_in addr) {
+    char remote_ip[INET_ADDRSTRLEN + 1] = {0};
+    unsigned int remote_port = ntohs(addr.sin_port);
+    inet_ntop(AF_INET, &addr.sin_addr, remote_ip, sizeof(addr));
+    printf("%s %s:%d\n", label, remote_ip, remote_port);
+}
+
+// 检查系统是否为大端
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define SKT_IS_LITTLE_ENDIAN 1
+#else
+#define SKT_IS_LITTLE_ENDIAN 0
+#endif
+
+// 将64位整数从主机字节序转换为网络字节序
+inline uint64_t skt_htonll(uint64_t value) {
+    if (SKT_IS_LITTLE_ENDIAN) {
+        return ((value & 0xFF00000000000000ull) >> 56) | ((value & 0x00FF000000000000ull) >> 40) |
+               ((value & 0x0000FF0000000000ull) >> 24) | ((value & 0x000000FF00000000ull) >> 8) |
+               ((value & 0x00000000FF000000ull) << 8) | ((value & 0x0000000000FF0000ull) << 24) |
+               ((value & 0x000000000000FF00ull) << 40) | ((value & 0x00000000000000FFull) << 56);
+    } else {
+        // 如果已经是大端，则无需转换
+        return value;
+    }
+}
+
+// 将64位整数从网络字节序转换为主机字节序
+inline uint64_t skt_ntohll(uint64_t value) {
+    // 由于htonll和ntohll实际上是相反的操作，可以复用htonll的逻辑
+    return skt_htonll(value);
 }
 
 #endif /* _SKT_H */

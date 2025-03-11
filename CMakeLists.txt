@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(skcptun)
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_GNU_SOURCE")
 
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)

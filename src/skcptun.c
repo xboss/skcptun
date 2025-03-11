@@ -1,7 +1,7 @@
 
-#define _XOPEN_SOURCE 700
-
 #include "skcptun.h"
+
+#include <errno.h>
 
 #include "skt_kcp_conn.h"
 
@@ -72,7 +72,7 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     return skt;
 }
 
-int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_netmask, int tun_mtu) {
+int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_mask, int tun_mtu) {
     // Allocate TUN device
     int tun_fd = tun_alloc(tun_dev, IFNAMSIZ);
     if (tun_fd < 0) {
@@ -87,7 +87,7 @@ int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_netmask, int tun_mtu) {
     }
 
     // Set TUN device netmask
-    if (tun_set_netmask(tun_dev, tun_netmask) < 0) {
+    if (tun_set_netmask(tun_dev, tun_mask) < 0) {
         perror("tun_set_netmask");
         return _ERR;
     }
