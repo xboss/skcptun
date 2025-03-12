@@ -34,8 +34,9 @@ typedef struct {
     int payload_len;
 } skt_packet_t;
 
-int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, int payload_len, char* raw,
-             int* raw_len);
-int skt_unpack(skcptun_t* skt, const char* raw, int raw_len, char* cmd, char* ticket, char* payload, int* payload_len);
+int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, size_t payload_len, char* raw,
+             size_t* raw_len);
+int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char* ticket, char* payload,
+               size_t* payload_len);
 
 #endif /* _SKT_UDP_PEER_H */

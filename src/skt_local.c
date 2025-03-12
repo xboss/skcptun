@@ -22,7 +22,7 @@ static int send_auth_req(skcptun_t* skt, uint32_t cid, struct sockaddr_in remote
     memcpy(payload, &tun_ip_net, 4);
     memcpy(payload + 4, &timestamp_net, 8);
     char raw[SKT_MTU] = {0};
-    int raw_len = 0;
+    size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_AUTH_REQ, skt->conf->ticket, payload, sizeof(payload), raw, &raw_len)) return _ERR;
     assert(raw_len > 0);
     if (sendto(skt->udp_fd, raw, raw_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr)) == -1) {
@@ -155,7 +155,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     memcpy(payload, &cid_net, sizeof(cid_net));
     memcpy(payload + 4, &timestamp_net, sizeof(timestamp_net));
     char raw[SKT_MTU] = {0};
-    int raw_len = 0;
+    size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_PING, kcp_conn->peer->ticket, payload, sizeof(payload), raw, &raw_len)) {
         return;
     }
@@ -228,7 +228,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     char cmd = 0x00;
     char ticket[SKT_TICKET_SIZE] = {0};
     char payload[SKT_MTU - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE] = {0};
-    int payload_len = 0;
+    size_t payload_len = 0;
     if (skt_unpack(skt, raw, rlen, &cmd, ticket, payload, &payload_len) != _OK) return;
     assert(payload_len > 0);
 

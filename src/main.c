@@ -168,6 +168,7 @@ int main(int argc, char const *argv[]) {
 
     g_loop = EV_DEFAULT;
 
+    setup_kcp();
     g_skt = skt_init(&g_conf, g_loop);
     if (!g_skt) {
         _LOG_E("init skt error.");

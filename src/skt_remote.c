@@ -35,7 +35,7 @@ static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* pe
     memcpy(payload, &cid_net, 4);
     memcpy(payload + 4, &timestamp_net, 8);
     char raw[SKT_MTU] = {0};
-    int raw_len = 0;
+    size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_AUTH_RESP, pkt->ticket, payload, sizeof(payload), raw, &raw_len)) return _ERR;
     assert(raw_len > 0);
     skt_print_iaddr("on_cmd_auth_req", peer->remote_addr);
@@ -80,7 +80,7 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
     memcpy(pkt->payload, &cid_net, sizeof(cid_net));
     memcpy(pkt->payload + 4, &timestamp_net, sizeof(timestamp_net));
     char raw[SKT_MTU] = {0};
-    int raw_len = 0;
+    size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_PONG, pkt->ticket, pkt->payload, 12, raw, &raw_len)) {
         return _ERR;
     }
@@ -191,7 +191,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     char cmd = 0x00;
     char ticket[SKT_TICKET_SIZE] = {0};
     char payload[SKT_MTU - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE] = {0};
-    int payload_len = 0;
+    size_t payload_len = 0;
     if (skt_unpack(skt, raw, rlen, &cmd, ticket, payload, &payload_len) != _OK) return;
     assert(payload_len > 0);
 
