@@ -33,8 +33,10 @@ log_level= DEBUG
 - [ ] local reconnect
 - [ ] tun osx
 - [x] cllect all connetions， include kcp_conn and peer
-- [ ] monitor
+- [x] monitor
 - [ ] Bound checking
 - [ ] check memery leaks
 - [ ] antispam
-- [ ] can not terminal
+- [x] can not terminal
+- [ ] kcp to tun
+- [ ] tun to kcp

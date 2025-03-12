@@ -5,15 +5,6 @@
 
 #include "skt_kcp_conn.h"
 
-// #define SKT_PKT_HEADER_SZIE 4
-// #define MAX_DATA_PAYLOAD_SZIE (1024 * 2)
-// #define RECV_DATA_BUF_SIZE ((MAX_DATA_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE) * 5)
-// #define MAX_CTRL_PAYLOAD_SZIE (128)
-// #define RECV_CTRL_BUF_SIZE (MAX_CTRL_PAYLOAD_SZIE + SKT_PKT_HEADER_SZIE)
-// #define RECV_TIMEOUT 1000 * 60 * 5
-// #define SEND_TIMEOUT 1000 * 60 * 5
-// #define POLL_TIMEOUT 1000
-
 ////////////////////////////////
 // skcptun API
 ////////////////////////////////
