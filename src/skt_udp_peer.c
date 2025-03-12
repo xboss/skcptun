@@ -172,8 +172,8 @@ static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
     printf("    local_addr: %s:%d\n", local_ip, ntohs(peer->local_addr.sin_port));
     printf("    cid: %u\n", peer->cid);
     printf("    ticket: %s\n", peer->ticket);
-    printf("    last_r_tm: %lu\n", peer->last_r_tm);
-    printf("    last_w_tm: %lu\n", peer->last_w_tm);
+    printf("    last_r_tm: %" PRIu64 "\n", peer->last_r_tm);
+    printf("    last_w_tm: %" PRIu64 "\n", peer->last_w_tm);
 }
 
 void skt_udp_peer_info() {

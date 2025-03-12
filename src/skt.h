@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ev.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <stdio.h>

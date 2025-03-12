@@ -27,9 +27,9 @@ static void print_skt_kcp_conn(const skt_kcp_conn_t *conn) {
     printf("skt_kcp_conn_t:\n");
     printf("  cid: %u\n", conn->cid);
     printf("  tun_ip: %u\n", conn->tun_ip);
-    printf("  create_time: %lu\n", conn->create_time);
-    printf("  last_r_tm: %lu\n", conn->last_r_tm);
-    printf("  last_w_tm: %lu\n", conn->last_w_tm);
+    printf("  create_time: %" PRIu64 "\n", conn->create_time);
+    printf("  last_r_tm: %" PRIu64 "\n", conn->last_r_tm);
+    printf("  last_w_tm: %" PRIu64 "\n", conn->last_w_tm);
 
     const skt_udp_peer_t *peer = conn->peer;
     if (peer == NULL) {
@@ -49,8 +49,8 @@ static void print_skt_kcp_conn(const skt_kcp_conn_t *conn) {
 
     printf("    cid: %u\n", peer->cid);
     printf("    ticket: %s\n", peer->ticket);
-    printf("    last_r_tm: %lu\n", peer->last_r_tm);
-    printf("    last_w_tm: %lu\n", peer->last_w_tm);
+    printf("    last_r_tm: %" PRIu64 "\n", peer->last_r_tm);
+    printf("    last_w_tm: %" PRIu64 "\n", peer->last_w_tm);
 }
 
 static void print_cid_index(const cid_index_t *cid_index) {
