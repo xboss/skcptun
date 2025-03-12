@@ -131,7 +131,7 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
     char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
     int recv_len = skt_kcp_conn_recv(kcp_conn, pkt->payload, pkt->payload_len, recv_buf);
     if (recv_len <= 0) {
-        _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
+        // _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
         return _OK;
     }
     assert(recv_len <= sizeof(recv_buf));
@@ -193,7 +193,7 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         _LOG("Not an IPv4 packet");
         return _OK;
     }
-    _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+    // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
 
     assert(skt->tun_ip_addr > 0);
     uint32_t tun_ip = skt->tun_ip_addr;
@@ -201,7 +201,7 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         tun_ip = dst_ip;
     }
     // find kcp conn
-    _LOG("skt_tun_to_kcp tun_ip:%u", tun_ip);
+    // _LOG("skt_tun_to_kcp tun_ip:%u", tun_ip);
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_tun_ip(tun_ip);
     if (!kcp_conn) {
         _LOG_E("kcp conn not found in skt_tun_to_kcp, tun_ip: %u", tun_ip);

@@ -48,7 +48,7 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
     if (peer->cid > 0) {
         _LOG("already authed");
         assert(cid == peer->cid);
-        return _ERR;
+        return _OK;
     }
     // uint32_t tun_ip = 0;
     // if (inet_pton(AF_INET, skt->conf->tun_ip, &tun_ip) <= 0) {
@@ -67,7 +67,7 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
 }
 
 static int on_cmd_data(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) {
-    _LOG("on_cmd_data");
+    // _LOG("on_cmd_data");
     if (skt_kcp_to_tun(skt, pkt) != _OK) return _ERR;
     return _OK;
 }
@@ -194,7 +194,7 @@ static void tun_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
 
     char buf[SKT_MTU] = {0};
     int len = tun_read(skt->tun_fd, buf, SKT_MTU);
-    _LOG("tun_read_cb read %d bytes", len);
+    // _LOG("tun_read_cb read %d bytes", len);
     if (skt_tun_to_kcp(skt, buf, len) != _OK) return;
 }
 

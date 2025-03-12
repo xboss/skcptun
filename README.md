@@ -43,6 +43,7 @@ log_level= DEBUG
 - [ ] check memery leaks
 - [ ] antispam
 - [x] can not terminal
-- [ ] kcp to tun
-- [ ] tun to kcp
+- [x] kcp to tun
+- [x] tun to kcp
+- [ ] support ipv6
 - [ ] optmize
