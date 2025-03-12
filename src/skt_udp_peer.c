@@ -146,6 +146,40 @@ void skt_udp_peer_free(skt_udp_peer_t* peer) {
     }
 }
 
+static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
+    if (addr_peer_index == NULL) {
+        printf("addr_peer_index is NULL\n");
+        return;
+    }
+    printf("addr_peer_index:\n");
+    printf("  addr: %u\n", addr_peer_index->addr);
+    const skt_udp_peer_t* peer = addr_peer_index->peer;
+    if (peer == NULL) {
+        printf("  peer is NULL\n");
+        return;
+    }
+    char remote_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN);
+    printf("  peer:\n");
+    printf("    fd: %d\n", peer->fd);
+    printf("    remote_addr: %s:%d\n", remote_ip, ntohs(peer->remote_addr.sin_port));
+    char local_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
+    printf("    local_addr: %s:%d\n", local_ip, ntohs(peer->local_addr.sin_port));
+    printf("    cid: %u\n", peer->cid);
+    printf("    ticket: %s\n", peer->ticket);
+    printf("    last_r_tm: %lu\n", peer->last_r_tm);
+    printf("    last_w_tm: %lu\n", peer->last_w_tm);
+}
+
+void skt_udp_peer_info() {
+    printf("---------- peers info ----------\n");
+    unsigned int peers_cnt = HASH_COUNT(g_addr_peer_index);
+    printf("udp peers count: %u\n", peers_cnt);
+    addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
+    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { print_addr_peer_index(addr_peer_index); }
+}
+
 ////////////////////////////////
 // protocol
 ////////////////////////////////

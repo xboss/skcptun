@@ -139,3 +139,11 @@ void skt_free(skcptun_t* skt) {
     /* TODO: */
     return;
 }
+
+void skt_monitor(skcptun_t* skt) {
+    // peers info
+    skt_udp_peer_info();
+    skt_kcp_conn_info();
+    // kcp connections info
+    /* TODO: */
+}

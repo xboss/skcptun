@@ -1,6 +1,11 @@
 # skcptun
 skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWRT and Linux and MacOS, implemented in C language and Lua.
 
+## Usage
+```
+ps aux | grep kcptun | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
+```
+
 ## config
 ```
 mode = local
@@ -25,9 +30,12 @@ log_level= DEBUG
 - [ ] multi tickets
 - [ ] multi local
 - [ ] config kcp 
+- [ ] default config
 - [ ] local reconnect
 - [ ] tun osx
 - [ ] cllect all connetions， include kcp_conn and peer
+- [ ] monitor
 - [ ] Bound checking
 - [ ] check memery leaks
 - [ ] antispam
+- [ ] can not terminal

@@ -125,6 +125,10 @@ static int check_config(skt_config_t *conf) {
 
 static void signal_handler(int sn) {
     _LOG("signal_handler sig:%d", sn);
+    if (!g_skt) {
+        _LOG_E("g_skt does not init.");
+        return;
+    }
     switch (sn) {
         // case SIGQUIT:
         case SIGINT:
@@ -132,6 +136,9 @@ static void signal_handler(int sn) {
             g_skt->running = 0;
             ev_break(g_loop, EVBREAK_ALL);
             exit(1); /* TODO: remove it */
+            break;
+        case SIGUSR1:
+            skt_monitor(g_skt);
             break;
         default:
             break;
@@ -163,8 +170,19 @@ int main(int argc, char const *argv[]) {
     sslog_init(g_conf.log_file, g_conf.log_level);
     strcpy((char *)g_conf.iv, "bewatermyfriend.");
 
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGINT, signal_handler);
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        _LOG_E("Error: unable to set signal handler for SIGPIPE.");
+        goto _finish_skcptun;
+    }
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+        _LOG_E("Error: unable to set signal handler for SIGINT.");
+        goto _finish_skcptun;
+    }
+    // kill -SIGUSR1 pid
+    if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
+        _LOG_E("Error: unable to set signal handler for SIGUSR1.");
+        goto _finish_skcptun;
+    }
 
     g_loop = EV_DEFAULT;
 
@@ -172,16 +190,18 @@ int main(int argc, char const *argv[]) {
     g_skt = skt_init(&g_conf, g_loop);
     if (!g_skt) {
         _LOG_E("init skt error.");
-        return 1;
+        goto _finish_skcptun;
     }
 
     ret = g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_start(g_skt) : skt_local_start(g_skt);
     if (ret != _OK) {
-        return 1;
+        goto _finish_skcptun;
     }
     ev_run(g_loop, 0);
     g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_stop(g_skt) : skt_local_stop(g_skt);
     skt_free(g_skt);
+
+_finish_skcptun:
     sslog_free();
     printf("Bye\n");
     return 0;

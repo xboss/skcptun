@@ -13,5 +13,6 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop);
 void skt_free(skcptun_t* skt);
 int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_mask, int tun_mtu);
 int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt);
+void skt_monitor(skcptun_t* skt);
 
 #endif /* _SKCPTUN_H */

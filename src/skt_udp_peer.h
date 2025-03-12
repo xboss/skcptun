@@ -26,6 +26,7 @@ void skt_udp_peer_free(skt_udp_peer_t* peer);
 skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr);
 int skt_udp_peer_add(skt_udp_peer_t* peer);
 void skt_udp_peer_del(int fd, uint32_t remote_addr);
+void skt_udp_peer_info();
 
 typedef struct {
     char cmd;
