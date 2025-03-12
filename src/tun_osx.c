@@ -2,18 +2,18 @@
 
 #ifdef __APPLE__
 
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <net/if_utun.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
 #include <sys/kern_control.h>
+#include <sys/socket.h>
 #include <sys/sys_domain.h>
-#include <net/if.h>
-#include <net/if_utun.h>
-#include <arpa/inet.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
 #define _OK 0
 #define _ERR -1
@@ -45,7 +45,7 @@ int tun_alloc(char* dev, size_t dev_len) {
     addr.sc_family = AF_SYSTEM;
     addr.ss_sysaddr = AF_SYS_CONTROL;
     addr.sc_id = ctl_info.ctl_id;
-    addr.sc_unit = 1; // utun0
+    addr.sc_unit = 0;  // 从0开始动态分配
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("connect(AF_SYS_CONTROL)");
@@ -53,7 +53,7 @@ int tun_alloc(char* dev, size_t dev_len) {
         return _ERR;
     }
 
-    snprintf(dev, dev_len, "utun%d", addr.sc_unit - 1);
+    snprintf(dev, dev_len, "utun%d", addr.sc_unit);
     return fd;
 }
 
