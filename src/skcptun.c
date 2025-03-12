@@ -71,38 +71,43 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     return skt;
 }
 
-int skt_start_tun(char* tun_dev, char* tun_ip, char* tun_mask, int tun_mtu) {
+int skt_start_tun(skcptun_t* skt) {
     // Allocate TUN device
-    int tun_fd = tun_alloc(tun_dev, IFNAMSIZ);
-    if (tun_fd < 0) {
+    skt->tun_fd = tun_alloc(skt->conf->tun_dev, IFNAMSIZ);
+    if (skt->tun_fd < 0) {
         perror("tun_alloc");
         return _ERR;
     }
 
     // Set TUN device IP
-    if (tun_set_ip(tun_dev, tun_ip) < 0) {
+    if (tun_set_ip(skt->conf->tun_dev, skt->conf->tun_ip) < 0) {
         perror("tun_set_ip");
         return _ERR;
     }
 
     // Set TUN device netmask
-    if (tun_set_netmask(tun_dev, tun_mask) < 0) {
+    if (tun_set_netmask(skt->conf->tun_dev, skt->conf->tun_mask) < 0) {
         perror("tun_set_netmask");
         return _ERR;
     }
 
     // Set TUN device MTU
-    if (tun_set_mtu(tun_dev, tun_mtu) < 0) {
+    if (tun_set_mtu(skt->conf->tun_dev, skt->conf->tun_mtu) < 0) {
         perror("tun_set_mtu");
         return _ERR;
     }
 
     // Bring up TUN device
-    if (tun_up(tun_dev) < 0) {
+    if (tun_up(skt->conf->tun_dev) < 0) {
         perror("tun_up");
         return _ERR;
     }
-    return tun_fd;
+
+    if (inet_pton(AF_INET, skt->conf->tun_ip, &skt->tun_ip_addr) <= 0) {
+        perror("inet_pton tun_ip");
+        return _ERR;
+    }
+    return _OK;
 }
 
 int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
@@ -134,6 +139,78 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
     return _OK;
 }
 
+static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip,
+                              uint32_t* dst_ip) {
+    if (data == NULL || src_ip_str == NULL || dst_ip_str == NULL || data_len < 20 || src_ip == NULL || dst_ip == NULL) {
+        return _ERR;
+    }
+
+    // Check the version part of the first byte (version_ihl)
+    uint8_t version_ihl = data[0];
+    uint8_t version = (version_ihl >> 4);
+    if (version != 4) {
+        return _ERR;
+    }
+
+    // Extract source IP address (bytes 12-15)
+    uint32_t src_addr_network_order = (data[12] << 24) | (data[13] << 16) | (data[14] << 8) | data[15];
+    *src_ip = ntohl(src_addr_network_order);
+    inet_ntop(AF_INET, src_ip, src_ip_str, INET_ADDRSTRLEN);
+
+    // Extract destination IP address (bytes 16-19)
+    uint32_t dst_addr_network_order = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19];
+    *dst_ip = ntohl(dst_addr_network_order);
+    inet_ntop(AF_INET, dst_ip, dst_ip_str, INET_ADDRSTRLEN);
+    return _OK;
+}
+
+int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
+    // check result
+    if (len < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            _LOG("tun read pending...");
+            return _OK;
+        } else {
+            perror("recvfrom");
+            return _ERR;
+        }
+    } else if (len == 0) {
+        _LOG_E("tun read len: %d", len);
+        return _ERR;
+    }
+    assert(len + SKT_KCP_HEADER_SZIE <= skt->conf->tun_mtu);
+    // filter ip packet
+    char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
+    char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};
+    uint32_t src_ip = 0;
+    uint32_t dst_ip = 0;
+    if (parse_ip_addresses(buf, len, src_ip_str, dst_ip_str, &src_ip, &dst_ip) != _OK) {
+        _LOG("Not an IPv4 packet");
+        return _OK;
+    }
+    _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+
+    assert(skt->tun_ip_addr > 0);
+    uint32_t tun_ip = skt->tun_ip_addr;
+    if (skt->conf->mode == SKT_MODE_REMOTE) {
+        tun_ip = dst_ip;
+    }
+    // find kcp conn
+    _LOG("skt_tun_to_kcp tun_ip:%u", tun_ip);
+    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_tun_ip(tun_ip);
+    if (!kcp_conn) {
+        _LOG_E("kcp conn not found in skt_tun_to_kcp, tun_ip: %u", tun_ip);
+        return _ERR;
+    }
+    // kcp send
+    int ret = ikcp_send(kcp_conn->kcp, buf, len);
+    if (ret < 0) {
+        _LOG_E(" ikcp_send failed, cid: %u", kcp_conn->cid);
+        return _ERR;
+    }
+    return _OK;
+}
+
 void skt_free(skcptun_t* skt) {
     /* TODO: */
     return;
@@ -145,4 +222,12 @@ void skt_monitor(skcptun_t* skt) {
     skt_kcp_conn_info();
     // kcp connections info
     /* TODO: */
+}
+
+void skt_update_kcp_cb(skt_kcp_conn_t* kcp_conn) {
+    if (!kcp_conn || kcp_conn->cid == 0 || !kcp_conn->kcp) {
+        _LOG_E("invalid kcp_conn");
+        return;
+    }
+    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
 }

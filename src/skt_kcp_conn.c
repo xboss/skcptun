@@ -75,6 +75,27 @@ static void print_tun_ip_index(const tun_ip_index_t *tun_ip_index) {
     print_skt_kcp_conn(tun_ip_index->conn);
 }
 
+static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
+    skt_kcp_conn_t *conn = (skt_kcp_conn_t *)user;
+    assert(conn);
+    assert(conn->peer);
+    assert(conn->skt);
+
+    assert(len <= conn->skt->conf->kcp_mtu);
+    char raw[SKT_MTU] = {0};
+    size_t raw_len = 0;
+    if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->peer->ticket, buf, len, raw, &raw_len)) {
+        return 0;
+    }
+    assert(raw_len == len + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
+    if (sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr *)&conn->peer->remote_addr,
+               sizeof(conn->peer->remote_addr)) == -1) {
+        _LOG_E("sendto failed when udp_output, fd:%d", conn->peer->fd);
+        return 0;
+    }
+    return 0;
+}
+
 ////////////////////////////////
 // API
 ////////////////////////////////
@@ -111,25 +132,6 @@ uint32_t skt_kcp_conn_gen_cid() {
     return g_cid;
 }
 
-int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
-    skt_kcp_conn_t *conn = (skt_kcp_conn_t *)user;
-    assert(conn);
-    assert(conn->peer);
-    assert(conn->skt);
-
-    char raw[SKT_MTU] = {0};
-    size_t raw_len = 0;
-    if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->peer->ticket, buf, len, raw, &raw_len)) {
-        return 0;
-    }
-    assert(raw_len == len);
-    if (sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr *)&conn->peer->remote_addr,
-               sizeof(conn->peer->remote_addr)) == -1) {
-        _LOG_E("sendto failed when udp_output, fd:%d", conn->peer->fd);
-        return 0;
-    }
-    return 0;
-}
 skt_kcp_conn_t *skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char *ticket, skt_udp_peer_t *peer,
                                  skcptun_t *skt) {
     if (skt_kcp_conn_get_by_tun_ip(tun_ip) != NULL) {

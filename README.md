@@ -3,6 +3,10 @@ skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for OpenWR
 
 ## Usage
 ```
+iptables -t nat -A POSTROUTING -s 192.1.1.1/24 -o enp0s1 -j MASQUERADE
+
+ip route add xxxxx via 192.1.1.2
+
 ps aux | grep kcptun | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
 ```
 
@@ -30,7 +34,7 @@ log_level= DEBUG
 - [ ] multi tickets
 - [ ] config kcp 
 - [ ] default config
-- [ ] local reconnect
+- [x] local reconnect
 - [ ] tun osx
 - [x] cllect all connetions， include kcp_conn and peer
 - [x] monitor
@@ -40,3 +44,4 @@ log_level= DEBUG
 - [x] can not terminal
 - [ ] kcp to tun
 - [ ] tun to kcp
+- [ ] optmize
