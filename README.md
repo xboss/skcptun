@@ -31,6 +31,7 @@ log_level= DEBUG
 ```
 ## TODO:
 - [ ] send all
+- [ ] handshake config, mtu, iv etc.
 - [ ] multi tickets
 - [ ] config kcp 
 - [ ] default config

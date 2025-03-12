@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ev.h>
+#include <fcntl.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -94,6 +95,22 @@ typedef struct {
 ////////////////////////////////
 // tools
 ////////////////////////////////
+
+inline int skt_set_nonblocking(int fd) {
+    // 获取当前的文件状态标志
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("Error getting file flags");
+        return _ERR;
+    }
+
+    // 设置非阻塞标志
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("Error setting file to non-blocking mode");
+        return _ERR;
+    }
+    return _OK;
+}
 
 inline uint64_t skt_mstime() {
     struct timeval tv;

@@ -107,6 +107,10 @@ int skt_start_tun(skcptun_t* skt) {
         perror("inet_pton tun_ip");
         return _ERR;
     }
+
+    if (skt_set_nonblocking(skt->tun_fd) != _OK) {
+        return _ERR;
+    }
     return _OK;
 }
 
@@ -130,6 +134,7 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
         _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
         return _OK;
     }
+    assert(recv_len <= sizeof(recv_buf));
     // send to tun
     assert(skt->tun_fd > 0);
     if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {

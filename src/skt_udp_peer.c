@@ -1,7 +1,6 @@
 #include "skt_udp_peer.h"
 
 #include <arpa/inet.h>
-#include <fcntl.h>
 #include <unistd.h>
 
 typedef struct {
@@ -12,21 +11,21 @@ typedef struct {
 
 static addr_peer_index_t* g_addr_peer_index = NULL;
 
-int set_nonblocking(int fd) {
-    // 获取当前的文件状态标志
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1) {
-        perror("Error getting file flags");
-        return _ERR;
-    }
+// int set_nonblocking(int fd) {
+//     // 获取当前的文件状态标志
+//     int flags = fcntl(fd, F_GETFL, 0);
+//     if (flags == -1) {
+//         perror("Error getting file flags");
+//         return _ERR;
+//     }
 
-    // 设置非阻塞标志
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-        perror("Error setting file to non-blocking mode");
-        return _ERR;
-    }
-    return _OK;
-}
+//     // 设置非阻塞标志
+//     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+//         perror("Error setting file to non-blocking mode");
+//         return _ERR;
+//     }
+//     return _OK;
+// }
 
 static addr_peer_index_t* init_addr_peer_index(skt_udp_peer_t* peer) {
     addr_peer_index_t* addr_peer_index = (addr_peer_index_t*)calloc(1, sizeof(addr_peer_index_t));
@@ -52,7 +51,7 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
         free(peer);
         return NULL;
     }
-    if (set_nonblocking(peer->fd) != _OK) {
+    if (skt_set_nonblocking(peer->fd) != _OK) {
         free(peer);
         return NULL;
     }
@@ -195,7 +194,7 @@ void skt_udp_peer_info() {
 
 int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, size_t payload_len, char* raw,
              size_t* raw_len) {
-    _LOG("skt_pack payload_len:%d, kcp_mtu:%d, tun_mtu:%d", payload_len, skt->conf->kcp_mtu, skt->conf->tun_mtu);
+    // _LOG("skt_pack payload_len:%d, kcp_mtu:%d, tun_mtu:%d", payload_len, skt->conf->kcp_mtu, skt->conf->tun_mtu);
     assert(payload_len <= skt->conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
     if (_IS_SECRET) {
         char cipher_buf[SKT_MTU] = {0};

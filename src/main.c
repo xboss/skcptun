@@ -118,9 +118,6 @@ static int check_config(skt_config_t *conf) {
         fprintf(stderr, "Invalid mode:%d in configfile. local mode is 'local', remote mode is 'remote'.\n", conf->mode);
         return _ERR;
     }
-    if (conf->mtu <= 0 || conf->mtu > SKT_MTU) {
-        conf->mtu = SKT_MTU;
-    }
     conf->kcp_mtu = conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE;
     conf->tun_mtu = conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE - SKT_KCP_HEADER_SZIE;
     // if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE > conf->kcp_mtu ||
@@ -164,7 +161,13 @@ int main(int argc, char const *argv[]) {
         fprintf(stderr, "Usage: %s <config file>\n", argv[0]);
         return 1;
     }
+
     memset(&g_conf, 0, sizeof(skt_config_t));
+    // default config
+    g_conf.speed_mode = 1;
+    g_conf.mtu = SKT_MTU;
+    /* TODO: */
+
     int ret = load_conf(argv[1], &g_conf);
     if (ret != _OK) return 1;
     if (check_config(&g_conf) != _OK) return 1;

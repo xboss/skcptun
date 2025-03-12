@@ -239,16 +239,20 @@ int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char
     // ikcp_input
     int ret = ikcp_input(kcp_conn->kcp, in, in_len);
     assert(ret == 0);
-    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-    int peeksize = ikcp_peeksize(kcp_conn->kcp);
-    if (peeksize <= 0) {
-        return peeksize;
-    }
-    // kcp recv
-    int recv_len = ikcp_recv(kcp_conn->kcp, out, peeksize);
-    if (recv_len > 0) {
-        kcp_conn->last_r_tm = skt_mstime();
-    }
-    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+    int peeksize = 0;
+    int recv_len = 0;
+    do {
+        ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+        peeksize = ikcp_peeksize(kcp_conn->kcp);
+        if (peeksize <= 0) {
+            break;
+        }
+        // kcp recv
+        recv_len = ikcp_recv(kcp_conn->kcp, out, peeksize);
+        if (recv_len > 0) {
+            kcp_conn->last_r_tm = skt_mstime();
+        }
+        // ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+    } while (peeksize > 0 && recv_len > 0);
     return recv_len;
 }
