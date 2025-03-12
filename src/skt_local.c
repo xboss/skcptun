@@ -198,7 +198,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         _LOG("udp_read_cb got invalid event");
         return;
     }
-    _LOG("udp_read_cb start");
+    // _LOG("udp_read_cb start");
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
 
@@ -249,7 +249,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         /* TODO: reconnect */
         // assert(skt->local_kcp_conn == kcp_conn);
     }
-    _LOG("udp_read_cb end");
+    // _LOG("udp_read_cb end");
 }
 
 ////////////////////////////////
@@ -279,8 +279,8 @@ int skt_local_start(skcptun_t* skt) {
     // ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
     // ev_io_start(skt->loop, skt->tun_io_watcher);
 
-    // ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
-    // ev_io_start(skt->loop, skt->udp_io_watcher);
+    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
+    ev_io_start(skt->loop, skt->udp_io_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);

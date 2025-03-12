@@ -69,6 +69,14 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     }
     skt->udp_io_watcher->data = skt;
 
+    skt->idle_watcher = (ev_idle*)calloc(1, sizeof(ev_idle));
+    if (!skt->idle_watcher) {
+        perror("alloc idle_watcher");
+        skt_free(skt);
+        return NULL;
+    }
+    skt->idle_watcher->data = skt;
+
     return skt;
 }
 

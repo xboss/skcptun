@@ -8,7 +8,7 @@
 
 // recv auth req format: cmd(1B)|ticket(32B)|tun_ip(4B)|timestamp(8B)
 static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) {
-    _LOG("on_cmd_auth_req start");
+    // _LOG("on_cmd_auth_req start");
     if (pkt->payload_len < 12) {
         _LOG_E("invalid auth req. len: %d", pkt->payload_len);
         return _ERR;
@@ -122,6 +122,59 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
 // callback
 ////////////////////////////////
 
+#define SKT_DEF_KEEPALIVE (1000 * 5)
+static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
+    if (!kcp_conn) {
+        _LOG_E("kcp_conn is null. iter_kcp_conn_cb");
+        return;
+    }
+    uint64_t now = skt_mstime();
+    if (kcp_conn->last_r_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+        _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
+        skt_kcp_conn_del(kcp_conn);
+    }
+}
+
+static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
+    if (!peer) {
+        _LOG_E("peer is null. iter_udp_peer_cb");
+        return;
+    }
+    uint64_t now = skt_mstime();
+    if (peer->last_r_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+        if (peer->remote_addr.sin_addr.s_addr == 0) {
+            // _LOG("self peer doesn't need to be cllected.");
+            return;
+        }
+        skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(peer->cid);
+        if (kcp_conn) {
+            _LOG("cllect kcp conn cid:%d in peer", kcp_conn->cid);
+            skt_kcp_conn_del(kcp_conn);
+        }
+        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+        _LOG("cllect peer fd:%d addr:%u", peer->fd, peer->remote_addr.sin_addr.s_addr);
+        free(peer);
+    }
+}
+
+static void idle_cb(struct ev_loop* loop, ev_idle* watcher, int revents) {
+    if (EV_ERROR & revents) {
+        _LOG("timeout_cb got invalid event");
+        return;
+    }
+    skcptun_t* skt = (skcptun_t*)watcher->data;
+    assert(skt);
+
+    // cllect peers
+    skt_udp_peer_iter(iter_udp_peer_cb);
+    // cllect kcp_conn, double check
+    skt_kcp_conn_iter(iter_kcp_conn_cb);
+    skt->last_cllect_tm = skt_mstime();
+
+    ev_idle_stop(loop, watcher);
+    _LOG("cllect ok.")
+}
+
 static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     if (EV_ERROR & revents) {
         _LOG("timeout_cb got invalid event");
@@ -129,8 +182,15 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     }
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
-    // check all peers timeout
-    // ckeck all kcp connections timeout
+
+    // cllect all connetions， include kcp_conn and peer
+    uint64_t now = skt_mstime();
+
+    if (skt->last_cllect_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+        // notify idle to cllect
+        ev_idle_start(skt->loop, skt->idle_watcher);
+    }
+
     /* TODO: */
 }
 
@@ -159,7 +219,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         _LOG("udp_read_cb got invalid event");
         return;
     }
-    _LOG("udp_read_cb start");
+    // _LOG("udp_read_cb start");
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
 
@@ -184,7 +244,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     }
     _LOG("recvfrom len:%d", rlen);
 
-    skt_print_iaddr("udp_read_cb", remote_addr);
+    // skt_print_iaddr("udp_read_cb", remote_addr);
 
     skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
 
@@ -227,7 +287,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         free(peer);
     }
 
-    _LOG("udp_read_cb end");
+    // _LOG("udp_read_cb end");
 }
 
 ////////////////////////////////
@@ -243,6 +303,8 @@ int skt_remote_start(skcptun_t* skt) {
     // }
     /* TODO: */
 
+    skt->last_cllect_tm = skt_mstime();
+
     // start udp
     skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port,
                                               skt->conf->udp_remote_ip, skt->conf->udp_remote_port);
@@ -252,15 +314,18 @@ int skt_remote_start(skcptun_t* skt) {
     }
     skt->udp_fd = peer->fd;
 
-    /* TODO: */
-    // ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
-    // ev_io_start(skt->loop, skt->tun_io_watcher);
-
     ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
     ev_io_start(skt->loop, skt->udp_io_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);
+
+    ev_idle_init(skt->idle_watcher, idle_cb);
+    // ev_idle_start(skt->loop, skt->idle_watcher);
+
+    /* TODO: */
+    // ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
+    // ev_io_start(skt->loop, skt->tun_io_watcher);
 
     /* TODO: */
     // ev_timer_init(skt->kcp_update_watcher, kcp_update_cb, 0, skt->conf->kcp_interval / 1000.0);

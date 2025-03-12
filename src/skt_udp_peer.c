@@ -146,6 +146,11 @@ void skt_udp_peer_free(skt_udp_peer_t* peer) {
     }
 }
 
+void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
+    addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
+    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { iter(addr_peer_index->peer); }
+}
+
 static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
     if (addr_peer_index == NULL) {
         printf("addr_peer_index is NULL\n");

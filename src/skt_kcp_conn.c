@@ -92,6 +92,14 @@ void skt_kcp_conn_info() {
     printf("kcp connection tun_ip index count: %u\n", tun_ip_index_cnt);
     tun_ip_index_t *tun_ip_index = NULL, *tmp2 = NULL;
     HASH_ITER(hh, g_tun_ip_index, tun_ip_index, tmp2) { print_tun_ip_index(tun_ip_index); }
+    if (cid_index_cnt != tun_ip_index_cnt) {
+        fprintf(stderr, "ERROR: kcp connection tun_ip index count not equal cid index count.\n");
+    }
+}
+
+void skt_kcp_conn_iter(void (*iter)(skt_kcp_conn_t *kcp_conn)) {
+    cid_index_t *cid_index = NULL, *tmp1 = NULL;
+    HASH_ITER(hh, g_cid_index, cid_index, tmp1) { iter(cid_index->conn); }
 }
 
 uint32_t skt_kcp_conn_gen_cid() {

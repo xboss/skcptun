@@ -28,12 +28,11 @@ log_level= DEBUG
 ## TODO:
 - [ ] send all
 - [ ] multi tickets
-- [ ] multi local
 - [ ] config kcp 
 - [ ] default config
 - [ ] local reconnect
 - [ ] tun osx
-- [ ] cllect all connetions， include kcp_conn and peer
+- [x] cllect all connetions， include kcp_conn and peer
 - [ ] monitor
 - [ ] Bound checking
 - [ ] check memery leaks
