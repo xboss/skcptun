@@ -60,6 +60,8 @@ typedef struct {
     char tun_mask[INET_ADDRSTRLEN + 1];
     int tun_mtu;
 
+    int mtu;
+
     // kcp config
     int kcp_mtu;
     int kcp_interval;

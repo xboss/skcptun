@@ -127,8 +127,8 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
     char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
     int recv_len = skt_kcp_conn_recv(kcp_conn, pkt->payload, pkt->payload_len, recv_buf);
     if (recv_len <= 0) {
-        _LOG_E("skt_kcp_conn_recv error. cid:%d len:%d", cid, recv_len);
-        return _ERR;
+        _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
+        return _OK;
     }
     // send to tun
     assert(skt->tun_fd > 0);
@@ -178,7 +178,7 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         _LOG_E("tun read len: %d", len);
         return _ERR;
     }
-    assert(len + SKT_KCP_HEADER_SZIE <= skt->conf->tun_mtu);
+    assert(len + SKT_KCP_HEADER_SZIE <= skt->conf->kcp_mtu);
     // filter ip packet
     char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
     char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};

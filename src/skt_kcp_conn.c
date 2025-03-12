@@ -84,6 +84,7 @@ static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     assert(len <= conn->skt->conf->kcp_mtu);
     char raw[SKT_MTU] = {0};
     size_t raw_len = 0;
+    _LOG("udp_output len:%d", len);
     if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->peer->ticket, buf, len, raw, &raw_len)) {
         return 0;
     }

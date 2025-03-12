@@ -123,7 +123,7 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
 // callback
 ////////////////////////////////
 
-#define SKT_DEF_KEEPALIVE (1000 * 5)
+#define SKT_DEF_KEEPALIVE (1000 * 60)
 static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
     if (!kcp_conn) {
         _LOG_E("kcp_conn is null. iter_kcp_conn_cb");
@@ -214,6 +214,7 @@ static void tun_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     assert(skt);
     char buf[SKT_MTU] = {0};
     int len = tun_read(skt->tun_fd, buf, SKT_MTU);
+    _LOG("tun_read_cb read %d bytes", len);
     if (skt_tun_to_kcp(skt, buf, len) != _OK) return;
 }
 

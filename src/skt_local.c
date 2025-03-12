@@ -194,6 +194,7 @@ static void tun_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
 
     char buf[SKT_MTU] = {0};
     int len = tun_read(skt->tun_fd, buf, SKT_MTU);
+    _LOG("tun_read_cb read %d bytes", len);
     if (skt_tun_to_kcp(skt, buf, len) != _OK) return;
 }
 

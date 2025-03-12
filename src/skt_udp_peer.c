@@ -195,7 +195,8 @@ void skt_udp_peer_info() {
 
 int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, size_t payload_len, char* raw,
              size_t* raw_len) {
-    assert(payload_len <= skt->conf->tun_mtu - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE);
+    _LOG("skt_pack payload_len:%d, kcp_mtu:%d, tun_mtu:%d", payload_len, skt->conf->kcp_mtu, skt->conf->tun_mtu);
+    assert(payload_len <= skt->conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
     if (_IS_SECRET) {
         char cipher_buf[SKT_MTU] = {0};
         memcpy(cipher_buf, &cmd, SKT_PKT_CMD_SZIE);
@@ -218,7 +219,7 @@ int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, 
 
 int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char* ticket, char* payload,
                size_t* payload_len) {
-    assert(raw_len <= skt->conf->kcp_mtu);
+    assert(raw_len <= skt->conf->mtu);
     assert(raw_len > SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
     const char* p = raw;
     char cipher_buf[SKT_MTU] = {0};

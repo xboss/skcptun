@@ -18,9 +18,9 @@ static skcptun_t *g_skt = NULL;
 struct ev_loop *g_loop = NULL;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
-    char *keys[] = {"mode",    "local_ip", "local_port",   "remote_ip", "remote_port", "password",
-                    "ticket",  "log_file", "log_level",    "timeout",   "tun_ip",      "tun_mask",
-                    "tun_mtu", "kcp_mtu",  "kcp_interval", "speed_mode"};
+    char *keys[] = {"mode",     "local_ip", "local_port", "remote_ip",    "remote_port",
+                    "password", "ticket",   "log_file",   "log_level",    "timeout",
+                    "tun_ip",   "tun_mask", "mtu",        "kcp_interval", "speed_mode"};
     int keys_cnt = sizeof(keys) / sizeof(char *);
     ssconf_t *cf = ssconf_init(1024, 1024);
     if (!cf) return _ERR;
@@ -70,10 +70,12 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             if (len <= INET_ADDRSTRLEN) {
                 memcpy(conf->tun_mask, v, len);
             }
-        } else if (strcmp("tun_mtu", keys[i]) == 0) {
-            conf->tun_mtu = atoi(v);
-        } else if (strcmp("kcp_mtu", keys[i]) == 0) {
-            conf->kcp_mtu = atoi(v);
+        }
+        // else if (strcmp("tun_mtu", keys[i]) == 0) {
+        //     conf->tun_mtu = atoi(v);
+        // }
+        else if (strcmp("mtu", keys[i]) == 0) {
+            conf->mtu = atoi(v);
         } else if (strcmp("kcp_interval", keys[i]) == 0) {
             conf->kcp_interval = atoi(v);
         } else if (strcmp("speed_mode", keys[i]) == 0) {
@@ -116,10 +118,16 @@ static int check_config(skt_config_t *conf) {
         fprintf(stderr, "Invalid mode:%d in configfile. local mode is 'local', remote mode is 'remote'.\n", conf->mode);
         return _ERR;
     }
-    if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE > conf->kcp_mtu || conf->kcp_mtu > SKT_MTU) {
-        fprintf(stderr, "MTU error.\n");
-        return _ERR;
+    if (conf->mtu <= 0 || conf->mtu > SKT_MTU) {
+        conf->mtu = SKT_MTU;
     }
+    conf->kcp_mtu = conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE;
+    conf->tun_mtu = conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE - SKT_KCP_HEADER_SZIE;
+    // if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE > conf->kcp_mtu ||
+    //     conf->kcp_mtu > SKT_MTU || conf->kcp_mtu <= SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE) {
+    //     fprintf(stderr, "MTU error.\n");
+    //     return _ERR;
+    // }
     return _OK;
 }
 
