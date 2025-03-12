@@ -138,6 +138,10 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     }
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
+    // if (!skt->running) {
+    //     ev_timer_stop(loop, watcher);
+    // }
+
     if (skt->local_cid == 0) {
         send_auth_req(skt, skt->local_cid, skt->remote_addr);
         return;
@@ -275,8 +279,8 @@ int skt_local_start(skcptun_t* skt) {
     // ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
     // ev_io_start(skt->loop, skt->tun_io_watcher);
 
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
-    ev_io_start(skt->loop, skt->udp_io_watcher);
+    // ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
+    // ev_io_start(skt->loop, skt->udp_io_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);

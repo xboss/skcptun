@@ -123,25 +123,19 @@ static int check_config(skt_config_t *conf) {
     return _OK;
 }
 
-static void signal_handler(int sn) {
-    _LOG("signal_handler sig:%d", sn);
-    if (!g_skt) {
-        _LOG_E("g_skt does not init.");
+static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
+    _LOG("sig_cb signal:%d", w->signum);
+    if (w->signum == SIGPIPE) {
         return;
     }
-    switch (sn) {
-        // case SIGQUIT:
-        case SIGINT:
-            // case SIGTERM:
-            g_skt->running = 0;
-            ev_break(g_loop, EVBREAK_ALL);
-            exit(1); /* TODO: remove it */
-            break;
-        case SIGUSR1:
-            skt_monitor(g_skt);
-            break;
-        default:
-            break;
+    if (w->signum == SIGINT && g_skt) {
+        g_skt->running = 0;
+        ev_break(loop, EVBREAK_ALL);
+        return;
+    }
+    if (w->signum == SIGUSR1 && g_skt) {
+        skt_monitor(g_skt);
+        return;
     }
 }
 
@@ -170,21 +164,19 @@ int main(int argc, char const *argv[]) {
     sslog_init(g_conf.log_file, g_conf.log_level);
     strcpy((char *)g_conf.iv, "bewatermyfriend.");
 
-    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
-        _LOG_E("Error: unable to set signal handler for SIGPIPE.");
-        goto _finish_skcptun;
-    }
-    if (signal(SIGINT, signal_handler) == SIG_ERR) {
-        _LOG_E("Error: unable to set signal handler for SIGINT.");
-        goto _finish_skcptun;
-    }
-    // kill -SIGUSR1 pid
-    if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
-        _LOG_E("Error: unable to set signal handler for SIGUSR1.");
-        goto _finish_skcptun;
-    }
-
     g_loop = EV_DEFAULT;
+
+    ev_signal sig_pipe_watcher;
+    ev_signal_init(&sig_pipe_watcher, sig_cb, SIGPIPE);
+    ev_signal_start(g_loop, &sig_pipe_watcher);
+
+    ev_signal sig_int_watcher;
+    ev_signal_init(&sig_int_watcher, sig_cb, SIGINT);
+    ev_signal_start(g_loop, &sig_int_watcher);
+
+    ev_signal sig_usr1_watcher;  // kill -SIGUSR1 pid
+    ev_signal_init(&sig_usr1_watcher, sig_cb, SIGUSR1);
+    ev_signal_start(g_loop, &sig_usr1_watcher);
 
     setup_kcp();
     g_skt = skt_init(&g_conf, g_loop);

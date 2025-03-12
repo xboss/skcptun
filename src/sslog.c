@@ -49,7 +49,7 @@ int sslog_init(char *file, sslog_level log_level) {
 
 void sslog_free() {
     if (!g_log) return;
-    if (g_log->fp) {
+    if (g_log->fp && g_log->fp != stdout) {
         fclose(g_log->fp);
         g_log->fp = NULL;
     }
