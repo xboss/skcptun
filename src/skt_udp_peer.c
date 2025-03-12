@@ -11,22 +11,6 @@ typedef struct {
 
 static addr_peer_index_t* g_addr_peer_index = NULL;
 
-// int set_nonblocking(int fd) {
-//     // 获取当前的文件状态标志
-//     int flags = fcntl(fd, F_GETFL, 0);
-//     if (flags == -1) {
-//         perror("Error getting file flags");
-//         return _ERR;
-//     }
-
-//     // 设置非阻塞标志
-//     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-//         perror("Error setting file to non-blocking mode");
-//         return _ERR;
-//     }
-//     return _OK;
-// }
-
 static addr_peer_index_t* init_addr_peer_index(skt_udp_peer_t* peer) {
     addr_peer_index_t* addr_peer_index = (addr_peer_index_t*)calloc(1, sizeof(addr_peer_index_t));
     if (!addr_peer_index) {
@@ -44,7 +28,6 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
         perror("alloc");
         return NULL;
     }
-
     peer->fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (peer->fd < 0) {
         perror("socket");
@@ -55,7 +38,6 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
         free(peer);
         return NULL;
     }
-
     if (local_ip && strnlen(local_ip, INET_ADDRSTRLEN) > 0 && local_port > 0) {
         memset(&peer->local_addr, 0, sizeof(peer->local_addr));
         peer->local_addr.sin_family = AF_INET;
@@ -73,7 +55,6 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
             return NULL;
         }
     }
-
     if (remote_ip && strnlen(remote_ip, INET_ADDRSTRLEN) > 0 && remote_port > 0) {
         memset(&peer->remote_addr, 0, sizeof(peer->remote_addr));
         peer->remote_addr.sin_family = AF_INET;
@@ -85,13 +66,11 @@ skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, co
             return NULL;
         }
     }
-
     if (skt_udp_peer_add(peer) != _OK) {
         close(peer->fd);
         free(peer);
         return NULL;
     }
-
     return peer;
 }
 
@@ -130,20 +109,12 @@ skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr) {
     return addr_peer_index->peer;
 }
 
-// ssize_t skt_udp_peer_send(skt_udp_peer_t* peer, const void* buf, size_t len) {
-//     return sendto(peer->fd, buf, len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr));
+// void skt_udp_peer_free(skt_udp_peer_t* peer) {
+//     if (peer) {
+//         close(peer->fd);
+//         free(peer);
+//     }
 // }
-
-// ssize_t skt_udp_peer_recv(skt_udp_peer_t* peer, void* buf, size_t len) {
-//     return recvfrom(peer->fd, buf, len, 0, (struct sockaddr*)&peer->remote_addr, &peer->ra_len);
-// }
-
-void skt_udp_peer_free(skt_udp_peer_t* peer) {
-    if (peer) {
-        close(peer->fd);
-        free(peer);
-    }
-}
 
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
     addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
@@ -237,4 +208,17 @@ int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char*
     memcpy(payload, p + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, raw_len - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
     *payload_len = raw_len - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE;
     return _OK;
+}
+
+void skt_udp_peer_cleanup() {
+    addr_peer_index_t *addr_peer_index, *tmp;
+    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) {
+        skt_udp_peer_t* peer = addr_peer_index->peer;
+        if (peer) {
+            free(peer);
+        }
+        HASH_DEL(g_addr_peer_index, addr_peer_index);
+        free(addr_peer_index);
+    }
+    g_addr_peer_index = NULL;
 }

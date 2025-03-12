@@ -34,7 +34,7 @@ log_level= DEBUG
 - [ ] handshake config, mtu, iv etc.
 - [ ] multi tickets
 - [ ] config kcp 
-- [ ] default config
+- [ ] default config and check all config
 - [x] local reconnect
 - [ ] tun osx
 - [x] cllect all connetions， include kcp_conn and peer

@@ -20,7 +20,7 @@ struct ev_loop *g_loop = NULL;
 static int load_conf(const char *conf_file, skt_config_t *conf) {
     char *keys[] = {"mode",     "local_ip", "local_port", "remote_ip",    "remote_port",
                     "password", "ticket",   "log_file",   "log_level",    "timeout",
-                    "tun_ip",   "tun_mask", "mtu",        "kcp_interval", "speed_mode"};
+                    "tun_ip",   "tun_mask", "mtu",        "kcp_interval", "speed_mode", "keepalive"};
     int keys_cnt = sizeof(keys) / sizeof(char *);
     ssconf_t *cf = ssconf_init(1024, 1024);
     if (!cf) return _ERR;
@@ -62,7 +62,9 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             memcpy(conf->ticket, v, strnlen(v, SKT_TICKET_SIZE));
         } else if (strcmp("timeout", keys[i]) == 0) {
             conf->timeout = atoi(v);
-        } else if (strcmp("tun_ip", keys[i]) == 0) {
+        }  else if (strcmp("keepalive", keys[i]) == 0) {
+            conf->keepalive = atoi(v);
+        }else if (strcmp("tun_ip", keys[i]) == 0) {
             if (len <= INET_ADDRSTRLEN) {
                 memcpy(conf->tun_ip, v, len);
             }
@@ -70,11 +72,7 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             if (len <= INET_ADDRSTRLEN) {
                 memcpy(conf->tun_mask, v, len);
             }
-        }
-        // else if (strcmp("tun_mtu", keys[i]) == 0) {
-        //     conf->tun_mtu = atoi(v);
-        // }
-        else if (strcmp("mtu", keys[i]) == 0) {
+        } else if (strcmp("mtu", keys[i]) == 0) {
             conf->mtu = atoi(v);
         } else if (strcmp("kcp_interval", keys[i]) == 0) {
             conf->kcp_interval = atoi(v);
@@ -106,6 +104,7 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
 }
 
 static int check_config(skt_config_t *conf) {
+    /* TODO: check all config */
     if (conf->udp_local_port > 65535) {
         fprintf(stderr, "Invalid udp_local_port:%u in configfile.\n", conf->udp_local_port);
         return _ERR;

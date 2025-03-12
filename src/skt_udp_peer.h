@@ -19,15 +19,14 @@ typedef struct {
 
 skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
                                    uint16_t remote_port);
-// ssize_t skt_udp_peer_send(skt_udp_peer_t* peer, const void* buf, size_t len);
-// ssize_t skt_udp_peer_recv(skt_udp_peer_t* peer, void* buf, size_t len);
-void skt_udp_peer_free(skt_udp_peer_t* peer);
+// void skt_udp_peer_free(skt_udp_peer_t* peer);
 
 skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr);
 int skt_udp_peer_add(skt_udp_peer_t* peer);
 void skt_udp_peer_del(int fd, uint32_t remote_addr);
 void skt_udp_peer_info();
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer));
+void skt_udp_peer_cleanup();
 
 typedef struct {
     char cmd;

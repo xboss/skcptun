@@ -1,9 +1,29 @@
-
 #include "skcptun.h"
 
 #include <errno.h>
 
 #include "skt_kcp_conn.h"
+
+static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip, uint32_t* dst_ip) {
+    if (data == NULL || src_ip_str == NULL || dst_ip_str == NULL || data_len < 20 || src_ip == NULL || dst_ip == NULL) {
+        return _ERR;
+    }
+    // Check the version part of the first byte (version_ihl)
+    uint8_t version_ihl = data[0];
+    uint8_t version = (version_ihl >> 4);
+    if (version != 4) {
+        return _ERR;
+    }
+    // Extract source IP address (bytes 12-15)
+    uint32_t src_addr_network_order = (data[12] << 24) | (data[13] << 16) | (data[14] << 8) | data[15];
+    *src_ip = ntohl(src_addr_network_order);
+    inet_ntop(AF_INET, src_ip, src_ip_str, INET_ADDRSTRLEN);
+    // Extract destination IP address (bytes 16-19)
+    uint32_t dst_addr_network_order = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19];
+    *dst_ip = ntohl(dst_addr_network_order);
+    inet_ntop(AF_INET, dst_ip, dst_ip_str, INET_ADDRSTRLEN);
+    return _OK;
+}
 
 ////////////////////////////////
 // skcptun API
@@ -19,15 +39,8 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     }
     skt->conf = conf;
     skt->running = 0;
-
-    // // init udp data channel
-    // skt->udp = ssudp_init(conf->udp_local_ip, conf->udp_local_port, conf->udp_remote_ip, conf->udp_remote_port);
-    // if (skt->udp == NULL) {
-    //     skt_free(skt);
-    //     return NULL;
-    // }
-
     skt->loop = loop;
+
     skt->timeout_watcher = (ev_timer*)calloc(1, sizeof(ev_timer));
     if (!skt->timeout_watcher) {
         perror("alloc timeout_watcher");
@@ -144,31 +157,6 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
     return _OK;
 }
 
-static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip,
-                              uint32_t* dst_ip) {
-    if (data == NULL || src_ip_str == NULL || dst_ip_str == NULL || data_len < 20 || src_ip == NULL || dst_ip == NULL) {
-        return _ERR;
-    }
-
-    // Check the version part of the first byte (version_ihl)
-    uint8_t version_ihl = data[0];
-    uint8_t version = (version_ihl >> 4);
-    if (version != 4) {
-        return _ERR;
-    }
-
-    // Extract source IP address (bytes 12-15)
-    uint32_t src_addr_network_order = (data[12] << 24) | (data[13] << 16) | (data[14] << 8) | data[15];
-    *src_ip = ntohl(src_addr_network_order);
-    inet_ntop(AF_INET, src_ip, src_ip_str, INET_ADDRSTRLEN);
-
-    // Extract destination IP address (bytes 16-19)
-    uint32_t dst_addr_network_order = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19];
-    *dst_ip = ntohl(dst_addr_network_order);
-    inet_ntop(AF_INET, dst_ip, dst_ip_str, INET_ADDRSTRLEN);
-    return _OK;
-}
-
 int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
     // check result
     if (len < 0) {
@@ -217,16 +205,52 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
 }
 
 void skt_free(skcptun_t* skt) {
-    /* TODO: */
-    return;
+    if (!skt) return;
+    skt->running = 0;
+
+    if (skt->timeout_watcher) {
+        ev_timer_stop(skt->loop, skt->timeout_watcher);
+        free(skt->timeout_watcher);
+        skt->timeout_watcher = NULL;
+    }
+    if (skt->kcp_update_watcher) {
+        ev_timer_stop(skt->loop, skt->kcp_update_watcher);
+        free(skt->kcp_update_watcher);
+        skt->kcp_update_watcher = NULL;
+    }
+    if (skt->tun_io_watcher) {
+        ev_io_stop(skt->loop, skt->tun_io_watcher);
+        free(skt->tun_io_watcher);
+        skt->tun_io_watcher = NULL;
+    }
+    if (skt->udp_io_watcher) {
+        ev_io_stop(skt->loop, skt->udp_io_watcher);
+        free(skt->udp_io_watcher);
+        skt->udp_io_watcher = NULL;
+    }
+    if (skt->idle_watcher) {
+        ev_idle_stop(skt->loop, skt->idle_watcher);
+        free(skt->idle_watcher);
+        skt->idle_watcher = NULL;
+    }
+
+    if (skt->tun_fd > 0) {
+        close(skt->tun_fd);
+        skt->tun_fd = 0;
+    }
+    if (skt->udp_fd > 0) {
+        close(skt->udp_fd);
+        skt->udp_fd = 0;
+    }
+
+    free(skt);
 }
 
 void skt_monitor(skcptun_t* skt) {
     // peers info
     skt_udp_peer_info();
-    skt_kcp_conn_info();
     // kcp connections info
-    /* TODO: */
+    skt_kcp_conn_info();
 }
 
 void skt_update_kcp_cb(skt_kcp_conn_t* kcp_conn) {

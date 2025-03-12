@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "crypto.h"
 #include "ikcp.h"
@@ -63,6 +64,7 @@ typedef struct {
     int tun_mtu;
 
     int mtu;
+    int keepalive;
 
     // kcp config
     int kcp_mtu;

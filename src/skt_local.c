@@ -3,18 +3,13 @@
 #include <errno.h>
 #include <unistd.h>
 
-// #include "skt_kcp_conn.h"
 
 static int send_auth_req(skcptun_t* skt, uint32_t cid, struct sockaddr_in remote_addr) {
     if (cid > 0 || !skt->running) {
         _LOG("no auth required");
         return _OK;
     }
-    // uint32_t tun_ip = 0; /* TODO: skt->tun_ip_addr; */
-    // if (inet_pton(AF_INET, skt->conf->tun_ip, &tun_ip) <= 0) {
-    //     perror("inet_pton");
-    //     return _ERR;
-    // }
+
     assert(skt->tun_ip_addr > 0);
     // send auth request format: cmd(1B)|ticket(32B)|tun_ip(4B)|timestamp(8B)
     uint32_t tun_ip_net = htonl(skt->tun_ip_addr);
@@ -194,7 +189,7 @@ static void tun_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
 
     char buf[SKT_MTU] = {0};
     int len = tun_read(skt->tun_fd, buf, SKT_MTU);
-    _LOG("tun_read_cb read %d bytes", len);
+    // _LOG("tun_read_cb read %d bytes", len);
     if (skt_tun_to_kcp(skt, buf, len) != _OK) return;
 }
 
@@ -300,7 +295,32 @@ int skt_local_start(skcptun_t* skt) {
 }
 
 void skt_local_stop(skcptun_t* skt) {
+    if (!skt) return;
+
     skt->running = 0;
-    /* TODO: */
-    return;
+
+    if (skt->timeout_watcher) {
+        ev_timer_stop(skt->loop, skt->timeout_watcher);
+    }
+    if (skt->kcp_update_watcher) {
+        ev_timer_stop(skt->loop, skt->kcp_update_watcher);
+    }
+    if (skt->tun_io_watcher) {
+        ev_io_stop(skt->loop, skt->tun_io_watcher);
+    }
+    if (skt->udp_io_watcher) {
+        ev_io_stop(skt->loop, skt->udp_io_watcher);
+    }
+
+    if (skt->tun_fd > 0) {
+        close(skt->tun_fd);
+        skt->tun_fd = 0;
+    }
+    if (skt->udp_fd > 0) {
+        close(skt->udp_fd);
+        skt->udp_fd = 0;
+    }
+
+    skt_kcp_conn_cleanup();
+    skt_udp_peer_cleanup();
 }

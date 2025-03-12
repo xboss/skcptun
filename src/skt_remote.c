@@ -183,16 +183,12 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     }
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
-
     // cllect all connetions， include kcp_conn and peer
     uint64_t now = skt_mstime();
-
     if (skt->last_cllect_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
         // notify idle to cllect
         ev_idle_start(skt->loop, skt->idle_watcher);
     }
-
-    /* TODO: */
 }
 
 static void kcp_update_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
@@ -335,8 +331,36 @@ int skt_remote_start(skcptun_t* skt) {
 }
 
 void skt_remote_stop(skcptun_t* skt) {
-    skt->running = 0;
-    /* TODO: */
+    if (!skt) return;
 
+    skt->running = 0;
+
+    if (skt->timeout_watcher) {
+        ev_timer_stop(skt->loop, skt->timeout_watcher);
+    }
+    if (skt->kcp_update_watcher) {
+        ev_timer_stop(skt->loop, skt->kcp_update_watcher);
+    }
+    if (skt->tun_io_watcher) {
+        ev_io_stop(skt->loop, skt->tun_io_watcher);
+    }
+    if (skt->udp_io_watcher) {
+        ev_io_stop(skt->loop, skt->udp_io_watcher);
+    }
+    if (skt->idle_watcher) {
+        ev_idle_stop(skt->loop, skt->idle_watcher);
+    }
+
+    if (skt->tun_fd > 0) {
+        close(skt->tun_fd);
+        skt->tun_fd = 0;
+    }
+    if (skt->udp_fd > 0) {
+        close(skt->udp_fd);
+        skt->udp_fd = 0;
+    }
+
+    skt_kcp_conn_cleanup();
+    skt_udp_peer_cleanup();
     return;
 }

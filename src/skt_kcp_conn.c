@@ -256,3 +256,28 @@ int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char
     } while (peeksize > 0 && recv_len > 0);
     return recv_len;
 }
+
+void skt_kcp_conn_cleanup() {
+    if (g_cid_index) {
+        cid_index_t *cid_index, *tmp1;
+        HASH_ITER(hh, g_cid_index, cid_index, tmp1) {
+            skt_kcp_conn_t* conn = cid_index->conn;
+            if (conn) {
+                ikcp_release(conn->kcp);
+                free(conn);
+            }
+            HASH_DEL(g_cid_index, cid_index);
+            free(cid_index);
+        }
+        g_cid_index = NULL;
+    }
+
+    if (g_tun_ip_index) {
+        tun_ip_index_t *tun_ip_index, *tmp2;
+        HASH_ITER(hh, g_tun_ip_index, tun_ip_index, tmp2) {
+            HASH_DEL(g_tun_ip_index, tun_ip_index);
+            free(tun_ip_index);
+        }
+        g_tun_ip_index = NULL;
+    }
+}

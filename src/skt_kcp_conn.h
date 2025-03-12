@@ -27,5 +27,6 @@ void skt_kcp_conn_del(skt_kcp_conn_t *kcp_conn);
 int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char *out);
 void skt_kcp_conn_info();
 void skt_kcp_conn_iter(void (*iter)(skt_kcp_conn_t *kcp_conn));
+void skt_kcp_conn_cleanup();
 
 #endif /* _SKT_KCP_CONN_H */
