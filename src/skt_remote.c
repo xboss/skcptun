@@ -69,7 +69,7 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         _LOG_W("kcp_conn does not exists. on_cmd_ping cid:%u", cid);
         cid = 0;
     } else {
-        kcp_conn->last_r_tm = now;
+        // kcp_conn->last_r_tm = now;
         kcp_conn->peer = peer;
     }
     peer->last_r_tm = now;
@@ -160,7 +160,7 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
 
 static void idle_cb(struct ev_loop* loop, ev_idle* watcher, int revents) {
     if (EV_ERROR & revents) {
-        _LOG_E("timeout_cb got invalid event");
+        _LOG_E("idle_cb got invalid event");
         return;
     }
     skcptun_t* skt = (skcptun_t*)watcher->data;
@@ -193,7 +193,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
 
 static void kcp_update_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     if (EV_ERROR & revents) {
-        _LOG_E("tun_read_cb got invalid event");
+        _LOG_E("kcp_update_cb got invalid event");
         return;
     }
     // skcptun_t* skt = (skcptun_t*)watcher->data;
@@ -362,5 +362,6 @@ void skt_remote_stop(skcptun_t* skt) {
 
     skt_kcp_conn_cleanup();
     skt_udp_peer_cleanup();
+    _LOG("skt_remote_stop");
     return;
 }

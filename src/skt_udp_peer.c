@@ -221,4 +221,5 @@ void skt_udp_peer_cleanup() {
         free(addr_peer_index);
     }
     g_addr_peer_index = NULL;
+    _LOG("skt_udp_peer_cleanup");
 }
