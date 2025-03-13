@@ -24,7 +24,7 @@ skt_kcp_conn_t *skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char *tick
 skt_kcp_conn_t *skt_kcp_conn_get_by_cid(uint32_t cid);
 skt_kcp_conn_t *skt_kcp_conn_get_by_tun_ip(uint32_t tun_ip);
 void skt_kcp_conn_del(skt_kcp_conn_t *kcp_conn);
-int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char *out);
+// int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char *out);
 void skt_kcp_conn_info();
 void skt_kcp_conn_iter(void (*iter)(skt_kcp_conn_t *kcp_conn));
 void skt_kcp_conn_cleanup();

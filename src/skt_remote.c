@@ -41,7 +41,7 @@ static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* pe
     assert(raw_len > 0);
     skt_print_iaddr("on_cmd_auth_req", peer->remote_addr);
     int ret = sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr));
-    if (ret == -1) {
+    if (ret < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
         return _ERR;
     }
@@ -86,7 +86,7 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         return _ERR;
     }
     assert(raw_len > 0);
-    if (sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr)) == -1) {
+    if (sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr)) < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
         return _ERR;
     }
@@ -312,8 +312,8 @@ int skt_remote_start(skcptun_t* skt) {
     }
     skt->udp_fd = peer->fd;
 
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
-    ev_io_start(skt->loop, skt->udp_io_watcher);
+    ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);
+    ev_io_start(skt->loop, skt->udp_r_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);
@@ -344,8 +344,8 @@ void skt_remote_stop(skcptun_t* skt) {
     if (skt->tun_io_watcher) {
         ev_io_stop(skt->loop, skt->tun_io_watcher);
     }
-    if (skt->udp_io_watcher) {
-        ev_io_stop(skt->loop, skt->udp_io_watcher);
+    if (skt->udp_r_watcher) {
+        ev_io_stop(skt->loop, skt->udp_r_watcher);
     }
     if (skt->idle_watcher) {
         ev_idle_stop(skt->loop, skt->idle_watcher);

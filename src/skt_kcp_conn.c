@@ -90,7 +90,7 @@ static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     }
     assert(raw_len == len + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
     if (sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr *)&conn->peer->remote_addr,
-               sizeof(conn->peer->remote_addr)) == -1) {
+               sizeof(conn->peer->remote_addr)) < 0) {
         _LOG_E("sendto failed when udp_output, fd:%d", conn->peer->fd);
         return 0;
     }
@@ -235,27 +235,23 @@ void skt_kcp_conn_del(skt_kcp_conn_t *kcp_conn) {
     return;
 }
 
-int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char *out) {
-    // ikcp_input
-    int ret = ikcp_input(kcp_conn->kcp, in, in_len);
-    assert(ret == 0);
-    int peeksize = 0;
-    int recv_len = 0;
-    do {
-        ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-        peeksize = ikcp_peeksize(kcp_conn->kcp);
-        if (peeksize <= 0) {
-            break;
-        }
-        // kcp recv
-        recv_len = ikcp_recv(kcp_conn->kcp, out, peeksize);
-        if (recv_len > 0) {
-            kcp_conn->last_r_tm = skt_mstime();
-        }
-        // ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-    } while (peeksize > 0 && recv_len > 0);
-    return recv_len;
-}
+// int skt_kcp_conn_recv(skt_kcp_conn_t *kcp_conn, const char *in, int in_len, char *out) {
+//     // ikcp_input
+//     int ret = ikcp_input(kcp_conn->kcp, in, in_len);
+//     assert(ret == 0);
+//     // int peeksize = 0;
+//     int recv_len = 0;
+//     do {
+//         ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+//         recv_len = ikcp_recv(kcp_conn->kcp, out, SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
+//         if (recv_len > 0) {
+//             kcp_conn->last_r_tm = skt_mstime();
+//         }
+//         // ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+//     } while (recv_len > 0);
+//     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+//     return recv_len;
+// }
 
 void skt_kcp_conn_cleanup() {
     if (g_cid_index) {

@@ -20,7 +20,7 @@ static int send_auth_req(skcptun_t* skt, uint32_t cid, struct sockaddr_in remote
     size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_AUTH_REQ, skt->conf->ticket, payload, sizeof(payload), raw, &raw_len)) return _ERR;
     assert(raw_len > 0);
-    if (sendto(skt->udp_fd, raw, raw_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr)) == -1) {
+    if (sendto(skt->udp_fd, raw, raw_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr)) < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", skt->udp_fd);
         return _ERR;
     }
@@ -161,7 +161,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     }
     assert(raw_len > 0);
     if (sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
-               sizeof(kcp_conn->peer->remote_addr)) == -1) {
+               sizeof(kcp_conn->peer->remote_addr)) < 0) {
         _LOG_E("sendto failed when send ping, fd:%d", kcp_conn->peer->fd);
         return;
     }
@@ -276,8 +276,8 @@ int skt_local_start(skcptun_t* skt) {
     ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
     ev_io_start(skt->loop, skt->tun_io_watcher);
 
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
-    ev_io_start(skt->loop, skt->udp_io_watcher);
+    ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);
+    ev_io_start(skt->loop, skt->udp_r_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);
@@ -308,8 +308,8 @@ void skt_local_stop(skcptun_t* skt) {
     if (skt->tun_io_watcher) {
         ev_io_stop(skt->loop, skt->tun_io_watcher);
     }
-    if (skt->udp_io_watcher) {
-        ev_io_stop(skt->loop, skt->udp_io_watcher);
+    if (skt->udp_r_watcher) {
+        ev_io_stop(skt->loop, skt->udp_r_watcher);
     }
 
     if (skt->tun_fd > 0) {

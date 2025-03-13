@@ -91,7 +91,8 @@ typedef struct {
     ev_timer* timeout_watcher;
     ev_timer* kcp_update_watcher;
     ev_io* tun_io_watcher;
-    ev_io* udp_io_watcher;
+    ev_io* udp_r_watcher;
+    // ev_io* udp_w_watcher;
     ev_idle* idle_watcher;
 } skcptun_t;
 
