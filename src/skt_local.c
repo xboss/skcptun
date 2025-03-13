@@ -82,7 +82,8 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
             return _ERR;
         }
         assert(skt->local_cid == cid);
-        peer->last_r_tm = kcp_conn->last_r_tm = now;
+        // peer->last_r_tm = kcp_conn->last_r_tm = now;
+        peer->last_r_tm = now;
         kcp_conn->peer = peer;
     } else {
         assert(skt->local_cid > 0);
