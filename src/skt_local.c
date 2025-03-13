@@ -276,8 +276,8 @@ int skt_local_start(skcptun_t* skt) {
     ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
     ev_io_start(skt->loop, skt->tun_io_watcher);
 
-    ev_io_init(skt->udp_io_watcher, udp_read_cb, skt->udp_fd, EV_READ);
-    ev_io_start(skt->loop, skt->udp_io_watcher);
+    ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);
+    ev_io_start(skt->loop, skt->udp_r_watcher);
 
     ev_timer_init(skt->timeout_watcher, timeout_cb, 0, skt->conf->timeout / 1000.0);
     ev_timer_start(skt->loop, skt->timeout_watcher);
@@ -308,8 +308,8 @@ void skt_local_stop(skcptun_t* skt) {
     if (skt->tun_io_watcher) {
         ev_io_stop(skt->loop, skt->tun_io_watcher);
     }
-    if (skt->udp_io_watcher) {
-        ev_io_stop(skt->loop, skt->udp_io_watcher);
+    if (skt->udp_r_watcher) {
+        ev_io_stop(skt->loop, skt->udp_r_watcher);
     }
 
     if (skt->tun_fd > 0) {

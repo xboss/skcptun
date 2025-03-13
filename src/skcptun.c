@@ -26,6 +26,24 @@ static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, 
     return _OK;
 }
 
+// static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
+//     if (EV_ERROR & revents) {
+//         _LOG_E("udp_write_cb got invalid event");
+//         return;
+//     }
+//     _LOG("udp_write_cb start");
+//     skt_kcp_conn_t* kcp_conn = (skt_kcp_conn_t*)watcher->data;
+//     assert(kcp_conn);
+//     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+//     ikcp_flush(kcp_conn->kcp);
+//     if (kcp_conn->kcp->nsnd_que == 0) {
+//         ev_io_stop(loop, watcher);
+//     }
+//     _LOG("udp_write_cb end");
+
+//     /* TODO: */
+// }
+
 ////////////////////////////////
 // skcptun API
 ////////////////////////////////
@@ -66,13 +84,22 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     }
     skt->tun_io_watcher->data = skt;
 
-    skt->udp_io_watcher = (ev_io*)calloc(1, sizeof(ev_io));
-    if (!skt->udp_io_watcher) {
-        perror("alloc udp_io_watcher");
+    skt->udp_r_watcher = (ev_io*)calloc(1, sizeof(ev_io));
+    if (!skt->udp_r_watcher) {
+        perror("alloc udp_r_watcher");
         skt_free(skt);
         return NULL;
     }
-    skt->udp_io_watcher->data = skt;
+    skt->udp_r_watcher->data = skt;
+
+    // skt->udp_w_watcher = (ev_io*)calloc(1, sizeof(ev_io));
+    // if (!skt->udp_w_watcher) {
+    //     perror("alloc udp_w_watcher");
+    //     skt_free(skt);
+    //     return NULL;
+    // }
+    // // skt->udp_w_watcher->data = skt;
+    // ev_io_init(skt->udp_w_watcher, udp_write_cb, skt->udp_fd, EV_READ);
 
     skt->idle_watcher = (ev_idle*)calloc(1, sizeof(ev_idle));
     if (!skt->idle_watcher) {
@@ -150,25 +177,26 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
     char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
     do {
         ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+        ikcp_flush(kcp_conn->kcp);
         recv_len = ikcp_recv(kcp_conn->kcp, recv_buf, sizeof(recv_buf));
         if (recv_len <= 0) {
-            _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
+            // _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
             break;
         }
         kcp_conn->last_r_tm = skt_mstime();
         assert(recv_len <= sizeof(recv_buf));
 
-        /* TODO: debug start */
-        char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
-        char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};
-        uint32_t src_ip = 0;
-        uint32_t dst_ip = 0;
-        if (parse_ip_addresses(recv_buf, recv_len, src_ip_str, dst_ip_str, &src_ip, &dst_ip) != _OK) {
-            _LOG("Not an IPv4 packet");
-            return _OK;
-        }
-        _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
-        /* TODO: debug end */
+        // /* TODO: debug start */
+        // char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
+        // char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};
+        // uint32_t src_ip = 0;
+        // uint32_t dst_ip = 0;
+        // if (parse_ip_addresses(recv_buf, recv_len, src_ip_str, dst_ip_str, &src_ip, &dst_ip) != _OK) {
+        //     _LOG("Not an IPv4 packet");
+        //     return _OK;
+        // }
+        // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+        // /* TODO: debug end */
 
         // send to tun
         assert(skt->tun_fd > 0);
@@ -178,10 +206,7 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
         }
     } while (recv_len > 0);
     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-    // if (recv_len <= 0) {
-    //     _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
-    //     return _OK;
-    // }
+    ikcp_flush(kcp_conn->kcp);
     return _OK;
 }
 
@@ -209,7 +234,7 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         _LOG("Not an IPv4 packet");
         return _OK;
     }
-    _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+    // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
 
     assert(skt->tun_ip_addr > 0);
     uint32_t tun_ip = skt->tun_ip_addr;
@@ -230,7 +255,8 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         return _ERR;
     }
     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-    _LOG("skt_tun_to_kcp send ok len:%d", ret);
+    ikcp_flush(kcp_conn->kcp);
+    // _LOG("skt_tun_to_kcp send ok len:%d", ret);
     return _OK;
 }
 
@@ -253,11 +279,16 @@ void skt_free(skcptun_t* skt) {
         free(skt->tun_io_watcher);
         skt->tun_io_watcher = NULL;
     }
-    if (skt->udp_io_watcher) {
-        ev_io_stop(skt->loop, skt->udp_io_watcher);
-        free(skt->udp_io_watcher);
-        skt->udp_io_watcher = NULL;
+    if (skt->udp_r_watcher) {
+        ev_io_stop(skt->loop, skt->udp_r_watcher);
+        free(skt->udp_r_watcher);
+        skt->udp_r_watcher = NULL;
     }
+    // if (skt->udp_w_watcher) {
+    //     ev_io_stop(skt->loop, skt->udp_w_watcher);
+    //     free(skt->udp_w_watcher);
+    //     skt->udp_w_watcher = NULL;
+    // }
     if (skt->idle_watcher) {
         ev_idle_stop(skt->loop, skt->idle_watcher);
         free(skt->idle_watcher);
@@ -290,4 +321,5 @@ void skt_update_kcp_cb(skt_kcp_conn_t* kcp_conn) {
         return;
     }
     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+    ikcp_flush(kcp_conn->kcp);
 }
