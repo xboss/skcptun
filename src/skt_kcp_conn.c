@@ -261,7 +261,7 @@ void skt_kcp_conn_cleanup() {
     if (g_cid_index) {
         cid_index_t *cid_index, *tmp1;
         HASH_ITER(hh, g_cid_index, cid_index, tmp1) {
-            skt_kcp_conn_t* conn = cid_index->conn;
+            skt_kcp_conn_t *conn = cid_index->conn;
             if (conn) {
                 ikcp_release(conn->kcp);
                 free(conn);
@@ -280,4 +280,5 @@ void skt_kcp_conn_cleanup() {
         }
         g_tun_ip_index = NULL;
     }
+    _LOG("kcp connection cleanup");
 }

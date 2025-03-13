@@ -4,7 +4,8 @@
 
 #include "skt_kcp_conn.h"
 
-static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip, uint32_t* dst_ip) {
+static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip,
+                              uint32_t* dst_ip) {
     if (data == NULL || src_ip_str == NULL || dst_ip_str == NULL || data_len < 20 || src_ip == NULL || dst_ip == NULL) {
         return _ERR;
     }
@@ -148,6 +149,18 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
         return _OK;
     }
     assert(recv_len <= sizeof(recv_buf));
+
+    // /* TODO: debug */
+    // char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
+    // char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};
+    // uint32_t src_ip = 0;
+    // uint32_t dst_ip = 0;
+    // if (parse_ip_addresses(recv_buf, recv_len, src_ip_str, dst_ip_str, &src_ip, &dst_ip) != _OK) {
+    //     _LOG("Not an IPv4 packet");
+    //     return _OK;
+    // }
+    // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+
     // send to tun
     assert(skt->tun_fd > 0);
     if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {
@@ -244,6 +257,7 @@ void skt_free(skcptun_t* skt) {
     }
 
     free(skt);
+    _LOG("skt_free");
 }
 
 void skt_monitor(skcptun_t* skt) {

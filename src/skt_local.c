@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-
 static int send_auth_req(skcptun_t* skt, uint32_t cid, struct sockaddr_in remote_addr) {
     if (cid > 0 || !skt->running) {
         _LOG("no auth required");
@@ -171,7 +170,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
 
 static void kcp_update_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     if (EV_ERROR & revents) {
-        _LOG_E("tun_read_cb got invalid event");
+        _LOG_E("kcp_update_cb got invalid event");
         return;
     }
     // skcptun_t* skt = (skcptun_t*)watcher->data;
@@ -323,4 +322,5 @@ void skt_local_stop(skcptun_t* skt) {
 
     skt_kcp_conn_cleanup();
     skt_udp_peer_cleanup();
+    _LOG("local stop");
 }
