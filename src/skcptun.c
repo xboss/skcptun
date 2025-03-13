@@ -142,31 +142,46 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
         _LOG_E("invalid cid:%d in on_cmd_data", cid);
         return _ERR;
     }
-    char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
-    int recv_len = skt_kcp_conn_recv(kcp_conn, pkt->payload, pkt->payload_len, recv_buf);
-    if (recv_len <= 0) {
-        // _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
-        return _OK;
-    }
-    assert(recv_len <= sizeof(recv_buf));
 
-    // /* TODO: debug */
-    // char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
-    // char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};
-    // uint32_t src_ip = 0;
-    // uint32_t dst_ip = 0;
-    // if (parse_ip_addresses(recv_buf, recv_len, src_ip_str, dst_ip_str, &src_ip, &dst_ip) != _OK) {
-    //     _LOG("Not an IPv4 packet");
+    int ret = ikcp_input(kcp_conn->kcp, pkt->payload, pkt->payload_len);
+    assert(ret == 0);
+
+    int recv_len = 0;
+    char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
+    do {
+        ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+        recv_len = ikcp_recv(kcp_conn->kcp, recv_buf, sizeof(recv_buf));
+        if (recv_len <= 0) {
+            _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
+            break;
+        }
+        kcp_conn->last_r_tm = skt_mstime();
+        assert(recv_len <= sizeof(recv_buf));
+
+        /* TODO: debug start */
+        char src_ip_str[INET_ADDRSTRLEN + 1] = {0};
+        char dst_ip_str[INET_ADDRSTRLEN + 1] = {0};
+        uint32_t src_ip = 0;
+        uint32_t dst_ip = 0;
+        if (parse_ip_addresses(recv_buf, recv_len, src_ip_str, dst_ip_str, &src_ip, &dst_ip) != _OK) {
+            _LOG("Not an IPv4 packet");
+            return _OK;
+        }
+        _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+        /* TODO: debug end */
+
+        // send to tun
+        assert(skt->tun_fd > 0);
+        if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {
+            _LOG_E("tun_write failed");
+            return _ERR;
+        }
+    } while (recv_len > 0);
+    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+    // if (recv_len <= 0) {
+    //     _LOG("skt_kcp_conn_recv eagain. cid:%d len:%d", cid, recv_len);
     //     return _OK;
     // }
-    // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
-
-    // send to tun
-    assert(skt->tun_fd > 0);
-    if (tun_write(skt->tun_fd, recv_buf, recv_len) <= 0) {
-        _LOG_E("tun_write failed");
-        return _ERR;
-    }
     return _OK;
 }
 
@@ -194,7 +209,7 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         _LOG("Not an IPv4 packet");
         return _OK;
     }
-    // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+    _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
 
     assert(skt->tun_ip_addr > 0);
     uint32_t tun_ip = skt->tun_ip_addr;
@@ -214,6 +229,8 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         _LOG_E(" ikcp_send failed, cid: %u", kcp_conn->cid);
         return _ERR;
     }
+    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+    _LOG("skt_tun_to_kcp send ok len:%d", ret);
     return _OK;
 }
 

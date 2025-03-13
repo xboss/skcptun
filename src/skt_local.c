@@ -20,7 +20,7 @@ static int send_auth_req(skcptun_t* skt, uint32_t cid, struct sockaddr_in remote
     size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_AUTH_REQ, skt->conf->ticket, payload, sizeof(payload), raw, &raw_len)) return _ERR;
     assert(raw_len > 0);
-    if (sendto(skt->udp_fd, raw, raw_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr)) == -1) {
+    if (sendto(skt->udp_fd, raw, raw_len, 0, (struct sockaddr*)&remote_addr, sizeof(remote_addr)) < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", skt->udp_fd);
         return _ERR;
     }
@@ -161,7 +161,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     }
     assert(raw_len > 0);
     if (sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
-               sizeof(kcp_conn->peer->remote_addr)) == -1) {
+               sizeof(kcp_conn->peer->remote_addr)) < 0) {
         _LOG_E("sendto failed when send ping, fd:%d", kcp_conn->peer->fd);
         return;
     }

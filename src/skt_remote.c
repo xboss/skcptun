@@ -41,7 +41,7 @@ static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* pe
     assert(raw_len > 0);
     skt_print_iaddr("on_cmd_auth_req", peer->remote_addr);
     int ret = sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr));
-    if (ret == -1) {
+    if (ret < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
         return _ERR;
     }
@@ -50,7 +50,7 @@ static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* pe
 }
 
 static int on_cmd_data(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) {
-    // _LOG("on_cmd_data");
+    _LOG("on_cmd_data");
     if (skt_kcp_to_tun(skt, pkt) != _OK) return _ERR;
     return _OK;
 }
@@ -86,7 +86,7 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         return _ERR;
     }
     assert(raw_len > 0);
-    if (sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr)) == -1) {
+    if (sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr)) < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
         return _ERR;
     }

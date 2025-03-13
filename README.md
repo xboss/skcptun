@@ -32,7 +32,7 @@ log_file = /tmp/local.log
 ```
 
 ## TODO:
-- [ ] send all
+- [ ] send all, optimize kcp update
 - [ ] handshake config, mtu, iv etc.
 - [ ] multi tickets
 - [ ] config kcp 
