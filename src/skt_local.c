@@ -142,9 +142,6 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
         case SKT_PKT_CMD_PONG:
             ret = on_cmd_pong(skt, pkt, peer);
             break;
-            // case SKT_PKT_CMD_CLOSE:
-            //     /* TODO: */
-            //     break;
 
         default:
             _LOG_E("unknown cmd. %x", pkt->cmd);

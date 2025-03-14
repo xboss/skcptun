@@ -147,19 +147,6 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     }
 }
 
-// static void setup_kcp() {
-//     g_conf.kcp_rcvwnd = 512;
-//     g_conf.kcp_sndwnd = 512;
-//     if (g_conf.speed_mode != 0) {
-//         g_conf.kcp_nodelay = 1;
-//         g_conf.kcp_resend = 2;
-//         g_conf.kcp_nc = 1;
-//         _LOG("kcp speed mode ok.");
-//     } else {
-//         g_conf.kcp_nodelay = g_conf.kcp_resend = g_conf.kcp_nc = 0;
-//     }
-// }
-
 int main(int argc, char const *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <config file>\n", argv[0]);
@@ -167,10 +154,9 @@ int main(int argc, char const *argv[]) {
     }
 
     memset(&g_conf, 0, sizeof(skt_config_t));
-    // default config
+    /* TODO: default config */
     // g_conf.speed_mode = 1;
     // g_conf.mtu = SKT_MTU;
-    /* TODO: */
 
     int ret = load_conf(argv[1], &g_conf);
     if (ret != _OK) return 1;

@@ -3,8 +3,6 @@
 
 #include "skt.h"
 
-// typedef enum { SKT_UDP_PEER_ST_NONE, SKT_UDP_PEER_ST_AUTHED } skt_udp_peer_status_t;
-
 typedef struct {
     int fd;
     struct sockaddr_in remote_addr;

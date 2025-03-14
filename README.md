@@ -48,20 +48,16 @@ keepalive = 60000
 
 ## TODO:
 - [ ] send all, optimize kcp update
-- [x] handshake config, mtu, iv etc.
-- [ ] - [x] handshake config, tun ip.
+- [ ] default configuration and validate all configuration
+- [ ] handshake configuration, tun ip.
 - [ ] multi tickets
 - [ ] config kcp 
-- [ ] default config and check all config
-- [x] local reconnect
 - [ ] tun osx
-- [x] cllect all connetions， include kcp_conn and peer
-- [x] monitor
 - [ ] Bound checking
 - [ ] check memery leaks
 - [ ] antispam
-- [x] can not terminal
-- [x] kcp to tun
-- [x] tun to kcp
 - [ ] support ipv6
 - [ ] optmize
+- [x] handshake configuration, mtu, iv etc.
+- [x] local reconnect
+- [x] monitor

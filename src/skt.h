@@ -19,10 +19,6 @@
 #include "sslog.h"
 #include "uthash.h"
 
-// #if !defined(INET_ADDRSTRLEN)
-// #define INET_ADDRSTRLEN 16
-// #endif  // INET_ADDRSTRLEN
-
 #ifndef IFNAMSIZ
 #define IFNAMSIZ 16
 #endif
@@ -68,7 +64,7 @@ typedef struct {
     int tun_mtu;
 
     int mtu;
-    int keepalive;
+    int keepalive;  // ms
 
     // kcp config
     int kcp_mtu;
@@ -106,14 +102,11 @@ typedef struct {
 ////////////////////////////////
 
 inline int skt_set_nonblocking(int fd) {
-    // 获取当前的文件状态标志
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
         perror("Error getting file flags");
         return _ERR;
     }
-
-    // 设置非阻塞标志
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
         perror("Error setting file to non-blocking mode");
         return _ERR;
@@ -144,14 +137,12 @@ inline void skt_print_iaddr(const char* label, struct sockaddr_in addr) {
     _LOG("%s %s:%d", label, remote_ip, remote_port);
 }
 
-// 检查系统是否为大端
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define SKT_IS_LITTLE_ENDIAN 1
 #else
 #define SKT_IS_LITTLE_ENDIAN 0
 #endif
 
-// 将64位整数从主机字节序转换为网络字节序
 inline uint64_t skt_htonll(uint64_t value) {
     if (SKT_IS_LITTLE_ENDIAN) {
         return ((value & 0xFF00000000000000ull) >> 56) | ((value & 0x00FF000000000000ull) >> 40) |
@@ -159,15 +150,10 @@ inline uint64_t skt_htonll(uint64_t value) {
                ((value & 0x00000000FF000000ull) << 8) | ((value & 0x0000000000FF0000ull) << 24) |
                ((value & 0x000000000000FF00ull) << 40) | ((value & 0x00000000000000FFull) << 56);
     } else {
-        // 如果已经是大端，则无需转换
         return value;
     }
 }
 
-// 将64位整数从网络字节序转换为主机字节序
-inline uint64_t skt_ntohll(uint64_t value) {
-    // 由于htonll和ntohll实际上是相反的操作，可以复用htonll的逻辑
-    return skt_htonll(value);
-}
+inline uint64_t skt_ntohll(uint64_t value) { return skt_htonll(value); }
 
 #endif /* _SKT_H */

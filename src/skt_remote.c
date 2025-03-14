@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-// #include "skt_kcp_conn.h"
-
 // recv auth req format: cmd(1B)|ticket(32B)|tun_ip(4B)|timestamp(8B)
 static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) {
     // _LOG("on_cmd_auth_req start");
@@ -112,9 +110,6 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
         case SKT_PKT_CMD_PING:
             ret = on_cmd_ping(skt, pkt, peer);
             break;
-            // case SKT_PKT_CMD_CLOSE:
-            //     /* TODO: */
-            //     break;
 
         default:
             _LOG_E("unknown cmd. %x", pkt->cmd);
@@ -188,7 +183,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     assert(skt);
     // cllect all connetions， include kcp_conn and peer
     uint64_t now = skt_mstime();
-    if (skt->last_cllect_tm + skt->conf->keepalive < now) { /* TODO: config keepalive */
+    if (skt->last_cllect_tm + skt->conf->keepalive < now) {
         // notify idle to cllect
         ev_idle_start(skt->loop, skt->idle_watcher);
     }

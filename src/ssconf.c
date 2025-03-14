@@ -9,11 +9,6 @@
 #define _OK 0
 #define _ERR -1
 
-// #define MAX_LINE_SIZE (1024)
-// #define MAX_ROWS (1024)
-// #define MAX_KEY_SIZE (MAX_LINE_SIZE / 2)
-// #define MAX_VALUE_SIZE (MAX_LINE_SIZE / 2)
-
 typedef struct {
     char *key;
     char *value;
@@ -48,39 +43,6 @@ inline static char *trim(char *str) {
     *(end + 1) = '\0';
     return str;
 }
-
-// static void fill_conf(ssconf_t *conf, const char *k, const char *v) {
-//     /* printf("k:%s v:%s\n", k, v); */
-//     int i;
-//     int vl;
-//     char *tv;
-//     for (i = 0; i < conf->items_cnt; i++) {
-//         if (strcmp(k, conf->items[i]->key) == 0) {
-//             vl = strlen(v);
-//             _ALLOC(tv, char *, vl + 1);
-//             memset(tv, 0, vl + 1);
-//             memcpy(tv, v, vl);
-//             conf->items[i]->value = tv;
-//         }
-//     }
-// }
-
-// static void read_kv(ssconf_t *conf, char *line) {
-//     /* printf("%s\n", line); */
-//     char *k = NULL;
-//     char *v = NULL;
-//     char *d = "=";
-//     if (strlen(line) == 0) return;
-//     char *p = trim(line);
-//     if (*p == '#') return;
-//     k = strtok(p, d);
-//     if (k == NULL) return;
-//     v = strtok(NULL, d);
-//     if (v == NULL) return;
-//     k = trim(k);
-//     v = trim(v);
-//     fill_conf(conf, k, v);
-// }
 
 inline static int parse_line(ssconf_t *conf, char *line, int rows) {
     char *eqp = strchr(line, '=');
