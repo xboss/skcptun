@@ -44,6 +44,9 @@
 #define SKT_PKT_CMD_PING (0x05u)
 #define SKT_PKT_CMD_PONG (0x06u)
 
+#define SKT_ASSIGN_KCP_MTU(_mtu) (_mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
+#define SKT_ASSIGN_TUN_MTU(_mtu) (_mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE - SKT_KCP_HEADER_SZIE);
+
 typedef struct {
     char udp_local_ip[INET_ADDRSTRLEN + 1];
     unsigned short udp_local_port;
@@ -90,7 +93,8 @@ typedef struct {
 
     ev_timer* timeout_watcher;
     ev_timer* kcp_update_watcher;
-    ev_io* tun_io_watcher;
+    ev_io* tun_r_watcher;
+    int tun_r_watcher_started;
     ev_io* udp_r_watcher;
     // ev_io* udp_w_watcher;
     ev_idle* idle_watcher;

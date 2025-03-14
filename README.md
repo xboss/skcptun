@@ -11,14 +11,26 @@ ps aux | grep kcptun | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
 
 ```
 
-## Config file
+## Example configuration file
+### local config
+```
+mode = local
+remote_ip = 127.0.0.1
+remote_port = 1111
+tun_ip = 192.1.1.1
+tun_mask = 255.255.255.0
+password = yourpassword
+ticket = yourticketyourticketyourticket12
+log_level= DEBUG
+log_file = /tmp/skcptun.log
+
+```
+### remote config
 ```
 mode = local
 speed_mode = 1 
 local_ip = 0.0.0.0
 local_port = 1111
-remote_ip = 127.0.0.1
-remote_port = 1111
 tun_ip = 192.1.1.1
 tun_mask = 255.255.255.0
 mtu = 1500
@@ -31,9 +43,11 @@ log_file = /tmp/skcptun.log
 
 ```
 
+
 ## TODO:
 - [ ] send all, optimize kcp update
-- [ ] handshake config, mtu, iv etc.
+- [x] handshake config, mtu, iv etc.
+- [ ] - [x] handshake config, tun ip.
 - [ ] multi tickets
 - [ ] config kcp 
 - [ ] default config and check all config

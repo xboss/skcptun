@@ -189,7 +189,7 @@ int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, 
 
 int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char* ticket, char* payload,
                size_t* payload_len) {
-    assert(raw_len <= skt->conf->mtu);
+    assert(raw_len <= SKT_MTU);
     assert(raw_len > SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
     const char* p = raw;
     char cipher_buf[SKT_MTU] = {0};
