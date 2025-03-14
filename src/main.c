@@ -117,6 +117,10 @@ static int check_config(skt_config_t *conf) {
         fprintf(stderr, "Invalid mode:%d in configfile. local mode is 'local', remote mode is 'remote'.\n", conf->mode);
         return _ERR;
     }
+    if (conf->keepalive <= 0) {
+        conf->keepalive = SKT_KEEPALIVE;
+    }
+
     conf->kcp_mtu = SKT_ASSIGN_KCP_MTU(conf->mtu);
     conf->tun_mtu = SKT_ASSIGN_TUN_MTU(conf->mtu);
     // if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE > conf->kcp_mtu ||

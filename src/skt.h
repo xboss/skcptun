@@ -34,6 +34,7 @@
 #define SKT_MODE_REMOTE 1
 #define SKT_TICKET_SIZE (32)
 #define SKT_MTU (1500)
+#define SKT_KEEPALIVE (1000 * 60)
 
 #define SKT_KCP_HEADER_SZIE (24)
 #define SKT_PKT_CMD_SZIE (1)

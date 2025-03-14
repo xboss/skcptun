@@ -301,6 +301,7 @@ int skt_local_start(skcptun_t* skt) {
         skt_local_stop(skt);
         return _ERR;
     }
+    peer->skt = skt;
     skt->udp_fd = peer->fd;
     skt->remote_addr = peer->remote_addr;
 

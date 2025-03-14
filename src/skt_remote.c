@@ -127,15 +127,13 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
 ////////////////////////////////
 // callback
 ////////////////////////////////
-
-#define SKT_DEF_KEEPALIVE (1000 * 60)
 static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
     if (!kcp_conn) {
         _LOG_E("kcp_conn is null. iter_kcp_conn_cb");
         return;
     }
     uint64_t now = skt_mstime();
-    if (kcp_conn->last_r_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+    if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
         _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
         skt_kcp_conn_del(kcp_conn);
     }
@@ -147,7 +145,7 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
         return;
     }
     uint64_t now = skt_mstime();
-    if (peer->last_r_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+    if (peer->last_r_tm + peer->skt->conf->keepalive < now) {
         if (peer->remote_addr.sin_addr.s_addr == 0) {
             // _LOG("self peer doesn't need to be cllected.");
             return;
@@ -190,7 +188,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     assert(skt);
     // cllect all connetions， include kcp_conn and peer
     uint64_t now = skt_mstime();
-    if (skt->last_cllect_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+    if (skt->last_cllect_tm + skt->conf->keepalive < now) { /* TODO: config keepalive */
         // notify idle to cllect
         ev_idle_start(skt->loop, skt->idle_watcher);
     }
@@ -274,6 +272,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         }
         peer->fd = watcher->fd;
         peer->remote_addr = remote_addr;
+        peer->skt = skt;
         memcpy(peer->ticket, ticket, SKT_TICKET_SIZE);
         if (skt_udp_peer_add(peer) != _OK) {
             free(peer);
@@ -315,6 +314,7 @@ int skt_remote_start(skcptun_t* skt) {
         skt_remote_stop(skt);
         return _ERR;
     }
+    peer->skt = skt;
     skt->udp_fd = peer->fd;
 
     ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);

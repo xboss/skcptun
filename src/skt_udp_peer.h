@@ -15,6 +15,7 @@ typedef struct {
     char ticket[SKT_TICKET_SIZE + 1];
     uint64_t last_r_tm;  // 最后一次读操作的时间戳
     uint64_t last_w_tm;  // 最后一次写操作的时间戳
+    skcptun_t* skt;
 } skt_udp_peer_t;
 
 skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
