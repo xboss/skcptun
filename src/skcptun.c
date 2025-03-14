@@ -112,6 +112,54 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     return skt;
 }
 
+void skt_free(skcptun_t* skt) {
+    if (!skt) return;
+    skt->running = 0;
+
+    if (skt->timeout_watcher) {
+        ev_timer_stop(skt->loop, skt->timeout_watcher);
+        free(skt->timeout_watcher);
+        skt->timeout_watcher = NULL;
+    }
+    if (skt->kcp_update_watcher) {
+        ev_timer_stop(skt->loop, skt->kcp_update_watcher);
+        free(skt->kcp_update_watcher);
+        skt->kcp_update_watcher = NULL;
+    }
+    if (skt->tun_io_watcher) {
+        ev_io_stop(skt->loop, skt->tun_io_watcher);
+        free(skt->tun_io_watcher);
+        skt->tun_io_watcher = NULL;
+    }
+    if (skt->udp_r_watcher) {
+        ev_io_stop(skt->loop, skt->udp_r_watcher);
+        free(skt->udp_r_watcher);
+        skt->udp_r_watcher = NULL;
+    }
+    // if (skt->udp_w_watcher) {
+    //     ev_io_stop(skt->loop, skt->udp_w_watcher);
+    //     free(skt->udp_w_watcher);
+    //     skt->udp_w_watcher = NULL;
+    // }
+    if (skt->idle_watcher) {
+        ev_idle_stop(skt->loop, skt->idle_watcher);
+        free(skt->idle_watcher);
+        skt->idle_watcher = NULL;
+    }
+
+    if (skt->tun_fd > 0) {
+        close(skt->tun_fd);
+        skt->tun_fd = 0;
+    }
+    if (skt->udp_fd > 0) {
+        close(skt->udp_fd);
+        skt->udp_fd = 0;
+    }
+
+    free(skt);
+    _LOG("skt_free");
+}
+
 int skt_start_tun(skcptun_t* skt) {
     // Allocate TUN device
     skt->tun_fd = tun_alloc(skt->conf->tun_dev, IFNAMSIZ);
@@ -195,7 +243,7 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
         //     _LOG("Not an IPv4 packet");
         //     return _OK;
         // }
-        // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+        // _LOG("upd2tun IPV4: %s -> %s", src_ip_str, dst_ip_str);
         // /* TODO: debug end */
 
         // send to tun
@@ -234,7 +282,7 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
         _LOG("Not an IPv4 packet");
         return _OK;
     }
-    // _LOG("IPV4: %s -> %s", src_ip_str, dst_ip_str);
+    // _LOG("tun2udp IPV4: %s -> %s", src_ip_str, dst_ip_str);
 
     assert(skt->tun_ip_addr > 0);
     uint32_t tun_ip = skt->tun_ip_addr;
@@ -258,54 +306,6 @@ int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len) {
     ikcp_flush(kcp_conn->kcp);
     // _LOG("skt_tun_to_kcp send ok len:%d", ret);
     return _OK;
-}
-
-void skt_free(skcptun_t* skt) {
-    if (!skt) return;
-    skt->running = 0;
-
-    if (skt->timeout_watcher) {
-        ev_timer_stop(skt->loop, skt->timeout_watcher);
-        free(skt->timeout_watcher);
-        skt->timeout_watcher = NULL;
-    }
-    if (skt->kcp_update_watcher) {
-        ev_timer_stop(skt->loop, skt->kcp_update_watcher);
-        free(skt->kcp_update_watcher);
-        skt->kcp_update_watcher = NULL;
-    }
-    if (skt->tun_io_watcher) {
-        ev_io_stop(skt->loop, skt->tun_io_watcher);
-        free(skt->tun_io_watcher);
-        skt->tun_io_watcher = NULL;
-    }
-    if (skt->udp_r_watcher) {
-        ev_io_stop(skt->loop, skt->udp_r_watcher);
-        free(skt->udp_r_watcher);
-        skt->udp_r_watcher = NULL;
-    }
-    // if (skt->udp_w_watcher) {
-    //     ev_io_stop(skt->loop, skt->udp_w_watcher);
-    //     free(skt->udp_w_watcher);
-    //     skt->udp_w_watcher = NULL;
-    // }
-    if (skt->idle_watcher) {
-        ev_idle_stop(skt->loop, skt->idle_watcher);
-        free(skt->idle_watcher);
-        skt->idle_watcher = NULL;
-    }
-
-    if (skt->tun_fd > 0) {
-        close(skt->tun_fd);
-        skt->tun_fd = 0;
-    }
-    if (skt->udp_fd > 0) {
-        close(skt->udp_fd);
-        skt->udp_fd = 0;
-    }
-
-    free(skt);
-    _LOG("skt_free");
 }
 
 void skt_monitor(skcptun_t* skt) {
