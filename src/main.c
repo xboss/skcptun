@@ -117,8 +117,12 @@ static int check_config(skt_config_t *conf) {
         fprintf(stderr, "Invalid mode:%d in configfile. local mode is 'local', remote mode is 'remote'.\n", conf->mode);
         return _ERR;
     }
-    conf->kcp_mtu = conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE;
-    conf->tun_mtu = conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE - SKT_KCP_HEADER_SZIE;
+    if (conf->keepalive <= 0) {
+        conf->keepalive = SKT_KEEPALIVE;
+    }
+
+    conf->kcp_mtu = SKT_ASSIGN_KCP_MTU(conf->mtu);
+    conf->tun_mtu = SKT_ASSIGN_TUN_MTU(conf->mtu);
     // if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE > conf->kcp_mtu ||
     //     conf->kcp_mtu > SKT_MTU || conf->kcp_mtu <= SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE) {
     //     fprintf(stderr, "MTU error.\n");
@@ -143,19 +147,6 @@ static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     }
 }
 
-static void setup_kcp() {
-    g_conf.kcp_rcvwnd = 512;  // 32
-    g_conf.kcp_sndwnd = 512;  // 32
-    if (g_conf.speed_mode != 0) {
-        g_conf.kcp_nodelay = 1;
-        g_conf.kcp_resend = 2;
-        g_conf.kcp_nc = 1;
-        _LOG("kcp speed mode ok.");
-    } else {
-        g_conf.kcp_nodelay = g_conf.kcp_resend = g_conf.kcp_nc = 0;
-    }
-}
-
 int main(int argc, char const *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <config file>\n", argv[0]);
@@ -163,10 +154,9 @@ int main(int argc, char const *argv[]) {
     }
 
     memset(&g_conf, 0, sizeof(skt_config_t));
-    // default config
-    g_conf.speed_mode = 1;
-    g_conf.mtu = SKT_MTU;
-    /* TODO: */
+    /* TODO: default config */
+    // g_conf.speed_mode = 1;
+    // g_conf.mtu = SKT_MTU;
 
     int ret = load_conf(argv[1], &g_conf);
     if (ret != _OK) return 1;
@@ -189,12 +179,13 @@ int main(int argc, char const *argv[]) {
     ev_signal_init(&sig_usr1_watcher, sig_cb, SIGUSR1);
     ev_signal_start(g_loop, &sig_usr1_watcher);
 
-    setup_kcp();
     g_skt = skt_init(&g_conf, g_loop);
     if (!g_skt) {
         _LOG_E("init skt error.");
         goto _finish_skcptun;
     }
+
+    skt_setup_kcp(g_skt);
 
     ret = g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_start(g_skt) : skt_local_start(g_skt);
     if (ret != _OK) {

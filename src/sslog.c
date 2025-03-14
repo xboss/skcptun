@@ -25,8 +25,6 @@
 struct sslog_s {
     FILE *fp;
     sslog_level log_level;
-    /* char *logfile; */
-    /* char fmt[64]; */
 };
 typedef struct sslog_s sslog_t;
 

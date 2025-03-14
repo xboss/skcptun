@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-// #include "skt_kcp_conn.h"
-
 // recv auth req format: cmd(1B)|ticket(32B)|tun_ip(4B)|timestamp(8B)
 static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) {
     // _LOG("on_cmd_auth_req start");
@@ -29,17 +27,22 @@ static int on_cmd_auth_req(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* pe
     }
     peer->cid = kcp_conn->cid;
 
-    // send auth resp format: cmd(1B)|ticket(32B)|cid(4B)|timestamp(8B)
+    // send auth resp format: cmd(1B)|ticket(32B)|timestamp(8B)|cid(4B)|mtu(4B)|kcp_interval(4B)|speed_mode(1B)
     uint32_t cid_net = htonl(kcp_conn->cid);
     uint64_t timestamp_net = skt_htonll(skt_mstime());
-    char payload[12] = {0};
-    memcpy(payload, &cid_net, 4);
-    memcpy(payload + 4, &timestamp_net, 8);
+    uint32_t mtu_net = htonl(skt->conf->mtu);
+    uint32_t kcp_interval_net = htonl(skt->conf->kcp_interval);
+    char payload[21] = {0};
+    memcpy(payload, &timestamp_net, 8);
+    memcpy(payload + 8, &cid_net, 4);
+    memcpy(payload + 12, &mtu_net, 4);
+    memcpy(payload + 16, &kcp_interval_net, 4);
+    payload[20] = (char)(skt->conf->speed_mode & 0x00ffu);
     char raw[SKT_MTU] = {0};
     size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_AUTH_RESP, pkt->ticket, payload, sizeof(payload), raw, &raw_len)) return _ERR;
     assert(raw_len > 0);
-    skt_print_iaddr("on_cmd_auth_req", peer->remote_addr);
+    // skt_print_iaddr("on_cmd_auth_req", peer->remote_addr);
     int ret = sendto(peer->fd, raw, raw_len, 0, (struct sockaddr*)&peer->remote_addr, sizeof(peer->remote_addr));
     if (ret < 0) {
         _LOG_E("sendto failed when send auth resp, fd:%d", peer->fd);
@@ -107,9 +110,6 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
         case SKT_PKT_CMD_PING:
             ret = on_cmd_ping(skt, pkt, peer);
             break;
-            // case SKT_PKT_CMD_CLOSE:
-            //     /* TODO: */
-            //     break;
 
         default:
             _LOG_E("unknown cmd. %x", pkt->cmd);
@@ -122,15 +122,13 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
 ////////////////////////////////
 // callback
 ////////////////////////////////
-
-#define SKT_DEF_KEEPALIVE (1000 * 60)
 static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
     if (!kcp_conn) {
         _LOG_E("kcp_conn is null. iter_kcp_conn_cb");
         return;
     }
     uint64_t now = skt_mstime();
-    if (kcp_conn->last_r_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+    if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
         _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
         skt_kcp_conn_del(kcp_conn);
     }
@@ -142,7 +140,7 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
         return;
     }
     uint64_t now = skt_mstime();
-    if (peer->last_r_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+    if (peer->last_r_tm + peer->skt->conf->keepalive < now) {
         if (peer->remote_addr.sin_addr.s_addr == 0) {
             // _LOG("self peer doesn't need to be cllected.");
             return;
@@ -185,7 +183,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     assert(skt);
     // cllect all connetions， include kcp_conn and peer
     uint64_t now = skt_mstime();
-    if (skt->last_cllect_tm + SKT_DEF_KEEPALIVE < now) { /* TODO: config keepalive */
+    if (skt->last_cllect_tm + skt->conf->keepalive < now) {
         // notify idle to cllect
         ev_idle_start(skt->loop, skt->idle_watcher);
     }
@@ -269,6 +267,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         }
         peer->fd = watcher->fd;
         peer->remote_addr = remote_addr;
+        peer->skt = skt;
         memcpy(peer->ticket, ticket, SKT_TICKET_SIZE);
         if (skt_udp_peer_add(peer) != _OK) {
             free(peer);
@@ -296,7 +295,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
 
 int skt_remote_start(skcptun_t* skt) {
     // start tun dev
-    if (skt_start_tun(skt) != _OK) {
+    if (skt_init_tun(skt) != _OK || skt_setup_tun(skt) != _OK) {
         skt_remote_stop(skt);
         return _ERR;
     }
@@ -310,6 +309,7 @@ int skt_remote_start(skcptun_t* skt) {
         skt_remote_stop(skt);
         return _ERR;
     }
+    peer->skt = skt;
     skt->udp_fd = peer->fd;
 
     ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);
@@ -320,8 +320,8 @@ int skt_remote_start(skcptun_t* skt) {
 
     ev_idle_init(skt->idle_watcher, idle_cb);
 
-    ev_io_init(skt->tun_io_watcher, tun_read_cb, skt->tun_fd, EV_READ);
-    ev_io_start(skt->loop, skt->tun_io_watcher);
+    ev_io_init(skt->tun_r_watcher, tun_read_cb, skt->tun_fd, EV_READ);
+    ev_io_start(skt->loop, skt->tun_r_watcher);
 
     ev_timer_init(skt->kcp_update_watcher, kcp_update_cb, 0, skt->conf->kcp_interval / 1000.0);
     ev_timer_start(skt->loop, skt->kcp_update_watcher);
@@ -341,8 +341,9 @@ void skt_remote_stop(skcptun_t* skt) {
     if (skt->kcp_update_watcher) {
         ev_timer_stop(skt->loop, skt->kcp_update_watcher);
     }
-    if (skt->tun_io_watcher) {
-        ev_io_stop(skt->loop, skt->tun_io_watcher);
+    if (skt->tun_r_watcher) {
+        ev_io_stop(skt->loop, skt->tun_r_watcher);
+        skt->tun_r_watcher_started = 0;
     }
     if (skt->udp_r_watcher) {
         ev_io_stop(skt->loop, skt->udp_r_watcher);
