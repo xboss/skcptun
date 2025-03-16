@@ -10,18 +10,19 @@ typedef struct {
     struct sockaddr_in local_addr;
     // socklen_t la_len;
     uint32_t cid;
-    char ticket[SKT_TICKET_SIZE + 1];
+    // char ticket[SKT_TICKET_SIZE + 1];
     uint64_t last_r_tm;  // 最后一次读操作的时间戳
     uint64_t last_w_tm;  // 最后一次写操作的时间戳
     skcptun_t* skt;
+    packet_queue_t* send_queue;
 } skt_udp_peer_t;
 
 skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
-                                   uint16_t remote_port);
+                                   uint16_t remote_port, skcptun_t* skt);
 // void skt_udp_peer_free(skt_udp_peer_t* peer);
 
 skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr);
-int skt_udp_peer_add(skt_udp_peer_t* peer);
+int skt_udp_peer_add(int fd, struct sockaddr_in remote_addr, skcptun_t* skt);
 void skt_udp_peer_del(int fd, uint32_t remote_addr);
 void skt_udp_peer_info();
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer));

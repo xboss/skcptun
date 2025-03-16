@@ -184,7 +184,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     memcpy(payload + 4, &timestamp_net, sizeof(timestamp_net));
     char raw[SKT_MTU] = {0};
     size_t raw_len = 0;
-    if (skt_pack(skt, SKT_PKT_CMD_PING, kcp_conn->peer->ticket, payload, sizeof(payload), raw, &raw_len)) {
+    if (skt_pack(skt, SKT_PKT_CMD_PING, skt->conf->ticket, payload, sizeof(payload), raw, &raw_len)) {
         return;
     }
     assert(raw_len > 0);
@@ -293,12 +293,11 @@ int skt_local_start(skcptun_t* skt) {
 
     // init udp data channel
     skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port,
-                                              skt->conf->udp_remote_ip, skt->conf->udp_remote_port);
+                                              skt->conf->udp_remote_ip, skt->conf->udp_remote_port, skt);
     if (peer == NULL) {
         skt_local_stop(skt);
         return _ERR;
     }
-    peer->skt = skt;
     skt->udp_fd = peer->fd;
     skt->remote_addr = peer->remote_addr;
 

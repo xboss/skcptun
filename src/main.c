@@ -123,11 +123,6 @@ static int check_config(skt_config_t *conf) {
 
     conf->kcp_mtu = SKT_ASSIGN_KCP_MTU(conf->mtu);
     conf->tun_mtu = SKT_ASSIGN_TUN_MTU(conf->mtu);
-    // if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE > conf->kcp_mtu ||
-    //     conf->kcp_mtu > SKT_MTU || conf->kcp_mtu <= SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE) {
-    //     fprintf(stderr, "MTU error.\n");
-    //     return _ERR;
-    // }
     return _OK;
 }
 

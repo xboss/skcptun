@@ -152,7 +152,6 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
         }
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
         _LOG("cllect peer fd:%d addr:%u", peer->fd, peer->remote_addr.sin_addr.s_addr);
-        free(peer);
     }
 }
 
@@ -260,19 +259,8 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     }
 
     if (!peer) {
-        peer = (skt_udp_peer_t*)calloc(1, sizeof(skt_udp_peer_t));
-        if (!peer) {
-            perror("alloc");
-            return;
-        }
-        peer->fd = watcher->fd;
-        peer->remote_addr = remote_addr;
-        peer->skt = skt;
-        memcpy(peer->ticket, ticket, SKT_TICKET_SIZE);
-        if (skt_udp_peer_add(peer) != _OK) {
-            free(peer);
-            return;
-        }
+        if (skt_udp_peer_add(skt->udp_fd, remote_addr, skt) != _OK) return;
+        peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
     }
     peer->remote_addr = remote_addr;
 
@@ -283,7 +271,6 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
             skt_kcp_conn_del(kcp_conn);
         }
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
-        free(peer);
     }
 
     // _LOG("udp_read_cb end");
@@ -303,13 +290,11 @@ int skt_remote_start(skcptun_t* skt) {
     skt->last_cllect_tm = skt_mstime();
 
     // start udp
-    skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port,
-                                              skt->conf->udp_remote_ip, skt->conf->udp_remote_port);
+    skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port, skt->conf->udp_remote_ip, skt->conf->udp_remote_port, skt);
     if (peer == NULL) {
         skt_remote_stop(skt);
         return _ERR;
     }
-    peer->skt = skt;
     skt->udp_fd = peer->fd;
 
     ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);
