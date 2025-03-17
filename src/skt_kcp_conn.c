@@ -90,10 +90,10 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
     assert(raw_len == len + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
 
     if (packet_queue_enqueue(conn->peer->send_queue, (unsigned char*)raw, raw_len) != _OK) {
-        _LOG("packet_queue_enqueue failed");
+        _LOG_E("packet_queue_enqueue failed");
         return 0;
     }
-    _LOG("udp_output q_len:%llu", packet_queue_count(conn->peer->send_queue));
+    // _LOG("udp_output q_len:%llu", packet_queue_count(conn->peer->send_queue));
     ev_io_start(conn->skt->loop, conn->skt->udp_w_watcher);
 
     // int ret = sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&conn->peer->remote_addr,

@@ -81,7 +81,7 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
     }
     skt_kcp_conn_t* kcp_conn = (skt_kcp_conn_t*)watcher->data;
     assert(kcp_conn);
-    _LOG("udp_write_cb start");
+    // _LOG("udp_write_cb start");
 
     // char raw[SKT_MTU] = {0};
     int ret = _OK;
@@ -128,7 +128,7 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
         return;
     }
     ev_io_stop(loop, watcher);
-    _LOG("udp_write_cb stop q_len:%llu", kcp_conn ? packet_queue_count(kcp_conn->peer->send_queue) : 0);
+    // _LOG("udp_write_cb stop q_len:%llu", kcp_conn ? packet_queue_count(kcp_conn->peer->send_queue) : 0);
 }
 
 ////////////////////////////////
