@@ -93,6 +93,7 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
         _LOG("packet_queue_enqueue failed");
         return 0;
     }
+    _LOG("udp_output q_len:%llu", packet_queue_count(conn->peer->send_queue));
     ev_io_start(conn->skt->loop, conn->skt->udp_w_watcher);
 
     // int ret = sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&conn->peer->remote_addr,

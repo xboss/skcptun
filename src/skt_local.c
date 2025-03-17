@@ -125,7 +125,7 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         // skt_kcp_conn_del(kcp_conn);
     }
 
-    _LOG("on_cmd_pong ok! cid:%u", cid);
+    // _LOG("on_cmd_pong ok! cid:%u", cid);
     return _OK;
 }
 
@@ -263,7 +263,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         _LOG_E("udp recv error fd:%d", skt->udp_fd);
         return;
     }
-    _LOG("recvfrom len:%d", rlen);
+    // _LOG("recvfrom len:%d", rlen);
 
     skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
     if (!peer) {

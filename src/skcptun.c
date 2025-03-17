@@ -84,15 +84,13 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
     _LOG("udp_write_cb start");
 
     // char raw[SKT_MTU] = {0};
+    int ret = _OK;
     char* raw;
     size_t raw_len = 0;
-    if (packet_queue_dequeue(kcp_conn->peer->send_queue, (unsigned char**)&raw, &raw_len)) {
-        _LOG("udp_write_cb packet_queue_dequeue failed");
-        return;
-    }
-    assert(raw_len > 0);
-    int ret = _OK;
-    do {
+    while (packet_queue_dequeue(kcp_conn->peer->send_queue, (unsigned char**)&raw, &raw_len) == _OK) {
+        // _LOG("udp_write_cb packet_queue_dequeue failed");
+        // return;
+        assert(raw_len > 0);
         int s = sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
                        sizeof(kcp_conn->peer->remote_addr));
         if (s < 0) {
@@ -100,32 +98,37 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
                 // pending
                 _LOG("udp_write_cb sendto pending");
                 packet_queue_enqueue(kcp_conn->peer->send_queue, (unsigned char*)raw, raw_len);
+                free(raw);
                 break;
             } else {
                 // error
                 _LOG_E("udp_write_cb sendto failed when udp_output, fd:%d", kcp_conn->peer->fd);
                 perror("udp_write_cb sendto failed when udp_output");
+                free(raw);
                 ret = _ERR;
                 break;
-                ;
             }
         }
         if (s == 0) {
             // error
             _LOG_E("udp_write_cb sendto ret 0");
+            free(raw);
             ret = _ERR;
             break;
         }
-    } while (0);
-    free(raw);
+        free(raw);
+    }
+
     if (ret != _OK) {
         // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
         // skt_kcp_conn_del(kcp_conn);
         skt_close_kcp_conn(kcp_conn);
+        kcp_conn = NULL;
         ev_io_stop(loop, watcher);
         return;
     }
     ev_io_stop(loop, watcher);
+    _LOG("udp_write_cb stop q_len:%llu", kcp_conn ? packet_queue_count(kcp_conn->peer->send_queue) : 0);
 }
 
 ////////////////////////////////
