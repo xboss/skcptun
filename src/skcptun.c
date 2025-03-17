@@ -74,23 +74,62 @@ static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, 
     return _OK;
 }
 
-// static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
-//     if (EV_ERROR & revents) {
-//         _LOG_E("udp_write_cb got invalid event");
-//         return;
-//     }
-//     _LOG("udp_write_cb start");
-//     skt_kcp_conn_t* kcp_conn = (skt_kcp_conn_t*)watcher->data;
-//     assert(kcp_conn);
-//     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-//     ikcp_flush(kcp_conn->kcp);
-//     if (kcp_conn->kcp->nsnd_que == 0) {
-//         ev_io_stop(loop, watcher);
-//     }
-//     _LOG("udp_write_cb end");
+static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
+    if (EV_ERROR & revents) {
+        _LOG_E("udp_write_cb got invalid event");
+        return;
+    }
+    skt_kcp_conn_t* kcp_conn = (skt_kcp_conn_t*)watcher->data;
+    assert(kcp_conn);
+    // _LOG("udp_write_cb start");
 
-//     /* TODO: */
-// }
+    // char raw[SKT_MTU] = {0};
+    int ret = _OK;
+    char* raw;
+    size_t raw_len = 0;
+    while (packet_queue_dequeue(kcp_conn->peer->send_queue, (unsigned char**)&raw, &raw_len) == _OK) {
+        // _LOG("udp_write_cb packet_queue_dequeue failed");
+        // return;
+        assert(raw_len > 0);
+        int s = sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
+                       sizeof(kcp_conn->peer->remote_addr));
+        if (s < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // pending
+                _LOG("udp_write_cb sendto pending");
+                packet_queue_enqueue(kcp_conn->peer->send_queue, (unsigned char*)raw, raw_len);
+                free(raw);
+                break;
+            } else {
+                // error
+                _LOG_E("udp_write_cb sendto failed when udp_output, fd:%d", kcp_conn->peer->fd);
+                perror("udp_write_cb sendto failed when udp_output");
+                free(raw);
+                ret = _ERR;
+                break;
+            }
+        }
+        if (s == 0) {
+            // error
+            _LOG_E("udp_write_cb sendto ret 0");
+            free(raw);
+            ret = _ERR;
+            break;
+        }
+        free(raw);
+    }
+
+    if (ret != _OK) {
+        // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+        // skt_kcp_conn_del(kcp_conn);
+        skt_close_kcp_conn(kcp_conn);
+        kcp_conn = NULL;
+        ev_io_stop(loop, watcher);
+        return;
+    }
+    ev_io_stop(loop, watcher);
+    // _LOG("udp_write_cb stop q_len:%llu", kcp_conn ? packet_queue_count(kcp_conn->peer->send_queue) : 0);
+}
 
 ////////////////////////////////
 // skcptun API
@@ -141,14 +180,13 @@ skcptun_t* skt_init(skt_config_t* conf, struct ev_loop* loop) {
     }
     skt->udp_r_watcher->data = skt;
 
-    // skt->udp_w_watcher = (ev_io*)calloc(1, sizeof(ev_io));
-    // if (!skt->udp_w_watcher) {
-    //     perror("alloc udp_w_watcher");
-    //     skt_free(skt);
-    //     return NULL;
-    // }
-    // // skt->udp_w_watcher->data = skt;
-    // ev_io_init(skt->udp_w_watcher, udp_write_cb, skt->udp_fd, EV_READ);
+    skt->udp_w_watcher = (ev_io*)calloc(1, sizeof(ev_io));
+    if (!skt->udp_w_watcher) {
+        perror("alloc udp_w_watcher");
+        skt_free(skt);
+        return NULL;
+    }
+    ev_io_init(skt->udp_w_watcher, udp_write_cb, skt->udp_fd, EV_WRITE);
 
     skt->idle_watcher = (ev_idle*)calloc(1, sizeof(ev_idle));
     if (!skt->idle_watcher) {
@@ -185,11 +223,11 @@ void skt_free(skcptun_t* skt) {
         free(skt->udp_r_watcher);
         skt->udp_r_watcher = NULL;
     }
-    // if (skt->udp_w_watcher) {
-    //     ev_io_stop(skt->loop, skt->udp_w_watcher);
-    //     free(skt->udp_w_watcher);
-    //     skt->udp_w_watcher = NULL;
-    // }
+    if (skt->udp_w_watcher) {
+        ev_io_stop(skt->loop, skt->udp_w_watcher);
+        free(skt->udp_w_watcher);
+        skt->udp_w_watcher = NULL;
+    }
     if (skt->idle_watcher) {
         ev_idle_stop(skt->loop, skt->idle_watcher);
         free(skt->idle_watcher);
@@ -384,6 +422,11 @@ void skt_update_kcp_cb(skt_kcp_conn_t* kcp_conn) {
     }
     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
     ikcp_flush(kcp_conn->kcp);
+}
+
+void skt_close_kcp_conn(skt_kcp_conn_t* kcp_conn) {
+    kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+    skt_kcp_conn_del(kcp_conn);
 }
 
 void skt_monitor(skcptun_t* skt) {

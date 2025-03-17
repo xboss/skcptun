@@ -47,7 +47,7 @@ keepalive = 60000
 
 
 ## TODO:
-- [ ] send all, optimize kcp update
+- [x] send all, optimize kcp update
 - [ ] default configuration and validate all configuration
 - [ ] handshake configuration, tun ip.
 - [ ] multi tickets

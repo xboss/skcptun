@@ -96,10 +96,10 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
                 conf->log_level = SSLOG_LEVEL_FATAL;
             }
         }
-        printf("%s:%s\n", keys[i], v);
+        // printf("%s:%s\n", keys[i], v);
     }
     ssconf_free(cf);
-    printf("------------\n");
+    // printf("------------\n");
     return _OK;
 }
 
@@ -123,11 +123,6 @@ static int check_config(skt_config_t *conf) {
 
     conf->kcp_mtu = SKT_ASSIGN_KCP_MTU(conf->mtu);
     conf->tun_mtu = SKT_ASSIGN_TUN_MTU(conf->mtu);
-    // if (conf->tun_mtu + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE > conf->kcp_mtu ||
-    //     conf->kcp_mtu > SKT_MTU || conf->kcp_mtu <= SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE + SKT_KCP_HEADER_SZIE) {
-    //     fprintf(stderr, "MTU error.\n");
-    //     return _ERR;
-    // }
     return _OK;
 }
 
@@ -191,6 +186,7 @@ int main(int argc, char const *argv[]) {
     if (ret != _OK) {
         goto _finish_skcptun;
     }
+    skt_monitor(g_skt); /* TODO: debug */
     ev_run(g_loop, 0);
     g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_stop(g_skt) : skt_local_stop(g_skt);
     skt_free(g_skt);

@@ -18,6 +18,7 @@
 #include "ikcp.h"
 #include "sslog.h"
 #include "uthash.h"
+#include "packet_queue.h"
 
 #ifndef IFNAMSIZ
 #define IFNAMSIZ 16
@@ -93,7 +94,7 @@ typedef struct {
     ev_io* tun_r_watcher;
     int tun_r_watcher_started;
     ev_io* udp_r_watcher;
-    // ev_io* udp_w_watcher;
+    ev_io* udp_w_watcher;
     ev_idle* idle_watcher;
 } skcptun_t;
 

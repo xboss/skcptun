@@ -14,6 +14,7 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt);
 int skt_tun_to_kcp(skcptun_t* skt, const char* buf, int len);
 void skt_update_kcp_cb(skt_kcp_conn_t* kcp_conn);
 void skt_setup_kcp(skcptun_t* skt);
+void skt_close_kcp_conn(skt_kcp_conn_t* kcp_conn);
 void skt_monitor(skcptun_t* skt);
 
 #endif /* _SKCPTUN_H */

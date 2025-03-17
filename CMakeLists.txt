@@ -22,6 +22,7 @@ src/tun_osx.c
 src/ikcp.c
 src/skt_remote.c
 src/skt_local.c
+src/packet_queue.c
 )
 
 
