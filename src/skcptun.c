@@ -83,13 +83,11 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
     assert(kcp_conn);
     // _LOG("udp_write_cb start");
 
-    // char raw[SKT_MTU] = {0};
     int ret = _OK;
     char* raw;
     size_t raw_len = 0;
     while (packet_queue_dequeue(kcp_conn->peer->send_queue, (unsigned char**)&raw, &raw_len) == _OK) {
         // _LOG("udp_write_cb packet_queue_dequeue failed");
-        // return;
         assert(raw_len > 0);
         int s = sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
                        sizeof(kcp_conn->peer->remote_addr));
@@ -120,8 +118,6 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
     }
 
     if (ret != _OK) {
-        // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
-        // skt_kcp_conn_del(kcp_conn);
         skt_close_kcp_conn(kcp_conn);
         kcp_conn = NULL;
         ev_io_stop(loop, watcher);
@@ -324,10 +320,8 @@ int skt_kcp_to_tun(skcptun_t* skt, skt_packet_t* pkt) {
         _LOG_E("invalid cid:%d in on_cmd_data", cid);
         return _ERR;
     }
-
     int ret = ikcp_input(kcp_conn->kcp, pkt->payload, pkt->payload_len);
     assert(ret == 0);
-
     int recv_len = 0;
     char recv_buf[SKT_MTU - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE] = {0};
     do {
