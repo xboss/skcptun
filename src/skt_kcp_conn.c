@@ -22,55 +22,55 @@ static uint32_t g_cid = SKT_CONV_MIN;
 
 static void print_skt_kcp_conn(const skt_kcp_conn_t* conn) {
     if (conn == NULL) {
-        printf("skt_kcp_conn_t is NULL\n");
+        _LOG("skt_kcp_conn_t is NULL");
         return;
     }
 
-    printf("skt_kcp_conn_t:\n");
-    printf("  cid: %u\n", conn->cid);
-    printf("  tun_ip: %u\n", conn->tun_ip);
-    printf("  create_time: %" PRIu64 "\n", conn->create_time);
-    printf("  last_r_tm: %" PRIu64 "\n", conn->last_r_tm);
-    printf("  last_w_tm: %" PRIu64 "\n", conn->last_w_tm);
+    _LOG("skt_kcp_conn_t:");
+    _LOG("  cid: %u", conn->cid);
+    _LOG("  tun_ip: %u", conn->tun_ip);
+    _LOG("  create_time: %" PRIu64 "", conn->create_time);
+    _LOG("  last_r_tm: %" PRIu64 "", conn->last_r_tm);
+    _LOG("  last_w_tm: %" PRIu64 "", conn->last_w_tm);
 
     const skt_udp_peer_t* peer = conn->peer;
     if (peer == NULL) {
-        printf("  peer is NULL\n");
+        _LOG("  peer is NULL");
         return;
     }
 
     char remote_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN);
-    printf("  peer:\n");
-    printf("    fd: %d\n", peer->fd);
-    printf("    remote_addr: %s:%d\n", remote_ip, ntohs(peer->remote_addr.sin_port));
+    _LOG("  peer:");
+    _LOG("    fd: %d", peer->fd);
+    _LOG("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
 
     char local_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
-    printf("    local_addr: %s:%d\n", local_ip, ntohs(peer->local_addr.sin_port));
+    _LOG("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
 
-    printf("    cid: %u\n", peer->cid);
-    printf("    last_r_tm: %" PRIu64 "\n", peer->last_r_tm);
-    printf("    last_w_tm: %" PRIu64 "\n", peer->last_w_tm);
+    _LOG("    cid: %u", peer->cid);
+    _LOG("    last_r_tm: %" PRIu64 "", peer->last_r_tm);
+    _LOG("    last_w_tm: %" PRIu64 "", peer->last_w_tm);
 }
 
 static void print_cid_index(const cid_index_t* cid_index) {
     if (cid_index == NULL) {
-        printf("cid_index is NULL\n");
+        _LOG("cid_index is NULL");
         return;
     }
-    printf("cid_index:\n");
-    printf("  cid: %u\n", cid_index->cid);
+    _LOG("cid_index:");
+    _LOG("  cid: %u", cid_index->cid);
     print_skt_kcp_conn(cid_index->conn);
 }
 
 static void print_tun_ip_index(const tun_ip_index_t* tun_ip_index) {
     if (tun_ip_index == NULL) {
-        printf("tun_ip_index is NULL\n");
+        _LOG("tun_ip_index is NULL");
         return;
     }
-    printf("tun_ip_index:\n");
-    printf("  tun_ip: %u\n", tun_ip_index->tun_ip);
+    _LOG("tun_ip_index:");
+    _LOG("  tun_ip: %u", tun_ip_index->tun_ip);
     print_skt_kcp_conn(tun_ip_index->conn);
 }
 
@@ -100,16 +100,16 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
 ////////////////////////////////
 
 void skt_kcp_conn_info() {
-    printf("---------- kcp conn info ----------\n");
-    printf("|-- kcp cid index info\n");
+    _LOG("---------- kcp conn info ----------");
+    _LOG("|-- kcp cid index info");
     unsigned int cid_index_cnt = HASH_COUNT(g_cid_index);
-    printf("kcp connection cid index count: %u\n", cid_index_cnt);
+    _LOG("kcp connection cid index count: %u", cid_index_cnt);
     cid_index_t *cid_index = NULL, *tmp1 = NULL;
     HASH_ITER(hh, g_cid_index, cid_index, tmp1) { print_cid_index(cid_index); }
 
-    printf("|-- kcp tunip index info\n");
+    _LOG("|-- kcp tunip index info");
     unsigned int tun_ip_index_cnt = HASH_COUNT(g_tun_ip_index);
-    printf("kcp connection tun_ip index count: %u\n", tun_ip_index_cnt);
+    _LOG("kcp connection tun_ip index count: %u", tun_ip_index_cnt);
     tun_ip_index_t *tun_ip_index = NULL, *tmp2 = NULL;
     HASH_ITER(hh, g_tun_ip_index, tun_ip_index, tmp2) { print_tun_ip_index(tun_ip_index); }
     if (cid_index_cnt != tun_ip_index_cnt) {

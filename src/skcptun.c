@@ -6,50 +6,50 @@
 
 static void print_skcptun(const skcptun_t* skt) {
     if (!skt) {
-        printf("skcptun_t is NULL\n");
+        _LOG("skcptun_t is NULL");
         return;
     }
 
-    printf("skcptun_t:\n");
-    printf("  running: %d\n", skt->running);
-    printf("  tun_fd: %d\n", skt->tun_fd);
-    printf("  udp_fd: %d\n", skt->udp_fd);
-    printf("  tun_ip_addr: %u\n", skt->tun_ip_addr);
-    printf("  local_cid: %u\n", skt->local_cid);
-    printf("  last_cllect_tm: %" PRIu64 "\n", skt->last_cllect_tm);
+    _LOG("skcptun_t:");
+    _LOG("  running: %d", skt->running);
+    _LOG("  tun_fd: %d", skt->tun_fd);
+    _LOG("  udp_fd: %d", skt->udp_fd);
+    _LOG("  tun_ip_addr: %u", skt->tun_ip_addr);
+    _LOG("  local_cid: %u", skt->local_cid);
+    _LOG("  last_cllect_tm: %" PRIu64 "", skt->last_cllect_tm);
 
     if (!skt->conf) {
-        printf("  skt_config_t is NULL\n");
+        _LOG("  skt_config_t is NULL");
         return;
     }
 
     const skt_config_t* conf = skt->conf;
-    printf("  skt_config_t:\n");
-    printf("    udp_local_ip: %s\n", conf->udp_local_ip);
-    printf("    udp_local_port: %u\n", conf->udp_local_port);
-    printf("    udp_remote_ip: %s\n", conf->udp_remote_ip);
-    printf("    udp_remote_port: %u\n", conf->udp_remote_port);
-    printf("    key: %s\n", conf->key);
-    printf("    iv: %s\n", conf->iv);
-    printf("    ticket: %s\n", conf->ticket);
-    printf("    mode: %d\n", conf->mode);
-    printf("    timeout: %d\n", conf->timeout);
-    printf("    log_file: %s\n", conf->log_file);
-    printf("    log_level: %d\n", conf->log_level);
-    printf("    tun_dev: %s\n", conf->tun_dev);
-    printf("    tun_ip: %s\n", conf->tun_ip);
-    printf("    tun_mask: %s\n", conf->tun_mask);
-    printf("    tun_mtu: %d\n", conf->tun_mtu);
-    printf("    mtu: %d\n", conf->mtu);
-    printf("    keepalive: %d\n", conf->keepalive);
-    printf("    kcp_mtu: %d\n", conf->kcp_mtu);
-    printf("    kcp_interval: %d\n", conf->kcp_interval);
-    printf("    kcp_nodelay: %d\n", conf->kcp_nodelay);
-    printf("    kcp_resend: %d\n", conf->kcp_resend);
-    printf("    kcp_nc: %d\n", conf->kcp_nc);
-    printf("    kcp_sndwnd: %d\n", conf->kcp_sndwnd);
-    printf("    kcp_rcvwnd: %d\n", conf->kcp_rcvwnd);
-    printf("    speed_mode: %d\n", conf->speed_mode);
+    _LOG("  skt_config_t:");
+    _LOG("    udp_local_ip: %s", conf->udp_local_ip);
+    _LOG("    udp_local_port: %u", conf->udp_local_port);
+    _LOG("    udp_remote_ip: %s", conf->udp_remote_ip);
+    _LOG("    udp_remote_port: %u", conf->udp_remote_port);
+    _LOG("    key: %s", conf->key);
+    _LOG("    iv: %s", conf->iv);
+    _LOG("    ticket: %s", conf->ticket);
+    _LOG("    mode: %d", conf->mode);
+    _LOG("    timeout: %d", conf->timeout);
+    _LOG("    log_file: %s", conf->log_file);
+    _LOG("    log_level: %d", conf->log_level);
+    _LOG("    tun_dev: %s", conf->tun_dev);
+    _LOG("    tun_ip: %s", conf->tun_ip);
+    _LOG("    tun_mask: %s", conf->tun_mask);
+    _LOG("    tun_mtu: %d", conf->tun_mtu);
+    _LOG("    mtu: %d", conf->mtu);
+    _LOG("    keepalive: %d", conf->keepalive);
+    _LOG("    kcp_mtu: %d", conf->kcp_mtu);
+    _LOG("    kcp_interval: %d", conf->kcp_interval);
+    _LOG("    kcp_nodelay: %d", conf->kcp_nodelay);
+    _LOG("    kcp_resend: %d", conf->kcp_resend);
+    _LOG("    kcp_nc: %d", conf->kcp_nc);
+    _LOG("    kcp_sndwnd: %d", conf->kcp_sndwnd);
+    _LOG("    kcp_rcvwnd: %d", conf->kcp_rcvwnd);
+    _LOG("    speed_mode: %d", conf->speed_mode);
 }
 
 static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip,
@@ -424,16 +424,16 @@ void skt_close_kcp_conn(skt_kcp_conn_t* kcp_conn) {
 }
 
 void skt_monitor(skcptun_t* skt) {
-    printf("**************************************\n");
-    printf("*               monitor              *\n");
-    printf("**************************************\n");
-    printf("------------ skcptun info ------------\n");
+    _LOG("**************************************");
+    _LOG("*               monitor              *");
+    _LOG("**************************************");
+    _LOG("------------ skcptun info ------------");
     print_skcptun(skt);
-    printf("--------------------------------------\n");
+    _LOG("--------------------------------------");
     // peers info
     skt_udp_peer_info();
-    printf("--------------------------------------\n");
+    _LOG("--------------------------------------");
     // kcp connections info
     skt_kcp_conn_info();
-    printf("--------------------------------------\n");
+    _LOG("--------------------------------------");
 }
