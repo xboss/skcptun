@@ -46,7 +46,6 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
     }
     if (skt->conf->mtu <= 0) {
         skt->conf->mtu = ntohl(*(int*)(pkt->payload + 12));
-        /* code */
     }
     if (skt->conf->mtu > SKT_MTU || skt->conf->mtu <= 0) {
         _LOG("invalid mtu in auth resp. %d", skt->conf->mtu);
@@ -64,22 +63,14 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
     }
     skt->conf->speed_mode = (int)(pkt->payload[20] & 0x00ffu);
     skt_setup_kcp(skt);
-    // uint32_t tun_ip = 0;
-    // if (inet_pton(AF_INET, skt->conf->tun_ip, &tun_ip) <= 0) {
-    //     perror("inet_pton");
-    //     return _ERR;
-    // }
-
     if (skt_setup_tun(skt) != _OK) {
         _LOG_E("skt_start_tun failed");
         return _ERR;
     }
-
     if (!skt->tun_r_watcher_started) {
         ev_io_start(skt->loop, skt->tun_r_watcher);
         skt->tun_r_watcher_started = 1;
     }
-
     assert(skt->tun_ip_addr > 0);
     // new kcp connection
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_add(cid, skt->tun_ip_addr, pkt->ticket, peer, skt);
@@ -87,7 +78,6 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
         return _ERR;
     }
     skt->local_cid = peer->cid = cid;
-    // peer->last_r_tm = skt_mstime();
     _LOG("auth ok!");
     return _OK;
 }
@@ -114,15 +104,12 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
             return _ERR;
         }
         assert(skt->local_cid == cid);
-        // peer->last_r_tm = kcp_conn->last_r_tm = now;
         kcp_conn->peer = peer;
     } else {
         assert(skt->local_cid > 0);
         kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
         // trigger auth
         skt_close_kcp_conn(kcp_conn);
-        // skt->local_cid = peer->cid = 0;
-        // skt_kcp_conn_del(kcp_conn);
     }
 
     // _LOG("on_cmd_pong ok! cid:%u", cid);
@@ -142,7 +129,6 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
         case SKT_PKT_CMD_PONG:
             ret = on_cmd_pong(skt, pkt, peer);
             break;
-
         default:
             _LOG_E("unknown cmd. %x", pkt->cmd);
             ret = _ERR;
@@ -166,25 +152,18 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     }
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
-    // if (!skt->running) {
-    //     ev_timer_stop(loop, watcher);
-    // }
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
     if (kcp_conn) {
         if (kcp_conn->peer->last_r_tm + skt->conf->keepalive < skt_mstime()) {
             // trigger auth
             _LOG("timeout_cb skt_close_kcp_conn trigger auth peer->last_r_tm:%llu", kcp_conn->peer->last_r_tm);
             skt_close_kcp_conn(kcp_conn);
-            // skt->local_cid = kcp_conn->peer->cid = 0;
-            // skt_kcp_conn_del(kcp_conn);
         }
     }
-
     if (skt->local_cid == 0) {
         send_auth_req(skt, skt->local_cid, skt->remote_addr);
         return;
     }
-    // skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
     if (!kcp_conn) {
         _LOG_E(" timeout_cb got invalid kcp_conn. cid:%u", skt->local_cid);
         return;
@@ -198,9 +177,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     memcpy(payload + 4, &timestamp_net, sizeof(timestamp_net));
     char raw[SKT_MTU] = {0};
     size_t raw_len = 0;
-    if (skt_pack(skt, SKT_PKT_CMD_PING, skt->conf->ticket, payload, sizeof(payload), raw, &raw_len)) {
-        return;
-    }
+    if (skt_pack(skt, SKT_PKT_CMD_PING, skt->conf->ticket, payload, sizeof(payload), raw, &raw_len)) return;
     assert(raw_len > 0);
     if (sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
                sizeof(kcp_conn->peer->remote_addr)) < 0) {
@@ -216,8 +193,6 @@ static void kcp_update_cb(struct ev_loop* loop, ev_timer* watcher, int revents) 
         _LOG_E("kcp_update_cb got invalid event");
         return;
     }
-    // skcptun_t* skt = (skcptun_t*)watcher->data;
-    // assert(skt);
     skt_kcp_conn_iter(skt_update_kcp_cb);
 }
 
@@ -243,7 +218,6 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     // _LOG("udp_read_cb start");
     skcptun_t* skt = (skcptun_t*)watcher->data;
     assert(skt);
-
     char raw[SKT_MTU] = {0};
     struct sockaddr_in remote_addr;
     socklen_t ra_len = sizeof(remote_addr);
@@ -264,28 +238,23 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         return;
     }
     // _LOG("recvfrom len:%d", rlen);
-
     skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
     if (!peer) {
         _LOG_E("udp peer not found");
         return;
     }
-
     char cmd = 0x00;
     char ticket[SKT_TICKET_SIZE] = {0};
     char payload[SKT_MTU - SKT_TICKET_SIZE - SKT_PKT_CMD_SZIE] = {0};
     size_t payload_len = 0;
     if (skt_unpack(skt, raw, rlen, &cmd, ticket, payload, &payload_len) != _OK) return;
     assert(payload_len > 0);
-
     // check ticket
     if (strncmp(skt->conf->ticket, ticket, SKT_TICKET_SIZE) != 0) {
         _LOG("invalid ticket in auth");
         return;
     }
-
     skt->remote_addr = peer->remote_addr = remote_addr;
-
     skt_packet_t pkt = {.cmd = cmd, .ticket = ticket, .payload = payload, .payload_len = payload_len};
     if (dispatch_cmd(skt, &pkt, peer) != _OK) {
         _LOG_E("dispatch_cmd failed");
@@ -304,7 +273,6 @@ int skt_local_start(skcptun_t* skt) {
         skt_local_stop(skt);
         return _ERR;
     }
-
     // init udp data channel
     skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port,
                                               skt->conf->udp_remote_ip, skt->conf->udp_remote_port, skt);
@@ -316,7 +284,6 @@ int skt_local_start(skcptun_t* skt) {
     skt->remote_addr = peer->remote_addr;
 
     ev_io_init(skt->tun_r_watcher, tun_read_cb, skt->tun_fd, EV_READ);
-    // ev_io_start(skt->loop, skt->tun_r_watcher);
 
     ev_io_init(skt->udp_r_watcher, udp_read_cb, skt->udp_fd, EV_READ);
     ev_io_start(skt->loop, skt->udp_r_watcher);
@@ -332,15 +299,12 @@ int skt_local_start(skcptun_t* skt) {
         skt_local_stop(skt);
         return _ERR;
     }
-
     return _OK;
 }
 
 void skt_local_stop(skcptun_t* skt) {
     if (!skt) return;
-
     skt->running = 0;
-
     if (skt->timeout_watcher) {
         ev_timer_stop(skt->loop, skt->timeout_watcher);
     }
@@ -363,7 +327,6 @@ void skt_local_stop(skcptun_t* skt) {
         close(skt->udp_fd);
         skt->udp_fd = 0;
     }
-
     skt_kcp_conn_cleanup();
     skt_udp_peer_cleanup();
     _LOG("local stop");

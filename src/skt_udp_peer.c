@@ -136,13 +136,6 @@ skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr) {
     return addr_peer_index->peer;
 }
 
-// void skt_udp_peer_free(skt_udp_peer_t* peer) {
-//     if (peer) {
-//         close(peer->fd);
-//         free(peer);
-//     }
-// }
-
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
     addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
     HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { iter(addr_peer_index->peer); }
@@ -169,7 +162,6 @@ static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
     inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
     printf("    local_addr: %s:%d\n", local_ip, ntohs(peer->local_addr.sin_port));
     printf("    cid: %u\n", peer->cid);
-    // printf("    ticket: %s\n", peer->ticket);
     printf("    last_r_tm: %" PRIu64 "\n", peer->last_r_tm);
     printf("    last_w_tm: %" PRIu64 "\n", peer->last_w_tm);
 }

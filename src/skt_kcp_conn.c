@@ -50,7 +50,6 @@ static void print_skt_kcp_conn(const skt_kcp_conn_t* conn) {
     printf("    local_addr: %s:%d\n", local_ip, ntohs(peer->local_addr.sin_port));
 
     printf("    cid: %u\n", peer->cid);
-    // printf("    ticket: %s\n", peer->ticket);
     printf("    last_r_tm: %" PRIu64 "\n", peer->last_r_tm);
     printf("    last_w_tm: %" PRIu64 "\n", peer->last_w_tm);
 }
@@ -60,7 +59,6 @@ static void print_cid_index(const cid_index_t* cid_index) {
         printf("cid_index is NULL\n");
         return;
     }
-
     printf("cid_index:\n");
     printf("  cid: %u\n", cid_index->cid);
     print_skt_kcp_conn(cid_index->conn);
@@ -81,7 +79,6 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
     assert(conn);
     assert(conn->peer);
     assert(conn->skt);
-
     assert(len <= conn->skt->conf->kcp_mtu);
     char raw[SKT_MTU] = {0};
     size_t raw_len = 0;
@@ -95,18 +92,6 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
     }
     // _LOG("udp_output q_len:%llu", packet_queue_count(conn->peer->send_queue));
     ev_io_start(conn->skt->loop, conn->skt->udp_w_watcher);
-
-    // int ret = sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&conn->peer->remote_addr,
-    // sizeof(conn->peer->remote_addr)); if (ret < 0) {
-    //     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-    //         // pending
-    //         /* TODO: */
-    //         return;
-    //     } else {
-    //         _LOG_E("sendto failed when udp_output, fd:%d", conn->peer->fd);
-    //         return 0;
-    //     }
-    // }
     return 0;
 }
 
@@ -163,7 +148,6 @@ skt_kcp_conn_t* skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char* tick
     conn->create_time = skt_mstime();
     conn->skt = skt;
     conn->skt->udp_w_watcher->data = conn;
-    // strncpy(peer->ticket, ticket, SKT_TICKET_SIZE);
 
     conn->cid = cid;
     if (skt_kcp_conn_get_by_cid(conn->cid) != NULL) {
