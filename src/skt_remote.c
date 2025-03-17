@@ -130,7 +130,9 @@ static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
     uint64_t now = skt_mstime();
     if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
         _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
-        skt_kcp_conn_del(kcp_conn);
+        skt_close_kcp_conn(kcp_conn);
+        // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+        // skt_kcp_conn_del(kcp_conn);
     }
 }
 
@@ -148,10 +150,12 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
         skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(peer->cid);
         if (kcp_conn) {
             _LOG("cllect kcp conn cid:%d in peer", kcp_conn->cid);
-            skt_kcp_conn_del(kcp_conn);
+            skt_close_kcp_conn(kcp_conn);
+            // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+            // skt_kcp_conn_del(kcp_conn);
         }
-        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
         _LOG("cllect peer fd:%d addr:%u", peer->fd, peer->remote_addr.sin_addr.s_addr);
+        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
     }
 }
 
@@ -241,7 +245,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     }
     // _LOG("recvfrom len:%d", rlen);
 
-    // skt_print_iaddr("udp_read_cb", remote_addr);
+    skt_print_iaddr("udp_read_cb", remote_addr);
 
     skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
 
@@ -268,7 +272,9 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
     if (dispatch_cmd(skt, &pkt, peer) != _OK) {
         if (peer->cid > 0) {
             skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(peer->cid);
-            skt_kcp_conn_del(kcp_conn);
+            // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+            // skt_kcp_conn_del(kcp_conn);
+            skt_close_kcp_conn(kcp_conn);
         }
         skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
     }
@@ -290,7 +296,8 @@ int skt_remote_start(skcptun_t* skt) {
     skt->last_cllect_tm = skt_mstime();
 
     // start udp
-    skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port, skt->conf->udp_remote_ip, skt->conf->udp_remote_port, skt);
+    skt_udp_peer_t* peer = skt_udp_peer_start(skt->conf->udp_local_ip, skt->conf->udp_local_port,
+                                              skt->conf->udp_remote_ip, skt->conf->udp_remote_port, skt);
     if (peer == NULL) {
         skt_remote_stop(skt);
         return _ERR;

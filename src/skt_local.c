@@ -87,6 +87,7 @@ static int on_cmd_auth_resp(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* p
         return _ERR;
     }
     skt->local_cid = peer->cid = cid;
+    // peer->last_r_tm = skt_mstime();
     _LOG("auth ok!");
     return _OK;
 }
@@ -103,7 +104,7 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         _LOG_E("invalid pong. len: %d", pkt->payload_len);
         return _ERR;
     }
-    uint64_t now = skt_mstime();
+    // uint64_t now = skt_mstime();
     uint32_t cid = ntohl(*(uint32_t*)(pkt->payload));
     skt_kcp_conn_t* kcp_conn = NULL;
     if (cid > 0) {
@@ -114,18 +115,17 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         }
         assert(skt->local_cid == cid);
         // peer->last_r_tm = kcp_conn->last_r_tm = now;
-        peer->last_r_tm = now;
         kcp_conn->peer = peer;
     } else {
         assert(skt->local_cid > 0);
         kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
-        // del kcp conn
-        skt_kcp_conn_del(kcp_conn);
         // trigger auth
-        skt->local_cid = peer->cid = 0;
+        skt_close_kcp_conn(kcp_conn);
+        // skt->local_cid = peer->cid = 0;
+        // skt_kcp_conn_del(kcp_conn);
     }
 
-    // _LOG("on_cmd_pong ok! cid:%u", cid);
+    _LOG("on_cmd_pong ok! cid:%u", cid);
     return _OK;
 }
 
@@ -148,6 +148,10 @@ static int dispatch_cmd(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer)
             ret = _ERR;
             break;
     }
+    if (ret == _OK) {
+        peer->last_r_tm = skt_mstime();
+    }
+
     return ret;
 }
 
@@ -165,12 +169,22 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     // if (!skt->running) {
     //     ev_timer_stop(loop, watcher);
     // }
+    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
+    if (kcp_conn) {
+        if (kcp_conn->peer->last_r_tm + skt->conf->keepalive < skt_mstime()) {
+            // trigger auth
+            _LOG("timeout_cb skt_close_kcp_conn trigger auth peer->last_r_tm:%llu", kcp_conn->peer->last_r_tm);
+            skt_close_kcp_conn(kcp_conn);
+            // skt->local_cid = kcp_conn->peer->cid = 0;
+            // skt_kcp_conn_del(kcp_conn);
+        }
+    }
 
     if (skt->local_cid == 0) {
         send_auth_req(skt, skt->local_cid, skt->remote_addr);
         return;
     }
-    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
+    // skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
     if (!kcp_conn) {
         _LOG_E(" timeout_cb got invalid kcp_conn. cid:%u", skt->local_cid);
         return;
@@ -249,7 +263,7 @@ static void udp_read_cb(struct ev_loop* loop, struct ev_io* watcher, int revents
         _LOG_E("udp recv error fd:%d", skt->udp_fd);
         return;
     }
-    // _LOG("recvfrom len:%d", rlen);
+    _LOG("recvfrom len:%d", rlen);
 
     skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
     if (!peer) {

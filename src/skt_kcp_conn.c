@@ -89,14 +89,14 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
     if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->skt->conf->ticket, buf, len, raw, &raw_len)) return 0;
     assert(raw_len == len + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
 
-    if (packet_queue_enqueue(conn->peer->send_queue, raw, raw_len) != _OK) {
+    if (packet_queue_enqueue(conn->peer->send_queue, (unsigned char*)raw, raw_len) != _OK) {
         _LOG("packet_queue_enqueue failed");
         return 0;
     }
     ev_io_start(conn->skt->loop, conn->skt->udp_w_watcher);
 
-    // int ret = sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&conn->peer->remote_addr, sizeof(conn->peer->remote_addr));
-    // if (ret < 0) {
+    // int ret = sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&conn->peer->remote_addr,
+    // sizeof(conn->peer->remote_addr)); if (ret < 0) {
     //     if (errno == EAGAIN || errno == EWOULDBLOCK) {
     //         // pending
     //         /* TODO: */
@@ -119,17 +119,13 @@ void skt_kcp_conn_info() {
     unsigned int cid_index_cnt = HASH_COUNT(g_cid_index);
     printf("kcp connection cid index count: %u\n", cid_index_cnt);
     cid_index_t *cid_index = NULL, *tmp1 = NULL;
-    HASH_ITER(hh, g_cid_index, cid_index, tmp1) {
-        print_cid_index(cid_index);
-    }
+    HASH_ITER(hh, g_cid_index, cid_index, tmp1) { print_cid_index(cid_index); }
 
     printf("|-- kcp tunip index info\n");
     unsigned int tun_ip_index_cnt = HASH_COUNT(g_tun_ip_index);
     printf("kcp connection tun_ip index count: %u\n", tun_ip_index_cnt);
     tun_ip_index_t *tun_ip_index = NULL, *tmp2 = NULL;
-    HASH_ITER(hh, g_tun_ip_index, tun_ip_index, tmp2) {
-        print_tun_ip_index(tun_ip_index);
-    }
+    HASH_ITER(hh, g_tun_ip_index, tun_ip_index, tmp2) { print_tun_ip_index(tun_ip_index); }
     if (cid_index_cnt != tun_ip_index_cnt) {
         fprintf(stderr, "ERROR: kcp connection tun_ip index count not equal cid index count.\n");
     }
@@ -137,9 +133,7 @@ void skt_kcp_conn_info() {
 
 void skt_kcp_conn_iter(void (*iter)(skt_kcp_conn_t* kcp_conn)) {
     cid_index_t *cid_index = NULL, *tmp1 = NULL;
-    HASH_ITER(hh, g_cid_index, cid_index, tmp1) {
-        iter(cid_index->conn);
-    }
+    HASH_ITER(hh, g_cid_index, cid_index, tmp1) { iter(cid_index->conn); }
 }
 
 uint32_t skt_kcp_conn_gen_cid() {
@@ -151,7 +145,8 @@ uint32_t skt_kcp_conn_gen_cid() {
     return g_cid;
 }
 
-skt_kcp_conn_t* skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char* ticket, skt_udp_peer_t* peer, skcptun_t* skt) {
+skt_kcp_conn_t* skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char* ticket, skt_udp_peer_t* peer,
+                                 skcptun_t* skt) {
     if (skt_kcp_conn_get_by_tun_ip(tun_ip) != NULL) {
         _LOG_E("tun_ip already exists. skt_kcp_conn_add");
         return NULL;

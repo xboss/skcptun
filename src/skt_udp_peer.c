@@ -52,8 +52,10 @@ static void free_peer(skt_udp_peer_t* peer) {
     free(peer);
 }
 
-skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip, uint16_t remote_port, skcptun_t* skt) {
+skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
+                                   uint16_t remote_port, skcptun_t* skt) {
     skt_udp_peer_t peer;
+    memset(&peer, 0, sizeof(peer));
     peer.fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (peer.fd < 0) {
         perror("socket");
@@ -143,9 +145,7 @@ skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr) {
 
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
     addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
-    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) {
-        iter(addr_peer_index->peer);
-    }
+    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { iter(addr_peer_index->peer); }
 }
 
 static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
@@ -179,9 +179,7 @@ void skt_udp_peer_info() {
     unsigned int peers_cnt = HASH_COUNT(g_addr_peer_index);
     printf("udp peers count: %u\n", peers_cnt);
     addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
-    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) {
-        print_addr_peer_index(addr_peer_index);
-    }
+    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { print_addr_peer_index(addr_peer_index); }
 }
 
 ////////////////////////////////
@@ -192,7 +190,8 @@ void skt_udp_peer_info() {
 
 // cmd(1B)ticket(32)payload(mtu-32B-1B)
 
-int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, size_t payload_len, char* raw, size_t* raw_len) {
+int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, size_t payload_len, char* raw,
+             size_t* raw_len) {
     // _LOG("skt_pack payload_len:%d, kcp_mtu:%d, tun_mtu:%d", payload_len, skt->conf->kcp_mtu, skt->conf->tun_mtu);
     assert(payload_len <= skt->conf->mtu - SKT_PKT_CMD_SZIE - SKT_TICKET_SIZE);
     if (_IS_SECRET) {
@@ -200,7 +199,8 @@ int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, 
         memcpy(cipher_buf, &cmd, SKT_PKT_CMD_SZIE);
         memcpy(cipher_buf + SKT_PKT_CMD_SZIE, ticket, SKT_TICKET_SIZE);
         memcpy(cipher_buf + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE, payload, payload_len);
-        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)cipher_buf, (payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE), (unsigned char*)raw, raw_len)) {
+        if (crypto_encrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)cipher_buf,
+                           (payload_len + SKT_TICKET_SIZE + SKT_PKT_CMD_SZIE), (unsigned char*)raw, raw_len)) {
             _LOG_E("crypto encrypt failed");
             return _ERR;
         }
@@ -214,14 +214,16 @@ int skt_pack(skcptun_t* skt, char cmd, const char* ticket, const char* payload, 
     return _OK;
 }
 
-int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char* ticket, char* payload, size_t* payload_len) {
+int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char* ticket, char* payload,
+               size_t* payload_len) {
     assert(raw_len <= SKT_MTU);
     assert(raw_len > SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
     const char* p = raw;
     char cipher_buf[SKT_MTU] = {0};
     if (_IS_SECRET) {
         size_t cipher_len = 0;
-        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, raw_len, (unsigned char*)cipher_buf, &cipher_len)) {
+        if (crypto_decrypt(skt->conf->key, skt->conf->iv, (const unsigned char*)raw, raw_len,
+                           (unsigned char*)cipher_buf, &cipher_len)) {
             _LOG_E("crypto decrypt failed");
             return _ERR;
         }

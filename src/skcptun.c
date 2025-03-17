@@ -52,7 +52,8 @@ static void print_skcptun(const skcptun_t* skt) {
     printf("    speed_mode: %d\n", conf->speed_mode);
 }
 
-static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip, uint32_t* dst_ip) {
+static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip,
+                              uint32_t* dst_ip) {
     if (data == NULL || src_ip_str == NULL || dst_ip_str == NULL || data_len < 20 || src_ip == NULL || dst_ip == NULL) {
         return _ERR;
     }
@@ -92,7 +93,8 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
     assert(raw_len > 0);
     int ret = _OK;
     do {
-        int s = sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr, sizeof(kcp_conn->peer->remote_addr));
+        int s = sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
+                       sizeof(kcp_conn->peer->remote_addr));
         if (s < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 // pending
@@ -102,8 +104,10 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
             } else {
                 // error
                 _LOG_E("udp_write_cb sendto failed when udp_output, fd:%d", kcp_conn->peer->fd);
+                perror("udp_write_cb sendto failed when udp_output");
                 ret = _ERR;
-                break;;
+                break;
+                ;
             }
         }
         if (s == 0) {
@@ -115,7 +119,9 @@ static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revent
     } while (0);
     free(raw);
     if (ret != _OK) {
-        skt_kcp_conn_del(kcp_conn);
+        // kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+        // skt_kcp_conn_del(kcp_conn);
+        skt_close_kcp_conn(kcp_conn);
         ev_io_stop(loop, watcher);
         return;
     }
@@ -413,6 +419,11 @@ void skt_update_kcp_cb(skt_kcp_conn_t* kcp_conn) {
     }
     ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
     ikcp_flush(kcp_conn->kcp);
+}
+
+void skt_close_kcp_conn(skt_kcp_conn_t* kcp_conn) {
+    kcp_conn->skt->local_cid = kcp_conn->peer->cid = 0;
+    skt_kcp_conn_del(kcp_conn);
 }
 
 void skt_monitor(skcptun_t* skt) {

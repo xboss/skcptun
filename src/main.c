@@ -96,10 +96,10 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
                 conf->log_level = SSLOG_LEVEL_FATAL;
             }
         }
-        printf("%s:%s\n", keys[i], v);
+        // printf("%s:%s\n", keys[i], v);
     }
     ssconf_free(cf);
-    printf("------------\n");
+    // printf("------------\n");
     return _OK;
 }
 
@@ -186,6 +186,7 @@ int main(int argc, char const *argv[]) {
     if (ret != _OK) {
         goto _finish_skcptun;
     }
+    skt_monitor(g_skt); /* TODO: debug */
     ev_run(g_loop, 0);
     g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_stop(g_skt) : skt_local_stop(g_skt);
     skt_free(g_skt);
