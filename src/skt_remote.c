@@ -175,7 +175,7 @@ static void timeout_cb(struct ev_loop* loop, ev_timer* watcher, int revents) {
     assert(skt);
     // cllect all connetions， include kcp_conn and peer
     uint64_t now = skt_mstime();
-    if (skt->last_cllect_tm + skt->conf->keepalive < now) {
+    if (skt->last_cllect_tm + skt->conf->keepalive < now && !ev_is_active(skt->idle_watcher)) {
         // notify idle to cllect
         ev_idle_start(skt->loop, skt->idle_watcher);
     }
