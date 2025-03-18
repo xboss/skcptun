@@ -55,7 +55,6 @@ typedef struct {
     unsigned char iv[AES_BLOCK_SIZE + 1];
     char ticket[SKT_TICKET_SIZE + 1]; /* TODO: multi ticket */
     int mode;
-    int timeout;  // ms
     char log_file[256];
     int log_level;
 
@@ -66,7 +65,8 @@ typedef struct {
     int tun_mtu;
 
     int mtu;
-    int keepalive;  // ms
+    int keepalive;      // ms
+    int ping_interval;  // ms
 
     // kcp config
     int kcp_mtu;

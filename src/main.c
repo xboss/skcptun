@@ -15,8 +15,8 @@ static skt_config_t g_conf;
 static skcptun_t *g_skt = NULL;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
-    char *keys[] = {"mode",   "local_ip",     "local_port", "remote_ip", "remote_port", "password",
-                    "ticket", "log_file",     "log_level",  "timeout",   "tun_ip",      "tun_mask",
+    char *keys[] = {"mode",   "local_ip",     "local_port", "remote_ip",     "remote_port", "password",
+                    "ticket", "log_file",     "log_level",  "ping_interval", "tun_ip",      "tun_mask",
                     "mtu",    "kcp_interval", "speed_mode", "keepalive"};
     int keys_cnt = sizeof(keys) / sizeof(char *);
     ssconf_t *cf = ssconf_init(1024, 1024);
@@ -57,8 +57,8 @@ static int load_conf(const char *conf_file, skt_config_t *conf) {
             memcpy(conf->key, v, strnlen(v, AES_128_KEY_SIZE));
         } else if (strcmp("ticket", keys[i]) == 0) {
             memcpy(conf->ticket, v, strnlen(v, SKT_TICKET_SIZE));
-        } else if (strcmp("timeout", keys[i]) == 0) {
-            conf->timeout = atoi(v);
+        } else if (strcmp("ping_interval", keys[i]) == 0) {
+            conf->ping_interval = atoi(v);
         } else if (strcmp("keepalive", keys[i]) == 0) {
             conf->keepalive = atoi(v);
         } else if (strcmp("tun_ip", keys[i]) == 0) {
