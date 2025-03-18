@@ -12,7 +12,6 @@ link_directories(/usr/local/lib)
 set(SOURCE_FILES
 src/ikcp.c
 src/crypto.c
-src/packet_queue.c
 src/skt_udp_peer.c
 src/skt_kcp_conn.c
 src/tun.c

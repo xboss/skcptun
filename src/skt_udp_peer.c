@@ -141,33 +141,33 @@ void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
 
 static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
     if (addr_peer_index == NULL) {
-        _LOG("addr_peer_index is NULL");
+        _LOG_E("addr_peer_index is NULL");
         return;
     }
-    _LOG("addr_peer_index:");
-    _LOG("  addr: %u", addr_peer_index->addr);
+    _LOG_E("addr_peer_index:");
+    _LOG_E("  addr: %u", addr_peer_index->addr);
     const skt_udp_peer_t* peer = addr_peer_index->peer;
     if (peer == NULL) {
-        _LOG("  peer is NULL");
+        _LOG_E("  peer is NULL");
         return;
     }
     char remote_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN);
-    _LOG("  peer:");
-    _LOG("    fd: %d", peer->fd);
-    _LOG("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
+    _LOG_E("  peer:");
+    _LOG_E("    fd: %d", peer->fd);
+    _LOG_E("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
     char local_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
-    _LOG("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
-    _LOG("    cid: %u", peer->cid);
-    _LOG("    last_r_tm: %" PRIu64 "", peer->last_r_tm);
-    _LOG("    last_w_tm: %" PRIu64 "", peer->last_w_tm);
+    _LOG_E("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
+    _LOG_E("    cid: %u", peer->cid);
+    _LOG_E("    last_r_tm: %" PRIu64 "", peer->last_r_tm);
+    _LOG_E("    last_w_tm: %" PRIu64 "", peer->last_w_tm);
 }
 
 void skt_udp_peer_info() {
-    _LOG("---------- peers info ----------");
+    _LOG_E("---------- peers info ----------");
     unsigned int peers_cnt = HASH_COUNT(g_addr_peer_index);
-    _LOG("udp peers count: %u", peers_cnt);
+    _LOG_E("udp peers count: %u", peers_cnt);
     addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
     HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { print_addr_peer_index(addr_peer_index); }
 }

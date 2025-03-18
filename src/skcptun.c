@@ -5,50 +5,50 @@
 
 static void print_skcptun(const skcptun_t* skt) {
     if (!skt) {
-        _LOG("skcptun_t is NULL");
+        _LOG_E("skcptun_t is NULL");
         return;
     }
 
-    _LOG("skcptun_t:");
-    _LOG("  running: %d", skt->running);
-    _LOG("  tun_fd: %d", skt->tun_fd);
-    _LOG("  udp_fd: %d", skt->udp_fd);
-    _LOG("  tun_ip_addr: %u", skt->tun_ip_addr);
-    _LOG("  local_cid: %u", skt->local_cid);
-    _LOG("  last_cllect_tm: %" PRIu64 "", skt->last_cllect_tm);
+    _LOG_E("skcptun_t:");
+    _LOG_E("  running: %d", skt->running);
+    _LOG_E("  tun_fd: %d", skt->tun_fd);
+    _LOG_E("  udp_fd: %d", skt->udp_fd);
+    _LOG_E("  tun_ip_addr: %u", skt->tun_ip_addr);
+    _LOG_E("  local_cid: %u", skt->local_cid);
+    _LOG_E("  last_cllect_tm: %" PRIu64 "", skt->last_cllect_tm);
 
     if (!skt->conf) {
-        _LOG("  skt_config_t is NULL");
+        _LOG_E("  skt_config_t is NULL");
         return;
     }
 
     const skt_config_t* conf = skt->conf;
-    _LOG("  skt_config_t:");
-    _LOG("    udp_local_ip: %s", conf->udp_local_ip);
-    _LOG("    udp_local_port: %u", conf->udp_local_port);
-    _LOG("    udp_remote_ip: %s", conf->udp_remote_ip);
-    _LOG("    udp_remote_port: %u", conf->udp_remote_port);
-    _LOG("    key: %s", conf->key);
-    _LOG("    iv: %s", conf->iv);
-    _LOG("    ticket: %s", conf->ticket);
-    _LOG("    mode: %d", conf->mode);
-    _LOG("    timeout: %d", conf->timeout);
-    _LOG("    log_file: %s", conf->log_file);
-    _LOG("    log_level: %d", conf->log_level);
-    _LOG("    tun_dev: %s", conf->tun_dev);
-    _LOG("    tun_ip: %s", conf->tun_ip);
-    _LOG("    tun_mask: %s", conf->tun_mask);
-    _LOG("    tun_mtu: %d", conf->tun_mtu);
-    _LOG("    mtu: %d", conf->mtu);
-    _LOG("    keepalive: %d", conf->keepalive);
-    _LOG("    kcp_mtu: %d", conf->kcp_mtu);
-    _LOG("    kcp_interval: %d", conf->kcp_interval);
-    _LOG("    kcp_nodelay: %d", conf->kcp_nodelay);
-    _LOG("    kcp_resend: %d", conf->kcp_resend);
-    _LOG("    kcp_nc: %d", conf->kcp_nc);
-    _LOG("    kcp_sndwnd: %d", conf->kcp_sndwnd);
-    _LOG("    kcp_rcvwnd: %d", conf->kcp_rcvwnd);
-    _LOG("    speed_mode: %d", conf->speed_mode);
+    _LOG_E("  skt_config_t:");
+    _LOG_E("    udp_local_ip: %s", conf->udp_local_ip);
+    _LOG_E("    udp_local_port: %u", conf->udp_local_port);
+    _LOG_E("    udp_remote_ip: %s", conf->udp_remote_ip);
+    _LOG_E("    udp_remote_port: %u", conf->udp_remote_port);
+    _LOG_E("    key: %s", conf->key);
+    _LOG_E("    iv: %s", conf->iv);
+    _LOG_E("    ticket: %s", conf->ticket);
+    _LOG_E("    mode: %d", conf->mode);
+    _LOG_E("    timeout: %d", conf->timeout);
+    _LOG_E("    log_file: %s", conf->log_file);
+    _LOG_E("    log_level: %d", conf->log_level);
+    _LOG_E("    tun_dev: %s", conf->tun_dev);
+    _LOG_E("    tun_ip: %s", conf->tun_ip);
+    _LOG_E("    tun_mask: %s", conf->tun_mask);
+    _LOG_E("    tun_mtu: %d", conf->tun_mtu);
+    _LOG_E("    mtu: %d", conf->mtu);
+    _LOG_E("    keepalive: %d", conf->keepalive);
+    _LOG_E("    kcp_mtu: %d", conf->kcp_mtu);
+    _LOG_E("    kcp_interval: %d", conf->kcp_interval);
+    _LOG_E("    kcp_nodelay: %d", conf->kcp_nodelay);
+    _LOG_E("    kcp_resend: %d", conf->kcp_resend);
+    _LOG_E("    kcp_nc: %d", conf->kcp_nc);
+    _LOG_E("    kcp_sndwnd: %d", conf->kcp_sndwnd);
+    _LOG_E("    kcp_rcvwnd: %d", conf->kcp_rcvwnd);
+    _LOG_E("    speed_mode: %d", conf->speed_mode);
 }
 
 static int parse_ip_addresses(const char* data, int data_len, char* src_ip_str, char* dst_ip_str, uint32_t* src_ip,
@@ -447,75 +447,16 @@ void skt_close_kcp_conn(skt_kcp_conn_t* kcp_conn) {
 }
 
 void skt_monitor(skcptun_t* skt) {
-    _LOG("**************************************");
-    _LOG("*               monitor              *");
-    _LOG("**************************************");
-    _LOG("------------ skcptun info ------------");
+    _LOG_E("**************************************");
+    _LOG_E("*               monitor              *");
+    _LOG_E("**************************************");
+    _LOG_E("------------ skcptun info ------------");
     print_skcptun(skt);
-    _LOG("--------------------------------------");
+    _LOG_E("--------------------------------------");
     // peers info
     skt_udp_peer_info();
-    _LOG("--------------------------------------");
+    _LOG_E("--------------------------------------");
     // kcp connections info
     skt_kcp_conn_info();
-    _LOG("--------------------------------------");
+    _LOG_E("--------------------------------------");
 }
-
-////////////////////////////////
-////////////////////////////////
-
-// static void udp_write_cb(struct ev_loop* loop, struct ev_io* watcher, int revents) {
-//     if (EV_ERROR & revents) {
-//         _LOG_E("udp_write_cb got invalid event");
-//         return;
-//     }
-//     skt_kcp_conn_t* kcp_conn = (skt_kcp_conn_t*)watcher->data;
-//     assert(kcp_conn);
-//     // _LOG("udp_write_cb start");
-
-//     int ret = _OK;
-//     char* raw;
-//     size_t raw_len = 0;
-//     while (packet_queue_dequeue(kcp_conn->peer->send_queue, (unsigned char**)&raw, &raw_len) == _OK) {
-//         // _LOG("udp_write_cb packet_queue_dequeue failed");
-//         assert(raw_len > 0);
-//         int s = sendto(kcp_conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&kcp_conn->peer->remote_addr,
-//                        sizeof(kcp_conn->peer->remote_addr));
-//         if (s < 0) {
-//             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-//                 // pending
-//                 _LOG("udp_write_cb sendto pending");
-//                 packet_queue_enqueue(kcp_conn->peer->send_queue, (unsigned char*)raw, raw_len);
-//                 free(raw);
-//                 break;
-//             } else {
-//                 // error
-//                 _LOG_E("udp_write_cb sendto failed when udp_output, fd:%d", kcp_conn->peer->fd);
-//                 perror("udp_write_cb sendto failed when udp_output");
-//                 free(raw);
-//                 ret = _ERR;
-//                 break;
-//             }
-//         }
-//         if (s == 0) {
-//             // error
-//             _LOG_E("udp_write_cb sendto ret 0");
-//             free(raw);
-//             ret = _ERR;
-//             break;
-//         }
-//         free(raw);
-//     }
-
-//     if (ret != _OK) {
-//         skt_close_kcp_conn(kcp_conn);
-//         kcp_conn = NULL;
-//         ev_io_stop(loop, watcher);
-//         return;
-//     }
-//     ev_io_stop(loop, watcher);
-//     // _LOG("udp_write_cb stop q_len:%llu", kcp_conn ? packet_queue_count(kcp_conn->peer->send_queue) : 0);
-// }
-
-////////////////////////////////
-////////////////////////////////
