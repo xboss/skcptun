@@ -7,15 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "skcptun.h"
-#include "skt.h"
 #include "skt_local.h"
 #include "skt_remote.h"
 #include "ssconf.h"
 
 static skt_config_t g_conf;
 static skcptun_t *g_skt = NULL;
-struct ev_loop *g_loop = NULL;
 
 static int load_conf(const char *conf_file, skt_config_t *conf) {
     char *keys[] = {"mode",   "local_ip",     "local_port", "remote_ip", "remote_port", "password",
@@ -126,19 +123,20 @@ static int check_config(skt_config_t *conf) {
     return _OK;
 }
 
-static void sig_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-    _LOG("sig_cb signal:%d", w->signum);
-    if (w->signum == SIGPIPE) {
-        return;
-    }
-    if (w->signum == SIGINT && g_skt) {
-        g_skt->running = 0;
-        ev_break(loop, EVBREAK_ALL);
-        return;
-    }
-    if (w->signum == SIGUSR1 && g_skt) {
-        skt_monitor(g_skt);
-        return;
+static void signal_handler(int sn) {
+    _LOG("signal_handler sig:%d", sn);
+    // skt_monitor(g_skt);
+    switch (sn) {
+        // case SIGQUIT:
+        // case SIGTERM:
+        case SIGINT:
+            g_skt->running = 0;
+            break;
+        case SIGUSR1:
+            skt_monitor(g_skt); /* TODO: */
+            break;
+        default:
+            break;
     }
 }
 
@@ -160,21 +158,11 @@ int main(int argc, char const *argv[]) {
     sslog_init(g_conf.log_file, g_conf.log_level);
     strcpy((char *)g_conf.iv, "bewatermyfriend.");
 
-    g_loop = EV_DEFAULT;
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, signal_handler);
+    signal(SIGUSR1, signal_handler);
 
-    ev_signal sig_pipe_watcher;
-    ev_signal_init(&sig_pipe_watcher, sig_cb, SIGPIPE);
-    ev_signal_start(g_loop, &sig_pipe_watcher);
-
-    ev_signal sig_int_watcher;
-    ev_signal_init(&sig_int_watcher, sig_cb, SIGINT);
-    ev_signal_start(g_loop, &sig_int_watcher);
-
-    ev_signal sig_usr1_watcher;  // kill -SIGUSR1 pid
-    ev_signal_init(&sig_usr1_watcher, sig_cb, SIGUSR1);
-    ev_signal_start(g_loop, &sig_usr1_watcher);
-
-    g_skt = skt_init(&g_conf, g_loop);
+    g_skt = skt_init(&g_conf);
     if (!g_skt) {
         _LOG_E("init skt error.");
         goto _finish_skcptun;
@@ -186,8 +174,6 @@ int main(int argc, char const *argv[]) {
     if (ret != _OK) {
         goto _finish_skcptun;
     }
-    skt_monitor(g_skt); /* TODO: debug */
-    ev_run(g_loop, 0);
     g_skt->conf->mode == SKT_MODE_REMOTE ? skt_remote_stop(g_skt) : skt_local_stop(g_skt);
     skt_free(g_skt);
 

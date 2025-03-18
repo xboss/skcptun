@@ -1,6 +1,6 @@
-#include "skt_kcp_conn.h"
 
-#include <errno.h>
+
+#include "skcptun.h"
 
 #define SKT_CONV_MIN (10000)
 
@@ -86,12 +86,13 @@ static int udp_output(const char* buf, int len, ikcpcb* kcp, void* user) {
     if (skt_pack(conn->skt, SKT_PKT_CMD_DATA, conn->skt->conf->ticket, buf, len, raw, &raw_len)) return 0;
     assert(raw_len == len + SKT_PKT_CMD_SZIE + SKT_TICKET_SIZE);
 
-    if (packet_queue_enqueue(conn->peer->send_queue, (unsigned char*)raw, raw_len) != _OK) {
-        _LOG_E("packet_queue_enqueue failed");
+    int slen = sendto(conn->peer->fd, raw, raw_len, 0, (struct sockaddr*)&conn->peer->remote_addr,
+                      sizeof(conn->peer->remote_addr));
+    if (slen < 0) {
+        perror("udp_output sendto");
+        _LOG_E("udp_output sendto failed len:%d fd:%d", slen, conn->peer->fd);
         return 0;
     }
-    // _LOG("udp_output q_len:%llu", packet_queue_count(conn->peer->send_queue));
-    ev_io_start(conn->skt->loop, conn->skt->udp_w_watcher);
     return 0;
 }
 
@@ -147,7 +148,6 @@ skt_kcp_conn_t* skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char* tick
     conn->peer = peer;
     conn->create_time = skt_mstime();
     conn->skt = skt;
-    conn->skt->udp_w_watcher->data = conn;
 
     conn->cid = cid;
     if (skt_kcp_conn_get_by_cid(conn->cid) != NULL) {
@@ -191,6 +191,7 @@ skt_kcp_conn_t* skt_kcp_conn_add(uint32_t cid, uint32_t tun_ip, const char* tick
 }
 
 skt_kcp_conn_t* skt_kcp_conn_get_by_cid(uint32_t cid) {
+    if (cid == 0) return NULL;
     cid_index_t* cid_index = NULL;
     HASH_FIND_INT(g_cid_index, &cid, cid_index);
     if (!cid_index) {
