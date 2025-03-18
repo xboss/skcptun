@@ -69,6 +69,7 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         return _ERR;
     }
     skt->local_cid = peer->cid = cid;
+    kcp_conn->last_r_tm = skt_mstime();
     _LOG("pong and auth ok!");
     return _OK;
 }
@@ -113,6 +114,7 @@ int skt_local_start(skcptun_t* skt) {
         skt_local_stop(skt);
         return _ERR;
     }
+    peer->last_r_tm = skt_mstime();
     skt->udp_fd = peer->fd;
     skt->remote_addr = peer->remote_addr;
     skt->running = 1;

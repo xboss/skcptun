@@ -15,6 +15,7 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
     if (peer->cid > 0) {
         kcp_conn = skt_kcp_conn_get_by_cid(peer->cid);
     }
+    uint64_t now = skt_mstime();
     if (!kcp_conn) {
         uint32_t tun_ip = ntohl(*(uint32_t*)(pkt->payload));
         _LOG("on_cmd_ping tun_ip: %u", tun_ip);
@@ -24,11 +25,12 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         if (!kcp_conn) {
             return _ERR;
         }
+        kcp_conn->last_r_tm = now;
     }
     peer->cid = kcp_conn->cid;
     // send pong format: cmd(1B)|ticket(32B)|timestamp(8B)|cid(4B)|mtu(4B)|kcp_interval(4B)|speed_mode(1B)
     uint32_t cid_net = htonl(kcp_conn->cid);
-    uint64_t timestamp_net = skt_htonll(skt_mstime());
+    uint64_t timestamp_net = skt_htonll(now);
     uint32_t mtu_net = htonl(skt->conf->mtu);
     uint32_t kcp_interval_net = htonl(skt->conf->kcp_interval);
     char payload[21] = {0};
@@ -124,6 +126,7 @@ int skt_remote_start(skcptun_t* skt) {
         skt_remote_stop(skt);
         return _ERR;
     }
+    peer->last_r_tm = skt_mstime();
     skt->udp_fd = peer->fd;
     skt->running = 1;
     skt->on_cmd_ping = on_cmd_ping;
