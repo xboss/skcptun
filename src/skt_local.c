@@ -37,7 +37,7 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         _LOG("invalid cid");
         return _ERR;
     }
-    if (peer->cid > 0 && cid == peer->cid) {
+    if (cid == skt->local_cid && cid == peer->cid) {
         _LOG("already authed");
         return _OK;
     }

@@ -36,7 +36,6 @@ tun_ip = 192.1.1.1
 tun_mask = 255.255.255.0
 mtu = 1500
 kcp_interval = 20
-timeout = 1000
 password = yourpassword
 ticket = yourticketyourticketyourticket12
 log_level= DEBUG
