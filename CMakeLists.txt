@@ -10,19 +10,18 @@ link_directories(/usr/local/lib)
 
 # 添加源文件
 set(SOURCE_FILES
-src/main.c
+src/ikcp.c
 src/crypto.c
-src/skcptun.c
-src/ssconf.c
-src/sslog.c
 src/skt_udp_peer.c
 src/skt_kcp_conn.c
 src/tun.c
 src/tun_osx.c
-src/ikcp.c
+src/skcptun.c
+src/ssconf.c
+src/sslog.c
 src/skt_remote.c
 src/skt_local.c
-src/packet_queue.c
+src/main.c
 )
 
 
@@ -31,7 +30,7 @@ add_executable(skcptun ${SOURCE_FILES})
 target_link_libraries(skcptun ssl)
 target_link_libraries(skcptun crypto)
 target_link_libraries(skcptun pthread)
-target_link_libraries(skcptun ev)
+# target_link_libraries(skcptun ev)
 
 
 ############# static #############

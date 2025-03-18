@@ -1,7 +1,5 @@
-#include "skt_udp_peer.h"
 
-#include <arpa/inet.h>
-#include <unistd.h>
+#include "skcptun.h"
 
 typedef struct {
     uint32_t addr;
@@ -31,70 +29,15 @@ static skt_udp_peer_t* init_peer(int fd, struct sockaddr_in remote_addr, skcptun
     peer->fd = fd;
     peer->remote_addr = remote_addr;
     peer->skt = skt;
-    peer->send_queue = packet_queue_create();
-    if (!peer->send_queue) {
-        perror("packet_queue_create");
-        free(peer);
-        return NULL;
-    }
     return peer;
 }
 static void free_peer(skt_udp_peer_t* peer) {
     if (!peer) return;
     if (peer->fd > 0) {
-        close(peer->fd);
+        // close(peer->fd);
         peer->fd = -1;
     }
-    if (peer->send_queue) {
-        packet_queue_destroy(peer->send_queue);
-        peer->send_queue = NULL;
-    }
     free(peer);
-}
-
-skt_udp_peer_t* skt_udp_peer_start(const char* local_ip, uint16_t local_port, const char* remote_ip,
-                                   uint16_t remote_port, skcptun_t* skt) {
-    skt_udp_peer_t peer;
-    memset(&peer, 0, sizeof(peer));
-    peer.fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (peer.fd < 0) {
-        perror("socket");
-        return NULL;
-    }
-    if (skt_set_nonblocking(peer.fd) != _OK) {
-        return NULL;
-    }
-    if (local_ip && strnlen(local_ip, INET_ADDRSTRLEN) > 0 && local_port > 0) {
-        memset(&peer.local_addr, 0, sizeof(peer.local_addr));
-        peer.local_addr.sin_family = AF_INET;
-        peer.local_addr.sin_port = htons(local_port);
-        if (inet_pton(AF_INET, local_ip, &peer.local_addr.sin_addr) <= 0) {
-            perror("inet_pton local");
-            close(peer.fd);
-            return NULL;
-        }
-        if (bind(peer.fd, (struct sockaddr*)&peer.local_addr, sizeof(peer.local_addr)) < 0) {
-            perror("bind");
-            close(peer.fd);
-            return NULL;
-        }
-    }
-    if (remote_ip && strnlen(remote_ip, INET_ADDRSTRLEN) > 0 && remote_port > 0) {
-        memset(&peer.remote_addr, 0, sizeof(peer.remote_addr));
-        peer.remote_addr.sin_family = AF_INET;
-        peer.remote_addr.sin_port = htons(remote_port);
-        if (inet_pton(AF_INET, remote_ip, &peer.remote_addr.sin_addr) <= 0) {
-            perror("inet_pton remote");
-            close(peer.fd);
-            return NULL;
-        }
-    }
-    if (skt_udp_peer_add(peer.fd, peer.remote_addr, skt) != _OK) {
-        close(peer.fd);
-        return NULL;
-    }
-    skt_udp_peer_t* p = skt_udp_peer_get(peer.fd, peer.remote_addr.sin_addr.s_addr);
-    return p;
 }
 
 int skt_udp_peer_add(int fd, struct sockaddr_in remote_addr, skcptun_t* skt) {
@@ -143,33 +86,34 @@ void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
 
 static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
     if (addr_peer_index == NULL) {
-        _LOG("addr_peer_index is NULL");
+        _LOG_E("addr_peer_index is NULL");
         return;
     }
-    _LOG("addr_peer_index:");
-    _LOG("  addr: %u", addr_peer_index->addr);
+    _LOG_E("addr_peer_index:");
+    _LOG_E("  addr: %u", addr_peer_index->addr);
     const skt_udp_peer_t* peer = addr_peer_index->peer;
     if (peer == NULL) {
-        _LOG("  peer is NULL");
+        _LOG_E("  peer is NULL");
         return;
     }
+    uint64_t now = skt_mstime();
     char remote_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN);
-    _LOG("  peer:");
-    _LOG("    fd: %d", peer->fd);
-    _LOG("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
+    _LOG_E("  peer:");
+    _LOG_E("    fd: %d", peer->fd);
+    _LOG_E("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
     char local_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
-    _LOG("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
-    _LOG("    cid: %u", peer->cid);
-    _LOG("    last_r_tm: %" PRIu64 "", peer->last_r_tm);
-    _LOG("    last_w_tm: %" PRIu64 "", peer->last_w_tm);
+    _LOG_E("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
+    _LOG_E("    cid: %u", peer->cid);
+    _LOG_E("    last_r_tm: %" PRIu64 " ago", now - peer->last_r_tm);
+    _LOG_E("    last_w_tm: %" PRIu64 " ago", now - peer->last_w_tm);
 }
 
 void skt_udp_peer_info() {
-    _LOG("---------- peers info ----------");
+    _LOG_E("---------- peers info ----------");
     unsigned int peers_cnt = HASH_COUNT(g_addr_peer_index);
-    _LOG("udp peers count: %u", peers_cnt);
+    _LOG_E("udp peers count: %u", peers_cnt);
     addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
     HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { print_addr_peer_index(addr_peer_index); }
 }
