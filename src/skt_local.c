@@ -87,6 +87,11 @@ static void on_timeout(skcptun_t* skt) {
         }
     }
     if (skt->last_ping_tm + skt->conf->timeout < now) {
+        /* TODO: debug */
+        if (kcp_conn)
+            _LOG("timeout_cb cid:%u peer->last_r_tm:%llu ago, kcp_conn->last_r_tm:%llu ago", skt->local_cid,
+                 now - kcp_conn->peer->last_r_tm, now - kcp_conn->last_r_tm);
+
         if (ping(skt, skt->remote_addr) != _OK) return;
     }
 }

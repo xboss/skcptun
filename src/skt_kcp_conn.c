@@ -25,13 +25,14 @@ static void print_skt_kcp_conn(const skt_kcp_conn_t* conn) {
         _LOG_E("skt_kcp_conn_t is NULL");
         return;
     }
+    uint64_t now = skt_mstime();
 
     _LOG_E("skt_kcp_conn_t:");
     _LOG_E("  cid: %u", conn->cid);
     _LOG_E("  tun_ip: %u", conn->tun_ip);
-    _LOG_E("  create_time: %" PRIu64 "", conn->create_time);
-    _LOG_E("  last_r_tm: %" PRIu64 "", conn->last_r_tm);
-    _LOG_E("  last_w_tm: %" PRIu64 "", conn->last_w_tm);
+    _LOG_E("  create_time: %" PRIu64 " ago", now - conn->create_time);
+    _LOG_E("  last_r_tm: %" PRIu64 " ago", now - conn->last_r_tm);
+    _LOG_E("  last_w_tm: %" PRIu64 " ago", now - conn->last_w_tm);
 
     const skt_udp_peer_t* peer = conn->peer;
     if (peer == NULL) {
@@ -50,8 +51,8 @@ static void print_skt_kcp_conn(const skt_kcp_conn_t* conn) {
     _LOG_E("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
 
     _LOG_E("    cid: %u", peer->cid);
-    _LOG_E("    last_r_tm: %" PRIu64 "", peer->last_r_tm);
-    _LOG_E("    last_w_tm: %" PRIu64 "", peer->last_w_tm);
+    _LOG_E("    last_r_tm: %" PRIu64 " ago", now - peer->last_r_tm);
+    _LOG_E("    last_w_tm: %" PRIu64 " ago", now - peer->last_w_tm);
 }
 
 static void print_cid_index(const cid_index_t* cid_index) {

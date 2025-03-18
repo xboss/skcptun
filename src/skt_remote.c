@@ -56,13 +56,15 @@ static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
         _LOG_E("kcp_conn is null. iter_kcp_conn_cb");
         return;
     }
-    ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
-    ikcp_flush(kcp_conn->kcp); /* TODO: */
-    // uint64_t now = skt_mstime();
-    // if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
-    //     _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
-    //     skt_close_kcp_conn(kcp_conn);
-    // }
+    uint64_t now = skt_mstime();
+    if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
+        _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
+        skt_close_kcp_conn(kcp_conn);
+    } else {
+        // kcp update
+        ikcp_update(kcp_conn->kcp, SKT_MSTIME32);
+        ikcp_flush(kcp_conn->kcp); /* TODO: */
+    }
 }
 
 static void iter_udp_peer_cb(skt_udp_peer_t* peer) {

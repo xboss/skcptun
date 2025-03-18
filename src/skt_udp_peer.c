@@ -96,6 +96,7 @@ static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
         _LOG_E("  peer is NULL");
         return;
     }
+    uint64_t now = skt_mstime();
     char remote_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN);
     _LOG_E("  peer:");
@@ -105,8 +106,8 @@ static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
     inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
     _LOG_E("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
     _LOG_E("    cid: %u", peer->cid);
-    _LOG_E("    last_r_tm: %" PRIu64 "", peer->last_r_tm);
-    _LOG_E("    last_w_tm: %" PRIu64 "", peer->last_w_tm);
+    _LOG_E("    last_r_tm: %" PRIu64 " ago", now - peer->last_r_tm);
+    _LOG_E("    last_w_tm: %" PRIu64 " ago", now - peer->last_w_tm);
 }
 
 void skt_udp_peer_info() {
