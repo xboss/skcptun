@@ -29,71 +29,16 @@ static skt_udp_peer_t* init_peer(int fd, struct sockaddr_in remote_addr, skcptun
     peer->fd = fd;
     peer->remote_addr = remote_addr;
     peer->skt = skt;
-    // peer->send_queue = packet_queue_create();
-    // if (!peer->send_queue) {
-    //     perror("packet_queue_create");
-    //     free(peer);
-    //     return NULL;
-    // }
     return peer;
 }
 static void free_peer(skt_udp_peer_t* peer) {
     if (!peer) return;
     if (peer->fd > 0) {
-        close(peer->fd);
+        // close(peer->fd);
         peer->fd = -1;
     }
-    // if (peer->send_queue) {
-    //     packet_queue_destroy(peer->send_queue);
-    //     peer->send_queue = NULL;
-    // }
     free(peer);
 }
-
-// skt_udp_peer_t* skt_udp_start(const char* local_ip, uint16_t local_port, const char* remote_ip, uint16_t remote_port,
-//                               skcptun_t* skt) {
-//     skt_udp_peer_t peer;
-//     memset(&peer, 0, sizeof(peer));
-//     peer.fd = socket(AF_INET, SOCK_DGRAM, 0);
-//     if (peer.fd < 0) {
-//         perror("socket");
-//         return NULL;
-//     }
-//     if (skt_set_nonblocking(peer.fd) != _OK) {
-//         return NULL;
-//     }
-//     if (local_ip && strnlen(local_ip, INET_ADDRSTRLEN) > 0 && local_port > 0) {
-//         memset(&peer.local_addr, 0, sizeof(peer.local_addr));
-//         peer.local_addr.sin_family = AF_INET;
-//         peer.local_addr.sin_port = htons(local_port);
-//         if (inet_pton(AF_INET, local_ip, &peer.local_addr.sin_addr) <= 0) {
-//             perror("inet_pton local");
-//             close(peer.fd);
-//             return NULL;
-//         }
-//         if (bind(peer.fd, (struct sockaddr*)&peer.local_addr, sizeof(peer.local_addr)) < 0) {
-//             perror("bind");
-//             close(peer.fd);
-//             return NULL;
-//         }
-//     }
-//     if (remote_ip && strnlen(remote_ip, INET_ADDRSTRLEN) > 0 && remote_port > 0) {
-//         memset(&peer.remote_addr, 0, sizeof(peer.remote_addr));
-//         peer.remote_addr.sin_family = AF_INET;
-//         peer.remote_addr.sin_port = htons(remote_port);
-//         if (inet_pton(AF_INET, remote_ip, &peer.remote_addr.sin_addr) <= 0) {
-//             perror("inet_pton remote");
-//             close(peer.fd);
-//             return NULL;
-//         }
-//     }
-//     if (skt_udp_peer_add(peer.fd, peer.remote_addr, skt) != _OK) {
-//         close(peer.fd);
-//         return NULL;
-//     }
-//     skt_udp_peer_t* p = skt_udp_peer_get(peer.fd, peer.remote_addr.sin_addr.s_addr);
-//     return p;
-// }
 
 int skt_udp_peer_add(int fd, struct sockaddr_in remote_addr, skcptun_t* skt) {
     if (skt_udp_peer_get(fd, remote_addr.sin_addr.s_addr)) {

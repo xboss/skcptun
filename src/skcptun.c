@@ -256,7 +256,6 @@ static void tun_to_udp(skcptun_t* skt, const char* buf, ssize_t len) { tun_to_kc
 
 skcptun_t* skt_init(skt_config_t* conf) {
     if (!conf) return NULL;
-
     skcptun_t* skt = (skcptun_t*)calloc(1, sizeof(skcptun_t));
     if (skt == NULL) {
         perror("calloc");
@@ -264,14 +263,12 @@ skcptun_t* skt_init(skt_config_t* conf) {
     }
     skt->conf = conf;
     skt->running = 0;
-
     return skt;
 }
 
 void skt_free(skcptun_t* skt) {
     if (!skt) return;
     skt->running = 0;
-
     if (skt->tun_fd > 0) {
         close(skt->tun_fd);
         skt->tun_fd = 0;
@@ -280,7 +277,6 @@ void skt_free(skcptun_t* skt) {
         close(skt->udp_fd);
         skt->udp_fd = 0;
     }
-
     free(skt);
     _LOG("skt_free");
 }
@@ -403,8 +399,8 @@ int skt_run(skcptun_t* skt) {
     struct pollfd fds[2] = {{.fd = skt->udp_fd, .events = POLLIN}, {.fd = skt->tun_fd, .events = POLLIN}};
     while (skt->running) {
         // _LOG("poll start");
-        ret = poll(fds, 2, skt->conf->timeout);
-        if (!skt->running) { /* TODO: POLLERR? */
+        ret = poll(fds, 2, skt->conf->kcp_interval); /* TODO: timeout or kcp_interval*/
+        if (!skt->running) {
             break;
         }
         if (ret < 0) {
@@ -412,7 +408,7 @@ int skt_run(skcptun_t* skt) {
             perror("poll failed");
             return _ERR;
         } else if (ret == 0) {
-            _LOG("poll timeout.");
+            // _LOG("poll timeout.");
             if (skt->on_timeout) skt->on_timeout(skt);
             continue;
         }

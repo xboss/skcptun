@@ -5,9 +5,10 @@
 
 static int ping(skcptun_t* skt, struct sockaddr_in remote_addr) {
     assert(skt->tun_ip_addr > 0);
+    uint64_t now = skt_mstime();
     // send ping format: cmd(1B)|ticket(32B)|tun_ip(4B)|timestamp(8B)
     uint32_t tun_ip_net = htonl(skt->tun_ip_addr);
-    uint64_t timestamp_net = skt_htonll(skt_mstime());
+    uint64_t timestamp_net = skt_htonll(now);
     char payload[12] = {0};
     memcpy(payload, &tun_ip_net, 4);
     memcpy(payload + 4, &timestamp_net, 8);
@@ -19,6 +20,7 @@ static int ping(skcptun_t* skt, struct sockaddr_in remote_addr) {
         _LOG_E("sendto failed when send ping, fd:%d", skt->udp_fd);
         return _ERR;
     }
+    skt->last_ping_tm = now;
     _LOG("ping ok.");
     return _OK;
 }
@@ -48,9 +50,8 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
     skt->conf->kcp_mtu = SKT_ASSIGN_KCP_MTU(skt->conf->mtu);
     skt->conf->tun_mtu = SKT_ASSIGN_TUN_MTU(skt->conf->mtu);
 
-    if (skt->conf->kcp_interval <= 0) {
-        skt->conf->kcp_interval = ntohl(*(int*)(pkt->payload + 16));
-    }
+    // if (skt->conf->kcp_interval <= 0)
+    skt->conf->kcp_interval = ntohl(*(int*)(pkt->payload + 16));
     if (skt->conf->kcp_interval <= 0 || skt->conf->kcp_interval > 9999999) {
         _LOG("invalid kcp_interval in pong. %d", skt->conf->kcp_interval);
         return _ERR;
@@ -73,9 +74,10 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
 }
 
 static void on_timeout(skcptun_t* skt) {
+    uint64_t now = skt_mstime();
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
     if (kcp_conn) {
-        if (kcp_conn->peer->last_r_tm + skt->conf->keepalive < skt_mstime()) {
+        if (kcp_conn->peer->last_r_tm + skt->conf->keepalive < now) {
             // trigger auth
             _LOG("timeout_cb skt_close_kcp_conn trigger auth peer->last_r_tm:%llu", kcp_conn->peer->last_r_tm);
             skt_close_kcp_conn(kcp_conn);
@@ -84,7 +86,9 @@ static void on_timeout(skcptun_t* skt) {
             ikcp_flush(kcp_conn->kcp); /* TODO: */
         }
     }
-    if (ping(skt, skt->remote_addr) != _OK) return;
+    if (skt->last_ping_tm + skt->conf->timeout < now) {
+        if (ping(skt, skt->remote_addr) != _OK) return;
+    }
 }
 
 ////////////////////////////////
@@ -109,6 +113,7 @@ int skt_local_start(skcptun_t* skt) {
     skt->running = 1;
     skt->on_cmd_pong = on_cmd_pong;
     skt->on_timeout = on_timeout;
+    skt->conf->kcp_interval = 1000;
 
     if (ping(skt, peer->remote_addr) != _OK) {
         skt_local_stop(skt);

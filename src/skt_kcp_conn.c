@@ -116,6 +116,7 @@ void skt_kcp_conn_info() {
     if (cid_index_cnt != tun_ip_index_cnt) {
         fprintf(stderr, "ERROR: kcp connection tun_ip index count not equal cid index count.\n");
     }
+    assert(cid_index_cnt == tun_ip_index_cnt);
 }
 
 void skt_kcp_conn_iter(void (*iter)(skt_kcp_conn_t* kcp_conn)) {
