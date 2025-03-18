@@ -21,7 +21,7 @@ tun_ip = 192.1.1.1
 tun_mask = 255.255.255.0
 password = yourpassword
 ticket = yourticketyourticketyourticket12
-timeout = 1000
+ping_interval = 1000
 log_level= DEBUG
 log_file = /tmp/skcptun.log
 
