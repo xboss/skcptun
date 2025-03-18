@@ -28,17 +28,18 @@ static int on_cmd_ping(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         kcp_conn->last_r_tm = now;
     }
     peer->cid = kcp_conn->cid;
-    // send pong format: cmd(1B)|ticket(32B)|timestamp(8B)|cid(4B)|mtu(4B)|kcp_interval(4B)|speed_mode(1B)
+    // send pong format: cmd(1B)|ticket(32B)|timestamp(8B)|cid(4B)|mtu(4B)|kcp_interval(4B)|speed_mode(1B)|keepalive(4B)
     uint32_t cid_net = htonl(kcp_conn->cid);
     uint64_t timestamp_net = skt_htonll(now);
     uint32_t mtu_net = htonl(skt->conf->mtu);
     uint32_t kcp_interval_net = htonl(skt->conf->kcp_interval);
-    char payload[21] = {0};
+    char payload[25] = {0};
     memcpy(payload, &timestamp_net, 8);
     memcpy(payload + 8, &cid_net, 4);
     memcpy(payload + 12, &mtu_net, 4);
     memcpy(payload + 16, &kcp_interval_net, 4);
     payload[20] = (char)(skt->conf->speed_mode & 0x00ffu);
+    memcpy(payload + 21, &skt->conf->keepalive, 4);
     char raw[SKT_MTU] = {0};
     size_t raw_len = 0;
     if (skt_pack(skt, SKT_PKT_CMD_PONG, pkt->ticket, payload, sizeof(payload), raw, &raw_len)) return _ERR;

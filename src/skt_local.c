@@ -25,9 +25,10 @@ static int ping(skcptun_t* skt, struct sockaddr_in remote_addr) {
     return _OK;
 }
 
-// recv pong resp format: cmd(1B)|ticket(32B)|timestamp(8B)|cid(4B)|mtu(4B)|kcp_interval(4B)|speed_mode(1B)
+// recv pong resp format:
+// cmd(1B)|ticket(32B)|timestamp(8B)|cid(4B)|mtu(4B)|kcp_interval(4B)|speed_mode(1B)|keepalive(4B)
 static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) {
-    if (pkt->payload_len < 21) {
+    if (pkt->payload_len < 25) {
         _LOG_E("invalid pong. len: %d", pkt->payload_len);
         return _ERR;
     }
@@ -56,12 +57,20 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         _LOG("invalid kcp_interval in pong. %d", skt->conf->kcp_interval);
         return _ERR;
     }
+    skt->conf->keepalive = ntohl(*(int*)(pkt->payload + 21));
+    if (skt->conf->keepalive <= 0 || skt->conf->keepalive > 9999999) {
+        _LOG("invalid keepalive in pong. %d", skt->conf->keepalive);
+        return _ERR;
+    }
     skt->conf->speed_mode = (int)(pkt->payload[20] & 0x00ffu);
     skt_setup_kcp(skt);
     if (skt_setup_tun(skt) != _OK) {
         _LOG_E("skt_start_tun failed");
         return _ERR;
     }
+
+    _LOG("pong ok. cid:%u mtu:%d kcp_interval:%d speed_mode:%d keepalive:%d", cid, skt->conf->mtu,
+         skt->conf->kcp_interval, skt->conf->speed_mode, skt->conf->keepalive);
     assert(skt->tun_ip_addr > 0);
     // new kcp connection
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_add(cid, skt->tun_ip_addr, pkt->ticket, peer, skt);
