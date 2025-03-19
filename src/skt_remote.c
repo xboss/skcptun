@@ -61,7 +61,7 @@ static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
         return;
     }
     uint64_t now = skt_mstime();
-    if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now - 1000) { /* TODO: allowance*/
+    if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
         _LOG("cllect kcp conn cid:%d tm:%llu", kcp_conn->cid, now - kcp_conn->last_r_tm);
         skt_close_kcp_conn(kcp_conn);
     } else {
@@ -78,7 +78,7 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
     }
     uint64_t now = skt_mstime();
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(peer->cid);
-    if (peer->last_r_tm + peer->skt->conf->keepalive < now - 1000) { /* TODO: allowance*/
+    if (peer->last_r_tm + peer->skt->conf->keepalive < now) {
         if (peer->remote_addr.sin_addr.s_addr == 0) {
             // _LOG("self peer doesn't need to be cllected.");
             return;
