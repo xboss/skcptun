@@ -227,14 +227,14 @@ static void udp_to_tun(skcptun_t* skt, const char* buf, ssize_t len, struct sock
         _LOG("invalid ticket");
         return;
     }
-    skt_udp_peer_t* peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
+    skt_udp_peer_t* peer = skt_udp_peer_get(remote_addr.sin_addr.s_addr);
     if (!peer) {
         if (skt->conf->mode == SKT_MODE_LOCAL) {
             _LOG_E("invalid remote addr in local mode");
             return;
         }
         if (skt_udp_peer_add(skt->udp_fd, remote_addr, skt) != _OK) return;
-        peer = skt_udp_peer_get(skt->udp_fd, remote_addr.sin_addr.s_addr);
+        peer = skt_udp_peer_get(remote_addr.sin_addr.s_addr);
         _LOG("add new peer");
     }
     skt->remote_addr = peer->remote_addr = remote_addr;
@@ -385,7 +385,7 @@ skt_udp_peer_t* skt_udp_start(const char* local_ip, uint16_t local_port, const c
         close(peer.fd);
         return NULL;
     }
-    skt_udp_peer_t* p = skt_udp_peer_get(peer.fd, peer.remote_addr.sin_addr.s_addr);
+    skt_udp_peer_t* p = skt_udp_peer_get(peer.remote_addr.sin_addr.s_addr);
     return p;
 }
 

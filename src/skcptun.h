@@ -89,6 +89,7 @@ typedef struct {
 } skt_packet_t;
 
 typedef struct {
+    uint32_t addr;
     int fd;
     struct sockaddr_in remote_addr;
     struct sockaddr_in local_addr;
@@ -96,7 +97,7 @@ typedef struct {
     uint64_t last_r_tm;  // 最后一次读操作的时间戳
     uint64_t last_w_tm;  // 最后一次写操作的时间戳
     skcptun_t* skt;
-    // packet_queue_t* send_queue;
+    UT_hash_handle hh_addr;
 } skt_udp_peer_t;
 
 typedef struct {
@@ -110,7 +111,8 @@ typedef struct {
     uint64_t create_time;
     uint64_t last_r_tm;  // 最后一次读操作的时间戳
     uint64_t last_w_tm;  // 最后一次写操作的时间戳
-
+    UT_hash_handle hh_cid;
+    UT_hash_handle hh_tun_ip;
 } skt_kcp_conn_t;
 
 struct skcptun_s {
@@ -150,9 +152,9 @@ int skt_run(skcptun_t* skt);
 // skcptun udp peer API
 ////////////////////////////////
 
-skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr);
+skt_udp_peer_t* skt_udp_peer_get(uint32_t remote_addr);
 int skt_udp_peer_add(int fd, struct sockaddr_in remote_addr, skcptun_t* skt);
-void skt_udp_peer_del(int fd, uint32_t remote_addr);
+void skt_udp_peer_del(uint32_t remote_addr);
 void skt_udp_peer_info();
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer));
 void skt_udp_peer_cleanup();

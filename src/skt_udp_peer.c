@@ -1,24 +1,7 @@
 
 #include "skcptun.h"
 
-typedef struct {
-    uint32_t addr;
-    skt_udp_peer_t* peer;
-    UT_hash_handle hh;
-} addr_peer_index_t;
-
-static addr_peer_index_t* g_addr_peer_index = NULL;
-
-static addr_peer_index_t* init_addr_peer_index(skt_udp_peer_t* peer) {
-    addr_peer_index_t* addr_peer_index = (addr_peer_index_t*)calloc(1, sizeof(addr_peer_index_t));
-    if (!addr_peer_index) {
-        perror("alloc");
-        return NULL;
-    }
-    addr_peer_index->addr = peer->remote_addr.sin_addr.s_addr;
-    addr_peer_index->peer = peer;
-    return addr_peer_index;
-}
+static skt_udp_peer_t* g_addr_peer_index = NULL;
 
 static skt_udp_peer_t* init_peer(int fd, struct sockaddr_in remote_addr, skcptun_t* skt) {
     skt_udp_peer_t* peer = (skt_udp_peer_t*)calloc(1, sizeof(skt_udp_peer_t));
@@ -29,6 +12,7 @@ static skt_udp_peer_t* init_peer(int fd, struct sockaddr_in remote_addr, skcptun
     peer->fd = fd;
     peer->remote_addr = remote_addr;
     peer->skt = skt;
+    peer->addr = remote_addr.sin_addr.s_addr;
     return peer;
 }
 static void free_peer(skt_udp_peer_t* peer) {
@@ -41,7 +25,7 @@ static void free_peer(skt_udp_peer_t* peer) {
 }
 
 int skt_udp_peer_add(int fd, struct sockaddr_in remote_addr, skcptun_t* skt) {
-    if (skt_udp_peer_get(fd, remote_addr.sin_addr.s_addr)) {
+    if (skt_udp_peer_get(remote_addr.sin_addr.s_addr)) {
         _LOG_E("peer already exist. skt_udp_peer_add");
         return _ERR;
     }
@@ -49,73 +33,70 @@ int skt_udp_peer_add(int fd, struct sockaddr_in remote_addr, skcptun_t* skt) {
     if (!peer) {
         return _ERR;
     }
-    addr_peer_index_t* addr_peer_index = init_addr_peer_index(peer);
-    if (!addr_peer_index) {
-        free_peer(peer);
-        return _ERR;
-    }
-    HASH_ADD_INT(g_addr_peer_index, addr, addr_peer_index);
+    HASH_ADD(hh_addr, g_addr_peer_index, addr, sizeof(peer->addr), peer);
     return _OK;
 }
 
-void skt_udp_peer_del(int fd, uint32_t remote_addr) {
-    addr_peer_index_t* addr_peer_index = NULL;
-    HASH_FIND_INT(g_addr_peer_index, &remote_addr, addr_peer_index);
-    if (!addr_peer_index) return;
-    assert(addr_peer_index->peer);
-    free_peer(addr_peer_index->peer);
-    HASH_DEL(g_addr_peer_index, addr_peer_index);
-    free(addr_peer_index);
+void skt_udp_peer_del(uint32_t remote_addr) {
+    skt_udp_peer_t* peer = NULL;
+    HASH_FIND(hh_addr, g_addr_peer_index, &remote_addr, sizeof(peer->addr), peer);
+    if (!peer) return;
+    HASH_DELETE(hh_addr, g_addr_peer_index, peer);
+    free_peer(peer);
     return;
 }
 
-skt_udp_peer_t* skt_udp_peer_get(int fd, uint32_t remote_addr) {
-    addr_peer_index_t* addr_peer_index = NULL;
-    HASH_FIND_INT(g_addr_peer_index, &remote_addr, addr_peer_index);
-    if (!addr_peer_index) {
-        return NULL;
-    }
-    assert(fd == addr_peer_index->peer->fd);
-    return addr_peer_index->peer;
+skt_udp_peer_t* skt_udp_peer_get(uint32_t remote_addr) {
+    skt_udp_peer_t* peer = NULL;
+    HASH_FIND(hh_addr, g_addr_peer_index, &remote_addr, sizeof(peer->addr), peer);
+    return peer;
 }
 
 void skt_udp_peer_iter(void (*iter)(skt_udp_peer_t* peer)) {
-    addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
-    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { iter(addr_peer_index->peer); }
-}
-
-static void print_addr_peer_index(const addr_peer_index_t* addr_peer_index) {
-    if (addr_peer_index == NULL) {
-        _LOG_E("addr_peer_index is NULL");
-        return;
+    if (g_addr_peer_index) {
+        skt_udp_peer_t *peer, *tmp;
+        HASH_ITER(hh_addr, g_addr_peer_index, peer, tmp) { iter(peer); }
     }
-    _LOG_E("addr_peer_index:");
-    _LOG_E("  addr: %u", addr_peer_index->addr);
-    const skt_udp_peer_t* peer = addr_peer_index->peer;
-    if (peer == NULL) {
-        _LOG_E("  peer is NULL");
-        return;
-    }
-    uint64_t now = skt_mstime();
-    char remote_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN);
-    _LOG_E("  peer:");
-    _LOG_E("    fd: %d", peer->fd);
-    _LOG_E("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
-    char local_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN);
-    _LOG_E("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
-    _LOG_E("    cid: %u", peer->cid);
-    _LOG_E("    last_r_tm: %" PRIu64 " ago", now - peer->last_r_tm);
-    _LOG_E("    last_w_tm: %" PRIu64 " ago", now - peer->last_w_tm);
 }
 
 void skt_udp_peer_info() {
     _LOG_E("---------- peers info ----------");
-    unsigned int peers_cnt = HASH_COUNT(g_addr_peer_index);
+    unsigned int peers_cnt = HASH_CNT(hh_addr, g_addr_peer_index);
     _LOG_E("udp peers count: %u", peers_cnt);
-    addr_peer_index_t *addr_peer_index = NULL, *tmp = NULL;
-    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) { print_addr_peer_index(addr_peer_index); }
+    skt_udp_peer_t *peer, *tmp;
+    int index = 0;
+    HASH_ITER(hh_addr, g_addr_peer_index, peer, tmp) {
+        if (!peer) continue;  // 空指针保护
+
+        _LOG_E("|-- Peer %d/%d", ++index, peers_cnt);
+
+        // 转换远程地址
+        char remote_ip[INET_ADDRSTRLEN] = {0};
+        if (inet_ntop(AF_INET, &peer->remote_addr.sin_addr, remote_ip, INET_ADDRSTRLEN) == NULL) {
+            _LOG_E("    remote_addr: invalid");
+        } else {
+            _LOG_E("    remote_addr: %s:%d", remote_ip, ntohs(peer->remote_addr.sin_port));
+        }
+
+        // 转换本地地址
+        char local_ip[INET_ADDRSTRLEN] = {0};
+        if (peer->fd > 0 && inet_ntop(AF_INET, &peer->local_addr.sin_addr, local_ip, INET_ADDRSTRLEN)) {
+            _LOG_E("    local_addr: %s:%d", local_ip, ntohs(peer->local_addr.sin_port));
+        } else {
+            _LOG_E("    local_addr: invalid");
+        }
+
+        uint64_t now = skt_mstime();
+        _LOG_E("    fd: %d", peer->fd);
+        _LOG_E("    cid: %u", peer->cid);
+        _LOG_E("    last_r_tm: %" PRIu64 " ago", now - peer->last_r_tm);
+        _LOG_E("    last_w_tm: %" PRIu64 " ago", now - peer->last_w_tm);
+        _LOG_E("|-------------------------------");
+    }
+
+    if (peers_cnt == 0) {
+        _LOG_E("|-- No active peers");
+    }
 }
 
 ////////////////////////////////
@@ -174,15 +155,19 @@ int skt_unpack(skcptun_t* skt, const char* raw, size_t raw_len, char* cmd, char*
 }
 
 void skt_udp_peer_cleanup() {
-    addr_peer_index_t *addr_peer_index, *tmp;
-    HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) {
-        if (addr_peer_index->peer) {
-            free_peer(addr_peer_index->peer);
-            addr_peer_index->peer = NULL;
-        }
-        HASH_DEL(g_addr_peer_index, addr_peer_index);
-        free(addr_peer_index);
+    if (g_addr_peer_index) {
+        skt_udp_peer_t *peer, *tmp;
+        HASH_ITER(hh_addr, g_addr_peer_index, peer, tmp) { skt_udp_peer_del(peer->addr); }
     }
+    // addr_peer_index_t *addr_peer_index, *tmp;
+    // HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) {
+    //     if (addr_peer_index->peer) {
+    //         free_peer(addr_peer_index->peer);
+    //         addr_peer_index->peer = NULL;
+    //     }
+    //     HASH_DEL(g_addr_peer_index, addr_peer_index);
+    //     free(addr_peer_index);
+    // }
     g_addr_peer_index = NULL;
     _LOG("skt_udp_peer_cleanup");
 }
