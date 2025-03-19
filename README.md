@@ -28,7 +28,7 @@ Local(client) environment preparation:
 ```
 iptables -P FORWARD ACCEPT
 # make necessary IP route settings:
-ip route add xxxxx via 192.1.1.2
+ip route add [your ip] via [your tun ip]
 ```
 Run:
 ```
