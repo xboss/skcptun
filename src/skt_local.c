@@ -94,7 +94,7 @@ static void on_timeout(skcptun_t* skt) {
     uint64_t now = skt_mstime();
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_cid(skt->local_cid);
     if (kcp_conn) {
-        if (kcp_conn->peer->last_r_tm + skt->conf->keepalive < now + 1000) { /* TODO: +allowance*/
+        if (kcp_conn->peer->last_r_tm + skt->conf->keepalive < now - 1000) { /* TODO: allowance*/
             // trigger auth
             _LOG("timeout_cb skt_close_kcp_conn trigger auth peer->last_r_tm:%llu", kcp_conn->peer->last_r_tm);
             skt_close_kcp_conn(kcp_conn);
