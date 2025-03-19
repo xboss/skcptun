@@ -74,7 +74,6 @@ keepalive = 60000
 
 
 ## TODO:
-- [x] send all, optimize kcp update
 - [ ] default configuration and validate all configuration
 - [ ] handshake configuration, tun ip.
 - [ ] multi tickets
@@ -85,6 +84,3 @@ keepalive = 60000
 - [ ] antispam
 - [ ] support ipv6
 - [ ] optmize
-- [x] handshake configuration, mtu, iv etc.
-- [x] local reconnect
-- [x] monitor
