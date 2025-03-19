@@ -40,7 +40,7 @@ ps aux | grep kcptun | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
 ```
 
 ## Example configuration file
-### local config
+### Local config
 ```
 mode = local
 remote_ip = 127.0.0.1
@@ -54,9 +54,9 @@ log_level= DEBUG
 log_file = /tmp/skcptun.log
 
 ```
-### remote config
+### Remote config
 ```
-mode = local
+mode = remote
 speed_mode = 1 
 local_ip = 0.0.0.0
 local_port = 1111
