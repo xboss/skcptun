@@ -86,7 +86,7 @@ static void iter_udp_peer_cb(skt_udp_peer_t* peer) {
         _LOG("cllect kcp conn peer");
         skt_close_kcp_conn(kcp_conn);
         _LOG("cllect peer fd:%d addr:%u", peer->fd, peer->remote_addr.sin_addr.s_addr);
-        skt_udp_peer_del(peer->fd, peer->remote_addr.sin_addr.s_addr);
+        skt_udp_peer_del(peer->remote_addr.sin_addr.s_addr);
     } else {
         // kcp update
         if (kcp_conn) {
