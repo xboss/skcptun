@@ -62,7 +62,7 @@ static void iter_kcp_conn_cb(skt_kcp_conn_t* kcp_conn) {
     }
     uint64_t now = skt_mstime();
     if (kcp_conn->last_r_tm + kcp_conn->skt->conf->keepalive < now) {
-        _LOG("cllect kcp conn cid:%d", kcp_conn->cid);
+        _LOG("cllect kcp conn cid:%d tm:%llu", kcp_conn->cid, now - kcp_conn->last_r_tm);
         skt_close_kcp_conn(kcp_conn);
     } else {
         // kcp update
