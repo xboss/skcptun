@@ -37,7 +37,8 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
         _LOG("invalid cid");
         return _ERR;
     }
-    if (cid == skt->local_cid && cid == peer->cid) {
+    assert(skt->local_cid == peer->cid);
+    if (cid == skt->local_cid && cid == peer->cid && cid > 0) {
         _LOG("already authed");
         return _OK;
     }
@@ -72,8 +73,14 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
     _LOG("pong ok. cid:%u mtu:%d kcp_interval:%d speed_mode:%d keepalive:%d", cid, skt->conf->mtu,
          skt->conf->kcp_interval, skt->conf->speed_mode, skt->conf->keepalive);
     assert(skt->tun_ip_addr > 0);
+    
+    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_tun_ip(skt->tun_ip_addr);
+    if (kcp_conn) {
+        skt_close_kcp_conn(kcp_conn);
+        _LOG("close kcp_conn cid:%u to refresh", kcp_conn->cid);
+    }
     // new kcp connection
-    skt_kcp_conn_t* kcp_conn = skt_kcp_conn_add(cid, skt->tun_ip_addr, pkt->ticket, peer, skt);
+    kcp_conn = skt_kcp_conn_add(cid, skt->tun_ip_addr, pkt->ticket, peer, skt);
     if (!kcp_conn) {
         return _ERR;
     }

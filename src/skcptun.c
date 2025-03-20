@@ -32,7 +32,7 @@ static void print_skcptun(const skcptun_t* skt) {
     _LOG_E("    iv: %s", conf->iv);
     _LOG_E("    ticket: %s", conf->ticket);
     _LOG_E("    mode: %d", conf->mode);
-    _LOG_E("    timeout: %d", conf->ping_interval);
+    _LOG_E("    ping_interval: %d", conf->ping_interval);
     _LOG_E("    log_file: %s", conf->log_file);
     _LOG_E("    log_level: %d", conf->log_level);
     _LOG_E("    tun_dev: %s", conf->tun_dev);
