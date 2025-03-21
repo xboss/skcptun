@@ -33,7 +33,7 @@ static sslog_t *g_log = NULL;
 
 int sslog_init(char *file, sslog_level log_level) {
     FILE *fp = stdout;
-    if (file && (fp = fopen(file, "a")) == NULL) {
+    if (file && strlen(file) > 0 && (fp = fopen(file, "a")) == NULL) {
         fprintf(stderr, "can't open log file %s\n", file);
         fp = stdout;
     }
