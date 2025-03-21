@@ -42,13 +42,15 @@ ps aux | grep kcptun | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
 ## Example configuration file
 ### Local config
 ```
+# Required
 mode = local
 remote_ip = 127.0.0.1
 remote_port = 1111
 tun_ip = 192.1.1.1
 tun_mask = 255.255.255.0
-password = yourpassword
 ticket = yourticketyourticketyourticket12
+# Optional
+password = yourpassword
 ping_interval = 1000
 log_level= DEBUG
 log_file = /tmp/skcptun.log
@@ -56,28 +58,28 @@ log_file = /tmp/skcptun.log
 ```
 ### Remote config
 ```
+# Required
 mode = remote
 speed_mode = 1 
 local_ip = 0.0.0.0
 local_port = 1111
 tun_ip = 192.1.1.1
 tun_mask = 255.255.255.0
+ticket = yourticketyourticketyourticket12
+# Optional
 mtu = 1500
 kcp_interval = 20
+keepalive = 60000
 password = yourpassword
-ticket = yourticketyourticketyourticket12
 log_level= DEBUG
 log_file = /tmp/skcptun.log
-keepalive = 60000
 
 ```
 
 
 ## TODO:
-- [ ] default configuration and validate all configuration
 - [ ] handshake configuration, tun ip.
 - [ ] multi tickets
-- [ ] config kcp 
 - [ ] tun osx
 - [ ] Bound checking
 - [ ] check memery leaks

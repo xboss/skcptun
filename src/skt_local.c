@@ -73,7 +73,7 @@ static int on_cmd_pong(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer) 
     _LOG("pong ok. cid:%u mtu:%d kcp_interval:%d speed_mode:%d keepalive:%d", cid, skt->conf->mtu,
          skt->conf->kcp_interval, skt->conf->speed_mode, skt->conf->keepalive);
     assert(skt->tun_ip_addr > 0);
-    
+
     skt_kcp_conn_t* kcp_conn = skt_kcp_conn_get_by_tun_ip(skt->tun_ip_addr);
     if (kcp_conn) {
         skt_close_kcp_conn(kcp_conn);
@@ -136,7 +136,7 @@ int skt_local_start(skcptun_t* skt) {
     skt->running = 1;
     skt->on_cmd_pong = on_cmd_pong;
     skt->on_timeout = on_timeout;
-    skt->conf->kcp_interval = 1000;
+    // skt->conf->kcp_interval = 1000;
 
     if (ping(skt, peer->remote_addr) != _OK) {
         skt_local_stop(skt);
