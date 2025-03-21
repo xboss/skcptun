@@ -103,7 +103,7 @@ static void on_timeout(skcptun_t* skt) {
         // cllect peers and kcp_conn
         skt_udp_peer_iter(iter_udp_peer_cb);
         skt->last_cllect_tm = now;
-        _LOG("cllect ok.")
+        _LOG("cllect ok.");
     } else {
         // kcp update
         skt_kcp_conn_iter(iter_kcp_conn_cb);

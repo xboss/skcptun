@@ -13,18 +13,11 @@
 #define _OK 0
 #define _ERR -1
 
-#ifndef _ALLOC
-#define _ALLOC(_p, _type, _size)        \
-    _type(_p) = (_type)malloc((_size)); \
-    if (!(_p)) {                        \
-        perror("alloc error");          \
-        exit(1);                        \
-    }
-#endif
-
 struct sslog_s {
     FILE *fp;
     sslog_level log_level;
+    /* char *logfile; */
+    /* char fmt[64]; */
 };
 typedef struct sslog_s sslog_t;
 
@@ -32,26 +25,28 @@ static char *level_desc[] = {"DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL"
 static sslog_t *g_log = NULL;
 
 int sslog_init(char *file, sslog_level log_level) {
+    g_log = (sslog_t *)calloc(1, sizeof(sslog_t));
+    if (!g_log) {
+        fprintf(stderr, "alloc sslog_t failed\n");
+        return _ERR;
+    }
     FILE *fp = stdout;
     if (file && strlen(file) > 0 && (fp = fopen(file, "a")) == NULL) {
         fprintf(stderr, "can't open log file %s\n", file);
-        fp = stdout;
     }
-    _ALLOC(log, sslog_t *, sizeof(sslog_t));
-    memset(log, 0, sizeof(sslog_t));
-    log->fp = fp;
-    log->log_level = log_level;
-    g_log = log;
+    g_log->fp = fp;
+    g_log->log_level = log_level;
     return _OK;
 }
 
 void sslog_free() {
     if (!g_log) return;
-    if (g_log->fp && g_log->fp != stdout) {
+    if (g_log->fp) {
         fclose(g_log->fp);
         g_log->fp = NULL;
     }
     free(g_log);
+    g_log = NULL;
 }
 
 void sslog(sslog_level level, const char *fmt, ...) {
@@ -67,8 +62,13 @@ void sslog(sslog_level level, const char *fmt, ...) {
     gettimeofday(&tv, NULL);
     time_t t = time(NULL);
     struct tm *time = localtime(&t);
-    char buf[32];
-    buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", time)] = '\0';
+    char buf[64];
+    memset(buf, 0, sizeof(buf));
+    size_t written = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", time);
+    if (written == 0) {
+        fprintf(stderr, "strftime failed\n");
+        return;
+    }
     fprintf(g_log->fp, "%s.%ld %s ", buf, tv.tv_usec / 1000l, level_desc[level]);
 #endif
 

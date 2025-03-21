@@ -1,6 +1,10 @@
 #ifndef _SSLOG_H
 #define _SSLOG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
     SSLOG_LEVEL_DEBUG = 0,
     SSLOG_LEVEL_INFO,
@@ -15,15 +19,19 @@ void sslog_free();
 void sslog(sslog_level level, const char *fmt, ...);
 
 #ifndef _LOG
-#define _LOG(fmt, ...) sslog(SSLOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__);
+#define _LOG(fmt, ...) sslog(SSLOG_LEVEL_DEBUG, fmt __VA_OPT__(, ) __VA_ARGS__)
 #endif
 
 #ifndef _LOG_W
-#define _LOG_W(fmt, ...) sslog(SSLOG_LEVEL_WARN, fmt, ##__VA_ARGS__);
+#define _LOG_W(fmt, ...) sslog(SSLOG_LEVEL_WARN, fmt __VA_OPT__(, ) __VA_ARGS__)
 #endif
 
 #ifndef _LOG_E
-#define _LOG_E(fmt, ...) sslog(SSLOG_LEVEL_ERROR, fmt, ##__VA_ARGS__);
+#define _LOG_E(fmt, ...) sslog(SSLOG_LEVEL_ERROR, fmt __VA_OPT__(, ) __VA_ARGS__)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* SSLOG_H */
