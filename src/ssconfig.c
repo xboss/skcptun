@@ -52,6 +52,10 @@ static int parse_file(FILE* fp, sscf_cb_t handler, void* user) {
     size_t sl = 0;
     char* p = NULL;
     char* line = (char*)calloc(g_max_line_size + 2, sizeof(char));
+    if (!line) {
+        fprintf(stderr, "Memory allocation failed\n");
+        return _ERR;
+    }
     for (size_t line_no = 0; fgets(line, g_max_line_size + 2, fp) != NULL; line_no++) {
         sl = strlen(line);
         if (sl > g_max_line_size && line[sl - 1] != '\n') {
@@ -61,8 +65,7 @@ static int parse_file(FILE* fp, sscf_cb_t handler, void* user) {
             break;
         }
         p = trim(line);
-        if (p[0] == '\0' || p[0] == '#' || p[0] == '\n') continue;
-        if (p == NULL || strlen(p) == 0) continue;
+        if (p[0] == '\0' || p[0] == '#' || p[0] == '\n' || strlen(p) == 0) continue;
         if (p[0] == '=' || p[strlen(p) - 1] == '=') {
             fprintf(stderr, "ERROR: config file line:%zu format error. must be in the format of 'key=value'\n",
                     line_no + 1);
@@ -85,7 +88,10 @@ void sscf_setup(size_t max_line_size) {
 int sscf_parse(const char* filename, sscf_cb_t handler, void* user) {
     FILE* file;
     file = fopen(filename, "r");
-    if (!file) return _ERR;
+    if (!file) {
+        perror("fopen failed");
+        return _ERR;
+    }
     int ret = parse_file(file, handler, user);
     fclose(file);
     return ret;
