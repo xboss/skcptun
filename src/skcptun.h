@@ -127,6 +127,7 @@ struct skcptun_s {
     int running;
     uint64_t last_cllect_tm;
     uint64_t last_ping_tm;
+    char* recv_buf;
     int (*on_cmd_ping)(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer);
     int (*on_cmd_pong)(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer);
     // int (*on_cmd_auth_req)(skcptun_t* skt, skt_packet_t* pkt, skt_udp_peer_t* peer);

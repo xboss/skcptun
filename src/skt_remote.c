@@ -133,6 +133,8 @@ int skt_remote_start(skcptun_t* skt) {
     skt->running = 1;
     skt->on_cmd_ping = on_cmd_ping;
     skt->on_timeout = on_timeout;
+    char recv_buf[SKT_MTU] = {0};
+    skt->recv_buf = recv_buf;
     if (skt_run(skt) != _OK) {
         skt_remote_stop(skt);
         return _ERR;

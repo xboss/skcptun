@@ -78,6 +78,8 @@ log_file = /tmp/skcptun.log
 
 
 ## TODO:
+- [ ] Dynamically set kcp parameters
+- [ ] Dynamically IV
 - [ ] handshake configuration, tun ip.
 - [ ] multi tickets
 - [ ] tun osx
