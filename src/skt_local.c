@@ -136,7 +136,8 @@ int skt_local_start(skcptun_t* skt) {
     skt->running = 1;
     skt->on_cmd_pong = on_cmd_pong;
     skt->on_timeout = on_timeout;
-    // skt->conf->kcp_interval = 1000;
+    char recv_buf[SKT_MTU] = {0};
+    skt->recv_buf = recv_buf;
 
     if (ping(skt, peer->remote_addr) != _OK) {
         skt_local_stop(skt);

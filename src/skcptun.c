@@ -390,7 +390,7 @@ skt_udp_peer_t* skt_udp_start(const char* local_ip, uint16_t local_port, const c
 }
 
 int skt_run(skcptun_t* skt) {
-    unsigned char rbuf[SKT_MTU] = {0};
+    // unsigned char rbuf[SKT_MTU] = {0};
     int infd = 0, ret = 0;
     // int  outfd = 0;
     ssize_t rlen = 0;
@@ -415,11 +415,11 @@ int skt_run(skcptun_t* skt) {
         infd = (fds[0].revents & POLLIN) ? skt->udp_fd : skt->tun_fd;
         // outfd = infd == skt->tun_fd ? skt->udp_fd : skt->tun_fd;
         if (infd == skt->tun_fd) {
-            rlen = tun_read(skt->tun_fd, rbuf, sizeof(rbuf));
-            tun_to_udp(skt, (const char*)rbuf, rlen);
+            rlen = tun_read(skt->tun_fd, skt->recv_buf, SKT_MTU);
+            tun_to_udp(skt, (const char*)skt->recv_buf, rlen);
         } else {
-            rlen = recvfrom(skt->udp_fd, rbuf, sizeof(rbuf), 0, (struct sockaddr*)&remote_addr, &ra_len);
-            udp_to_tun(skt, (const char*)rbuf, rlen, remote_addr);
+            rlen = recvfrom(skt->udp_fd, skt->recv_buf, SKT_MTU, 0, (struct sockaddr*)&remote_addr, &ra_len);
+            udp_to_tun(skt, (const char*)skt->recv_buf, rlen, remote_addr);
         }
     }
     return _OK;

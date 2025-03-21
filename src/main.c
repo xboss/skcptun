@@ -133,6 +133,14 @@ static int check_config(skt_config_t *conf) {
         fprintf(stderr, "Invalid tun_mask in configfile.\n");
         return _ERR;
     }
+    if (conf->kcp_sndwnd > 1024) {
+        fprintf(stderr, "Invalid kcp_sndwnd:%d in configfile.\n", conf->kcp_sndwnd);
+        return _ERR;
+    }
+    if (conf->kcp_rcvwnd > 1024) {
+        fprintf(stderr, "Invalid kcp_rcvwnd:%d in configfile.\n", conf->kcp_rcvwnd);
+        return _ERR;
+    }
     // set default values
     if (conf->ping_interval <= 0) {
         conf->ping_interval = SKT_PING_INTERVAL;
