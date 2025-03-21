@@ -3,6 +3,7 @@ project(skcptun)
 
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall")
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wno-unused-function -D_GNU_SOURCE")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra -D_GNU_SOURCE")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -D_GNU_SOURCE")
 
 include_directories(/usr/local/include)
