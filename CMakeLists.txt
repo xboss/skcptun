@@ -17,7 +17,7 @@ src/skt_kcp_conn.c
 src/tun.c
 src/tun_osx.c
 src/skcptun.c
-src/ssconf.c
+src/ssconfig.c
 src/sslog.c
 src/skt_remote.c
 src/skt_local.c
