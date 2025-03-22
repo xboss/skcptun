@@ -159,15 +159,6 @@ void skt_udp_peer_cleanup() {
         skt_udp_peer_t *peer, *tmp;
         HASH_ITER(hh_addr, g_addr_peer_index, peer, tmp) { skt_udp_peer_del(peer->addr); }
     }
-    // addr_peer_index_t *addr_peer_index, *tmp;
-    // HASH_ITER(hh, g_addr_peer_index, addr_peer_index, tmp) {
-    //     if (addr_peer_index->peer) {
-    //         free_peer(addr_peer_index->peer);
-    //         addr_peer_index->peer = NULL;
-    //     }
-    //     HASH_DEL(g_addr_peer_index, addr_peer_index);
-    //     free(addr_peer_index);
-    // }
     g_addr_peer_index = NULL;
     _LOG("skt_udp_peer_cleanup");
 }

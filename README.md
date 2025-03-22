@@ -83,8 +83,6 @@ log_file = /tmp/skcptun.log
 - [ ] handshake configuration, tun ip.
 - [ ] multi tickets
 - [ ] tun osx
-- [ ] Bound checking
-- [ ] check memery leaks
 - [ ] antispam
 - [ ] support ipv6
 - [ ] optmize
