@@ -41,19 +41,34 @@ int tun_alloc(char* dev, size_t dev_len) {
     }
 
     memset(&addr, 0, sizeof(addr));
+    addr.sc_id = ctl_info.ctl_id;
     addr.sc_len = sizeof(addr);
     addr.sc_family = AF_SYSTEM;
     addr.ss_sysaddr = AF_SYS_CONTROL;
-    addr.sc_id = ctl_info.ctl_id;
-    addr.sc_unit = 0;  // 从0开始动态分配
 
-    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    int i = -1;
+    for (i = 1; i < 255; i++) {
+        addr.sc_unit = i;
+        int c_rt = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+        if (c_rt == 0) {
+            break;
+        }
+    }
+    if (i < 1 || i >= 255) {
         perror("connect(AF_SYS_CONTROL)");
+        close(fd);
+        return -1;
+    }
+    i--;
+
+    char ifname[IFNAMSIZ];
+    socklen_t optlen = IFNAMSIZ;
+    if (getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &optlen) < 0) {
+        perror("getsockopt(UTUN_OPT_IFNAME)");
         close(fd);
         return _ERR;
     }
-
-    snprintf(dev, dev_len, "utun%d", addr.sc_unit);
+    snprintf(dev, dev_len, "%s", ifname);
     return fd;
 }
 
@@ -73,7 +88,7 @@ ssize_t tun_read(int fd, void* buf, size_t len) {
     int r = readv(fd, iv, 2);
 
     if (r < 0) return r;
-    if (r <= sizeof(type)) return 0;
+    if (r < (int)sizeof(type)) return 0;
     return r - sizeof(type);
 }
 
@@ -127,6 +142,27 @@ int tun_set_ip(const char* dev, const char* ip) {
         close(fd);
         return _ERR;
     }
+
+    struct sockaddr_in* dstaddr = (struct sockaddr_in*)&ifr.ifr_dstaddr;
+    dstaddr->sin_family = AF_INET;
+    dstaddr->sin_addr.s_addr = inet_addr("192.1.1.1");  // 设置有效对端地址
+    if (ioctl(fd, SIOCSIFDSTADDR, &ifr) < 0) {
+        perror("ioctl(SIOCSIFDSTADDR)");
+        close(fd);
+        return _ERR;
+    }
+
+    // // disable IPv6
+    // struct in6_aliasreq ifr6;
+    // int fd6 = socket(AF_INET6, SOCK_DGRAM, 0);
+    // if (fd6 >= 0) {
+    //     memset(&ifr6, 0, sizeof(ifr6));
+    //     strncpy(ifr6.ifra_name, dev, IFNAMSIZ);
+    //     if (ioctl(fd6, SIOCDIFADDR_IN6, &ifr6) < 0) {
+    //         perror("ioctl(SIOCDIFADDR_IN6)");
+    //     }
+    //     close(fd6);
+    // }
 
     close(fd);
     return _OK;
