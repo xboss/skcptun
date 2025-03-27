@@ -1,5 +1,5 @@
 # skcptun
-skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for Linux, implemented in C language.
+skcptun is encrypted [KCP](https://github.com/skywind3000/kcp) tunnel for Linux and MacOS, implemented in C language.
 
 ## Build
 Dependency on [OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#installing-openssl) library,install it first.
@@ -82,9 +82,6 @@ log_file = /tmp/skcptun.log
 - [ ] Dynamically IV
 - [ ] handshake configuration, tun ip.
 - [ ] multi tickets
-- [ ] tun osx
-- [ ] Bound checking
-- [ ] check memery leaks
 - [ ] antispam
 - [ ] support ipv6
 - [ ] optmize
