@@ -145,7 +145,7 @@ int tun_set_ip(const char* dev, const char* ip) {
 
     struct sockaddr_in* dstaddr = (struct sockaddr_in*)&ifr.ifr_dstaddr;
     dstaddr->sin_family = AF_INET;
-    dstaddr->sin_addr.s_addr = inet_addr("192.1.1.1");  // 设置有效对端地址
+    dstaddr->sin_addr.s_addr = addr->sin_addr.s_addr;
     if (ioctl(fd, SIOCSIFDSTADDR, &ifr) < 0) {
         perror("ioctl(SIOCSIFDSTADDR)");
         close(fd);
